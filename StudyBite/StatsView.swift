@@ -1,14 +1,17 @@
 import Charts
+import Foundation
 import SwiftUI
 
 struct StatsView: View {
     @State private var showSettings = false
+    private let weeklyCourses = CourseWeeklySeries.sampleWeek()
 
     var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 0) {
                 profileButton
-                    .padding(.bottom, 22)
+                    .padding(.leading, 9)
+                    .padding(.bottom, 36)
 
                 Text("My weekly stats")
                     .font(.system(size: 28, weight: .bold))
@@ -21,17 +24,16 @@ struct StatsView: View {
                     .padding(.bottom, 30)
 
                 Text("My weekly summary")
-                    .font(.system(size: 28, weight: .bold))
+                    .font(.system(size: 26, weight: .bold))
                     .lineLimit(1)
                     .minimumScaleFactor(0.9)
                     .padding(.leading, 8)
-                    .padding(.bottom, 12)
+                    .padding(.bottom, 20)
 
-                WeeklySummaryChart()
+                WeeklySummaryChart(courses: weeklyCourses)
                     .frame(height: 190)
             }
             .padding(.horizontal, 16)
-            .padding(.top, 14)
             .padding(.bottom, 100)
         }
         .background(Color(.systemBackground))
@@ -59,12 +61,18 @@ struct StatsView: View {
             Divider()
                 .frame(height: 50)
 
-            MetricView(value: "122", label: "min studied")
+            MetricView(value: "\(totalMinutes)", label: "min studied")
 
             Divider()
                 .frame(height: 50)
 
             MetricView(value: "14", label: "subjects")
+        }
+    }
+
+    private var totalMinutes: Int {
+        weeklyCourses.reduce(0) { total, course in
+            total + course.dailyMinutes.reduce(0) { $0 + $1.minutes }
         }
     }
 }
@@ -90,98 +98,78 @@ private struct MetricView: View {
 }
 
 private struct WeeklySummaryChart: View {
-    private let days = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"]
+    let courses: [CourseWeeklySeries]
 
-    private let bluePoints = [
-        ChartPoint(day: 0, minutes: 0),
-        ChartPoint(day: 1, minutes: 0),
-        ChartPoint(day: 2, minutes: 0),
-        ChartPoint(day: 3, minutes: 22),
-        ChartPoint(day: 4, minutes: 8),
-        ChartPoint(day: 5, minutes: 14),
-        ChartPoint(day: 6, minutes: 28)
-    ]
+    private var yAxisMaximum: Int {
+        let highestValue = courses
+            .flatMap(\.dailyMinutes)
+            .map(\.minutes)
+            .max() ?? 0
 
-    private let greenPoints = [
-        ChartPoint(day: 0, minutes: 8),
-        ChartPoint(day: 1, minutes: 10),
-        ChartPoint(day: 2, minutes: 5),
-        ChartPoint(day: 3, minutes: 0),
-        ChartPoint(day: 4, minutes: 0),
-        ChartPoint(day: 5, minutes: 12),
-        ChartPoint(day: 6, minutes: 15)
-    ]
+        return Swift.max(30, Int(ceil(Double(highestValue) / 30)) * 30)
+    }
+
+    private var yAxisValues: [Int] {
+        let step = yAxisMaximum / 3
+        return Array(stride(from: 0, through: yAxisMaximum, by: step))
+    }
+
+    private var weekDomain: ClosedRange<Date> {
+        let dates = courses.flatMap(\.dailyMinutes).map(\.date)
+        let firstDate = dates.min() ?? .now
+        let lastDate = dates.max() ?? firstDate
+        return firstDate...lastDate
+    }
 
     var body: some View {
         Chart {
-            ForEach(bluePoints) { point in
-                AreaMark(
-                    x: .value("Day", point.day),
-                    yStart: .value("Baseline", 0),
-                    yEnd: .value("Blue study time", point.minutes)
-                )
-                .foregroundStyle(by: .value("Course", "Blue"))
-                .opacity(0.48)
-                .interpolationMethod(.monotone)
+            ForEach(courses) { course in
+                ForEach(course.dailyMinutes) { day in
+                    AreaMark(
+                        x: .value("Day", day.date),
+                        yStart: .value("Baseline", 0),
+                        yEnd: .value("Study time", day.minutes),
+                        series: .value("Course", course.name)
+                    )
+                    .foregroundStyle(course.color.opacity(0.42))
+                    .interpolationMethod(.monotone)
 
-                LineMark(
-                    x: .value("Day", point.day),
-                    y: .value("Blue study time", point.minutes)
-                )
-                .foregroundStyle(by: .value("Course", "Blue"))
-                .lineStyle(StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
-                .interpolationMethod(.monotone)
-            }
-
-            ForEach(greenPoints) { point in
-                AreaMark(
-                    x: .value("Day", point.day),
-                    yStart: .value("Baseline", 0),
-                    yEnd: .value("Green study time", point.minutes)
-                )
-                .foregroundStyle(by: .value("Course", "Green"))
-                .opacity(0.50)
-                .interpolationMethod(.monotone)
-
-                LineMark(
-                    x: .value("Day", point.day),
-                    y: .value("Green study time", point.minutes)
-                )
-                .foregroundStyle(by: .value("Course", "Green"))
-                .lineStyle(StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
-                .interpolationMethod(.monotone)
+                    LineMark(
+                        x: .value("Day", day.date),
+                        y: .value("Study time", day.minutes),
+                        series: .value("Course", course.name)
+                    )
+                    .foregroundStyle(course.color)
+                    .lineStyle(
+                        StrokeStyle(
+                            lineWidth: 2.5,
+                            lineCap: .round,
+                            lineJoin: .round
+                        )
+                    )
+                    .interpolationMethod(.monotone)
+                }
             }
         }
-        .chartForegroundStyleScale([
-            "Blue": Color(red: 0.59, green: 0.75, blue: 0.79),
-            "Green": Color(red: 0.49, green: 0.90, blue: 0.77)
-        ])
         .chartLegend(.hidden)
-        .chartXScale(domain: 0...6)
-        .chartYScale(domain: 0...30)
+        .chartXScale(domain: weekDomain)
+        .chartYScale(domain: 0...yAxisMaximum)
         .chartXAxis {
-            AxisMarks(values: Array(0...6)) { value in
+            AxisMarks(values: .stride(by: .day)) { value in
                 AxisValueLabel {
-                    if let index = value.as(Int.self), days.indices.contains(index) {
-                        Text(days[index])
+                    if let date = value.as(Date.self) {
+                        Text(date, format: .dateTime.weekday(.abbreviated))
                             .font(.system(size: 12, weight: .semibold))
                             .foregroundStyle(.secondary)
+                            .textCase(.uppercase)
                     }
                 }
             }
         }
         .chartYAxis {
-            AxisMarks(position: .leading, values: [0, 10, 20, 30]) { value in
+            AxisMarks(position: .leading, values: yAxisValues) { _ in
                 AxisGridLine(stroke: StrokeStyle(lineWidth: 1))
                     .foregroundStyle(Color.secondary.opacity(0.20))
-
-                AxisValueLabel {
-                    if let minutes = value.as(Int.self) {
-                        Text("\(minutes)")
-                            .font(.system(size: 10, weight: .medium))
-                            .foregroundStyle(.secondary)
-                    }
-                }
             }
         }
         .chartPlotStyle { plotArea in
@@ -202,11 +190,66 @@ private struct WeeklySummaryChart: View {
     }
 }
 
-private struct ChartPoint: Identifiable {
-    var id: Int { day }
-
-    let day: Int
+private struct DailyStudyMinutes: Identifiable {
+    let date: Date
     let minutes: Int
+
+    var id: Date { date }
+}
+
+private struct CourseWeeklySeries: Identifiable {
+    let name: String
+    let color: Color
+    let dailyMinutes: [DailyStudyMinutes]
+
+    var id: String { name }
+
+    static func sampleWeek(
+        calendar: Calendar = .autoupdatingCurrent,
+        referenceDate: Date = .now
+    ) -> [CourseWeeklySeries] {
+        guard let weekStart = calendar.dateInterval(
+            of: .weekOfYear,
+            for: referenceDate
+        )?.start else {
+            return []
+        }
+
+        let sampleCourses = [
+            (
+                name: "Maths",
+                color: Color(red: 0.59, green: 0.75, blue: 0.79),
+                minutes: [4, 15, 3, 22, 7, 18, 5]
+            ),
+            (
+                name: "Science",
+                color: Color(red: 0.49, green: 0.90, blue: 0.77),
+                minutes: [12, 3, 14, 2, 10, 1, 6]
+            )
+        ]
+
+        return sampleCourses.map { course in
+            let dailyMinutes = course.minutes.enumerated().compactMap {
+                dayOffset,
+                minutes -> DailyStudyMinutes? in
+                guard let date = calendar.date(
+                    byAdding: .day,
+                    value: dayOffset,
+                    to: weekStart
+                ) else {
+                    return nil
+                }
+
+                return DailyStudyMinutes(date: date, minutes: minutes)
+            }
+
+            return CourseWeeklySeries(
+                name: course.name,
+                color: course.color,
+                dailyMinutes: dailyMinutes
+            )
+        }
+    }
 }
 
 #Preview {
