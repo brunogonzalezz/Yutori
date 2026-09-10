@@ -4,19 +4,32 @@ import SwiftUI
 struct HomeView: View {
     
     @State var showSettings = false
+    @State private var sessionStore = StudySessionStore.shared
+    @State private var courseStore = CourseStore.shared
     @AppStorage("profileName") private var profileName = "Bruno Gonzalez"
-    @AppStorage("lastHomeGreeting") private var lastGreeting = ""
-    @Environment(\.scenePhase) private var scenePhase
-    @State private var greeting = "Hi!"
-    @State private var isVisible = false
+    private var greeting: String { Self.sessionGreeting }
 
-    private let greetings = [
-        "Hi!", "Welcome back!", "Good to see you!",
-        "Ready to study?", "Let's get started!", "Time to focus!"
-    ]
-    
+    // Pick once per app process, including when HomeView is recreated.
+    private static let sessionGreeting: String = {
+        let greetings = [
+            "Hi!", "Welcome back!", "Good to see you!",
+            "Ready to study?", "Let's get started!", "Time to focus!",
+            "You've got this!", "One step at a time!", "Let's learn something new!",
+            "Make today count!", "A little progress every day!", "Ready for a fresh start?",
+            "Your next chapter starts here!", "Small steps, big dreams!", "Keep your curiosity alive!",
+            "Let's make progress!", "Time to grow!", "One study bite at a time!",
+            "Bring your ideas to life!", "Build a little momentum!"
+        ]
+        let defaults = UserDefaults.standard
+        let lastGreeting = defaults.string(forKey: "lastHomeGreeting")
+        let greeting = greetings.filter { $0 != lastGreeting }.randomElement() ?? "Hi!"
+        defaults.set(greeting, forKey: "lastHomeGreeting")
+        return greeting
+    }()
+
     var body: some View {
         
+        ScrollView(showsIndicators: false) {
         VStack(spacing: 0) {
             HStack(spacing: 14) {
                 Button {
@@ -98,96 +111,46 @@ struct HomeView: View {
                 Text("Last sessions")
                     .font(.system(size: 24, weight: .bold))
                 
-                HStack(spacing: 12) {
-                    ZStack {
-                        Circle()
-                            .fill(Color.pastelBlue)
-                            .frame(width: 48, height: 48)
-                        
-                        Image(systemName: "percent")
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundStyle(.white)
+                if sessionStore.loadFailed {
+                    Text("Couldn't load your sessions. Please reopen the app and try again.")
+                        .foregroundStyle(.secondary)
+                } else if sessionStore.sessions.isEmpty {
+                    Text("Your completed study sessions will appear here.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                } else {
+                    ForEach(sessionStore.sessions) { session in
+                        let course = courseStore.courses.first { $0.id == session.course.id } ?? session.course
+                        HStack(spacing: 12) {
+                            CourseBadge(course: course)
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(course.name)
+                                    .font(.system(size: 18, weight: .semibold))
+                                Text(session.blockDescription)
+                                    .font(.system(size: 14))
+                                    .foregroundStyle(.secondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            Spacer(minLength: 8)
+                            Text(session.formattedDuration)
+                                .font(.system(size: 17, weight: .medium))
+                                .fixedSize()
+                        }
+                        .accessibilityElement(children: .combine)
+                        if session.id != sessionStore.sessions.last?.id {
+                            Divider()
+                        }
                     }
-                    
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text("Maths")
-                            .font(.system(size: 18, weight: .semibold))
-                        
-                        Text("Sequences and limits")
-                            .font(.system(size: 14))
-                            .foregroundStyle(.secondary)
-                    }
-                    
-                    Spacer()
-                    
-                    Text("1h 19m")
-                        .font(.system(size: 17, weight: .medium))
-                }
-                
-                Divider()
-                
-                HStack(spacing: 12) {
-                    ZStack {
-                        Circle()
-                            .fill(Color.pastelGreen)
-                            .frame(width: 48, height: 48)
-                        
-                        Image(systemName: "atom")
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundStyle(.white)
-                    }
-                    
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text("Science")
-                            .font(.system(size: 18, weight: .semibold))
-                        
-                        Text("Thermodynamics")
-                            .font(.system(size: 14))
-                            .foregroundStyle(.secondary)
-                    }
-                    
-                    Spacer()
-                    
-                    Text("2h 22m")
-                        .font(.system(size: 17, weight: .medium))
-                }
-                
-                Divider()
-                
-                HStack(spacing: 12) {
-                    ZStack {
-                        Circle()
-                            .fill(Color.pastelOrange)
-                            .frame(width: 48, height: 48)
-                        
-                        Image(systemName: "book")
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundStyle(.white)
-                    }
-                    
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text("History")
-                            .font(.system(size: 18, weight: .semibold))
-                        
-                        Text("History of Spain")
-                            .font(.system(size: 14))
-                            .foregroundStyle(.secondary)
-                    }
-                    
-                    Spacer()
-                    
-                    Text("34m")
-                        .font(.system(size: 17, weight: .medium))
                 }
             }
             .padding(.horizontal, 28)
             .offset(y: -25)
         }
-    }
-
-    private func changeGreeting() {
-        greeting = greetings.filter { $0 != lastGreeting }.randomElement() ?? "Hi!"
-        lastGreeting = greeting
+        .padding(.bottom, 32)
+        }
+        .sheet(isPresented: $showSettings) {
+            SettingsView()
+        }
     }
 }
 

@@ -2,20 +2,25 @@ import Foundation
 import SwiftUI
 
 struct StudyTimerView: View {
+    let course: StudyCourse
     let onFinish: (TimeInterval) -> Void
 
     @State private var accumulatedTime: TimeInterval = 0
     @State private var runningSince: Date?
     @State private var isRunning = false
     @State private var hasStarted = false
+    @State private var showSummary = false
+    @State private var endedAt = Date.now
 
     var body: some View {
         VStack(spacing: 24) {
             Spacer()
 
-            Image(systemName: "timer")
-                .font(.system(size: 42, weight: .medium))
-                .foregroundStyle(.secondary)
+            HStack(spacing: 12) {
+                CourseBadge(course: course)
+                Text(course.name)
+                    .font(.headline)
+            }
 
             VStack(spacing: 8) {
                 Text("Study time")
@@ -49,7 +54,11 @@ struct StudyTimerView: View {
                 .buttonStyle(.glass)
 
                 Button {
-                    onFinish(elapsedTime(at: .now))
+                    endedAt = .now
+                    accumulatedTime = elapsedTime(at: endedAt)
+                    isRunning = false
+                    runningSince = nil
+                    showSummary = true
                 } label: {
                     Label("Finish", systemImage: "stop.fill")
                         .frame(maxWidth: .infinity)
@@ -65,6 +74,12 @@ struct StudyTimerView: View {
         .padding(.bottom, 20)
         .navigationTitle("Study session")
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $showSummary) {
+            SessionSummaryView(course: course, measuredDuration: accumulatedTime, endedAt: endedAt) { duration in
+                showSummary = false
+                onFinish(duration)
+            }
+        }
         .onAppear {
             startTimerIfNeeded()
         }
@@ -113,6 +128,6 @@ struct StudyTimerView: View {
 
 #Preview {
     NavigationStack {
-        StudyTimerView { _ in }
+        StudyTimerView(course: StudyCourse(name: "Maths", icon: "percent")) { _ in }
     }
 }

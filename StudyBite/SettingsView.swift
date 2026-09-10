@@ -6,6 +6,7 @@ import UIKit
 struct SettingsView: View {
     
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.openURL) private var openURL
     @AppStorage("profileName") private var profileName = "Bruno Gonzalez"
     @State private var draftName = ""
     @FocusState private var isEditingName: Bool
@@ -14,14 +15,19 @@ struct SettingsView: View {
     @State private var selectedPhoto: PhotosPickerItem?
     @State private var showPhotoPicker = false
     @State private var showColors = false
+    @State private var showAppIcons = false
     @State private var photoError = false
+    @State private var feedbackError = false
     @State private var nameFrame: CGRect = .zero
+    @State private var selectedLanguage = "English"
+    @State private var selectedAppearance = "Light"
 
     private let colors = ProfileAvatarView.colors
 
     var body: some View {
         NavigationStack {
             ScrollView {
+                VStack(spacing: 0) {
                 VStack(spacing: 18) {
                     Menu {
                         Button("Choose photo", systemImage: "photo") {
@@ -71,7 +77,13 @@ struct SettingsView: View {
                 .padding(.horizontal, 24)
                 .padding(.top, 28)
                 .padding(.bottom, 28)
+                    settingsContent
+                        .padding(.horizontal, 12)
+                        .padding(.top, 20)
+                        .padding(.bottom, 28)
+                }
             }
+                .background(Color.white)
                 .toolbar {
                     ToolbarItem(placement: .topBarTrailing) {
                         Button {
@@ -172,10 +184,274 @@ struct SettingsView: View {
             }
             .presentationDetents([.medium])
         }
+        .sheet(isPresented: $showAppIcons) {
+            NavigationStack {
+                ScrollView {
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 3), spacing: 24) {
+                        ForEach(0..<9) { index in
+                            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                .fill(Color(white: 0.86))
+                                .frame(width: 84, height: 84)
+                                .overlay {
+                                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                        .strokeBorder(Color.black.opacity(0.05), lineWidth: 1)
+                                }
+                                .accessibilityLabel("App icon placeholder \(index + 1)")
+                        }
+                    }
+                    .padding(24)
+                }
+                .navigationTitle("App Icon")
+                .navigationBarTitleDisplayMode(.inline)
+            }
+            .presentationDetents([.medium])
+            .presentationDragIndicator(.visible)
+        }
+        .alert("Couldn't open email", isPresented: $feedbackError) {
+            Button("Copy email address") {
+                UIPasteboard.general.string = "brunoogonzalezcano@gmail.com"
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("Please configure an email app or email brunoogonzalezcano@gmail.com directly.")
+        }
         .alert("Couldn't load photo", isPresented: $photoError) {
             Button("OK", role: .cancel) { }
         } message: {
             Text("Please try selecting another photo.")
+        }
+    }
+
+    private let cardColor = Color(red: 0.95, green: 0.95, blue: 0.965)
+
+    private var settingsContent: some View {
+        VStack(spacing: 0) {
+            Text("Pro Ad")
+                .font(.system(size: 17))
+                .frame(maxWidth: .infinity)
+                .frame(height: 164)
+                .background(cardColor, in: RoundedRectangle(cornerRadius: 38))
+
+            Text("Restore Purchase")
+                .font(.system(size: 12))
+                .foregroundStyle(.gray)
+                .padding(.top, 10)
+                .padding(.bottom, 28)
+
+            CoursesSettingsSection()
+                .padding(.bottom, 24)
+
+            settingsSection("CUSTOMIZE") {
+                Menu {
+                    Picker("Language", selection: $selectedLanguage) {
+                        Label {
+                            Text("English")
+                        } icon: {
+                            Image(uiImage: Self.englishFlag)
+                                .renderingMode(.original)
+                        }.tag("English")
+                        Label {
+                            Text("Español")
+                        } icon: {
+                            Image(uiImage: Self.spanishFlag)
+                                .renderingMode(.original)
+                        }.tag("Español")
+                        Label {
+                            Text("Català")
+                        } icon: {
+                            Image(uiImage: Self.circularCatalanFlag)
+                                .renderingMode(.original)
+                        }
+                        .tag("Català")
+                    }
+                } label: {
+                    settingsRow("Language", icon: "character.bubble", selection: selectedLanguage, flag: selectedLanguageFlag)
+                        .transaction { $0.animation = nil }
+                }
+                .buttonStyle(.plain)
+                settingsDivider
+                Menu {
+                    Picker("Appearance", selection: $selectedAppearance) {
+                        Label("Light", systemImage: "sun.max").tag("Light")
+                        Label("Dark", systemImage: "moon").tag("Dark")
+                    }
+                } label: {
+                    settingsRow("Appearance", icon: "circle.lefthalf.filled", selection: selectedAppearance)
+                }
+                .buttonStyle(.plain)
+                settingsDivider
+                Button {
+                    isEditingName = false
+                    showAppIcons = true
+                } label: {
+                    settingsRow("App Icon", icon: "app.dashed")
+                }
+                .buttonStyle(.plain)
+            }
+
+            settingsSection("ONBOARDING") {
+                settingsRow("Show Onboarding", icon: "rectangle.on.rectangle")
+            }
+
+            settingsSection("STUDYBITE") {
+                settingsRow("Write a Review", icon: "star.fill")
+                settingsDivider
+                Button {
+                    isEditingName = false
+                    sendFeedback()
+                } label: {
+                    settingsRow("Send Feedback", icon: "envelope.fill")
+                }
+                .buttonStyle(.plain)
+                settingsDivider
+                NavigationLink {
+                    AboutStudyBiteView()
+                } label: {
+                    settingsRow("About StudyBite", icon: "figure.walk")
+                }
+                .buttonStyle(.plain)
+            }
+
+            settingsSection("LEGAL") {
+                settingsRow("Terms of Use", icon: "list.clipboard.fill")
+                settingsDivider
+                settingsRow("Privacy Policy", icon: "lock.shield.fill")
+            }
+
+            settingsRow("Delete account", icon: "trash", destructive: true)
+                .background(cardColor, in: RoundedRectangle(cornerRadius: 22))
+                .padding(.top, 8)
+
+            Text("Version \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—")")
+                .font(.system(size: 13))
+                .foregroundStyle(.gray)
+                .padding(.top, 12)
+
+            VStack(spacing: 2) {
+                Text("Made with love by")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.gray)
+                Link(destination: URL(string: "https://x.com/brunogonzalez__")!) {
+                    Text("Bruno Gonzalez")
+                        .font(.system(size: 19, weight: .semibold))
+                        .foregroundStyle(Color(white: 0.35))
+                }
+                .buttonStyle(.plain)
+                .accessibilityHint("Opens Bruno Gonzalez's profile on X")
+            }
+            .padding(.top, 34)
+        }
+        .foregroundStyle(.black)
+    }
+
+    private func settingsSection<Content: View>(
+        _ title: String,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 7) {
+            Text(title)
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(Color(red: 0.58, green: 0.58, blue: 0.62))
+                .padding(.leading, 4)
+                .accessibilityAddTraits(.isHeader)
+            VStack(spacing: 0, content: content)
+                .background(cardColor, in: RoundedRectangle(cornerRadius: 22))
+        }
+        .padding(.bottom, 20)
+    }
+
+    // Visual placeholders until these settings have their own screens.
+    private func settingsRow(_ title: String, icon: String, destructive: Bool = false, selection: String? = nil, flag: UIImage? = nil) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: icon)
+                .font(.system(size: 19))
+                .frame(width: 24)
+                .accessibilityHidden(true)
+            Text(title)
+                .font(.system(size: 18))
+            Spacer(minLength: 8)
+            HStack(spacing: 5) {
+                if let flag {
+                    Image(uiImage: flag)
+                        .renderingMode(.original)
+                        .resizable()
+                        .frame(width: 22, height: 22)
+                        .accessibilityHidden(true)
+                }
+                if let selection {
+                    Text(selection)
+                        .font(.system(size: 14))
+                        .foregroundStyle(Color(white: 0.35))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
+                }
+            }
+            if !destructive {
+                Image(systemName: selection == nil ? "chevron.right" : "chevron.up.chevron.down")
+                    .font(.system(size: 18, weight: .medium))
+                    .foregroundStyle(Color(white: 0.43))
+                    .accessibilityHidden(true)
+            }
+        }
+        .foregroundStyle(destructive ? Color.red : Color(white: 0.24))
+        .padding(.horizontal, 16)
+        .padding(.vertical, 15)
+        .frame(maxWidth: .infinity, minHeight: 53)
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
+    }
+
+    private var settingsDivider: some View {
+        Rectangle()
+            .fill(Color.black.opacity(0.055))
+            .frame(height: 0.5)
+    }
+
+    private static func circularFlag(_ image: UIImage) -> UIImage {
+        UIGraphicsImageRenderer(size: CGSize(width: 26, height: 26)).image { _ in
+            UIBezierPath(ovalIn: CGRect(x: 0, y: 0, width: 26, height: 26)).addClip()
+            guard image.size.height > 0 else { return }
+            let width = 26 * image.size.width / image.size.height
+            image.draw(in: CGRect(x: (26 - width) / 2, y: 0, width: width, height: 26))
+        }
+    }
+
+    private var selectedLanguageFlag: UIImage {
+        switch selectedLanguage {
+        case "Español": return Self.spanishFlag
+        case "Català": return Self.circularCatalanFlag
+        default: return Self.englishFlag
+        }
+    }
+
+    // Reuse the same images when scrolling updates the name field's geometry.
+    private static let englishFlag = circularFlag(UIImage(named: "Flag-gb") ?? UIImage())
+    private static let spanishFlag = circularFlag(UIImage(named: "Flag-es") ?? UIImage())
+    private static let circularCatalanFlag = circularFlag(catalanFlag)
+
+    // Render the Senyera with the same image treatment as the other flags.
+    private static let catalanFlag: UIImage = UIGraphicsImageRenderer(
+        size: CGSize(width: 27, height: 18)
+    ).image { context in
+        UIColor.systemYellow.setFill()
+        context.fill(CGRect(x: 0, y: 0, width: 27, height: 18))
+        UIColor.systemRed.setFill()
+        for stripe in 0..<4 {
+            context.fill(CGRect(x: 0, y: 2 + stripe * 4, width: 27, height: 2))
+        }
+    }
+
+    private func sendFeedback() {
+        var components = URLComponents()
+        components.scheme = "mailto"
+        components.path = "brunoogonzalezcano@gmail.com"
+        components.queryItems = [URLQueryItem(name: "subject", value: "StudyBite Feedback")]
+        guard let url = components.url else {
+            feedbackError = true
+            return
+        }
+        openURL(url) { accepted in
+            if !accepted { feedbackError = true }
         }
     }
 
@@ -219,5 +495,26 @@ private struct NameFrameKey: PreferenceKey {
     static let defaultValue: CGRect = .zero
     static func reduce(value: inout CGRect, nextValue: () -> CGRect) {
         value = nextValue()
+    }
+}
+
+private struct AboutStudyBiteView: View {
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        Color.white
+            .ignoresSafeArea()
+            .navigationBarBackButtonHidden(true)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "chevron.left")
+                            .foregroundStyle(.black)
+                    }
+                    .accessibilityLabel("Back")
+                }
+            }
     }
 }

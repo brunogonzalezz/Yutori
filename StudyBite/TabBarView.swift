@@ -11,6 +11,7 @@ struct TabBarView: View {
     @State private var showStartStudy = false
     @State private var showStudyTimer = false
     @State private var startTimerAfterSheetCloses = false
+    @State private var sessionCourse: StudyCourse?
 
     private var tabSelection: Binding<Tab> {
         Binding {
@@ -43,11 +44,13 @@ struct TabBarView: View {
                 }
             }
 
-            if showStudyTimer {
+            if showStudyTimer, let sessionCourse {
                 NavigationStack {
-                    StudyTimerView { _ in
+                    StudyTimerView(course: sessionCourse) { _ in
                         withAnimation(.easeInOut(duration: 0.25)) {
+                            selectedTab = .home
                             showStudyTimer = false
+                            self.sessionCourse = nil
                         }
                     }
                 }
@@ -60,11 +63,12 @@ struct TabBarView: View {
             }
         }
         .sheet(isPresented: $showStartStudy, onDismiss: openPendingTimer) {
-            StartStudyView {
+            StartStudyView { course in
+                sessionCourse = course
                 startTimerAfterSheetCloses = true
                 showStartStudy = false
             }
-            .presentationDetents([.medium])
+            .presentationDetents([.medium, .large])
         }
     }
 
@@ -79,7 +83,7 @@ struct TabBarView: View {
     }
 
     private func openPendingTimer() {
-        guard startTimerAfterSheetCloses else {
+        guard startTimerAfterSheetCloses, sessionCourse != nil else {
             return
         }
 
@@ -92,41 +96,86 @@ struct TabBarView: View {
 
 private struct StartStudyView: View {
     @Environment(\.dismiss) private var dismiss
-    let onStart: () -> Void
+    @State private var store = CourseStore.shared
+    @State private var selectedCourseID: UUID?
+    @State private var showCourses = false
+    let onStart: (StudyCourse) -> Void
+
+    private var selectedCourse: StudyCourse? {
+        store.courses.first { $0.id == selectedCourseID }
+    }
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 18) {
-                Image(systemName: "timer")
-                    .font(.system(size: 42))
-
-                Text("New study session")
-                    .font(.title2.bold())
-
-                Text("Start a timer and make every minute count towards your next dish.")
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-
-                Button {
-                    onStart()
-                } label: {
-                    Label("Start studying", systemImage: "play.fill")
-                        .font(.headline)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 6)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 12) {
+                    if store.loadFailed {
+                        ContentUnavailableView("Couldn't load courses", systemImage: "exclamationmark.triangle", description: Text("Please reopen the app and try again."))
+                    } else if store.courses.isEmpty {
+                        ContentUnavailableView("Create a course first", systemImage: "books.vertical", description: Text("Every study session needs a course."))
+                        Button("Create a course") { showCourses = true }
+                            .buttonStyle(.borderedProminent)
+                            .tint(.blue)
+                            .frame(maxWidth: .infinity)
+                    } else {
+                        Text("Which course are you studying?")
+                            .font(.headline)
+                            .padding(.bottom, 4)
+                        ForEach(store.courses) { course in
+                            Button {
+                                selectedCourseID = course.id
+                            } label: {
+                                HStack(spacing: 12) {
+                                    CourseBadge(course: course)
+                                    Text(course.name)
+                                        .foregroundStyle(.primary)
+                                        .multilineTextAlignment(.leading)
+                                    Spacer()
+                                    Image(systemName: selectedCourseID == course.id ? "checkmark.circle.fill" : "circle")
+                                        .foregroundStyle(selectedCourseID == course.id ? Color.blue : Color.secondary)
+                                }
+                                .padding(12)
+                                .frame(maxWidth: .infinity, minHeight: 64)
+                                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 18))
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityAddTraits(selectedCourseID == course.id ? .isSelected : [])
+                        }
+                    }
                 }
-                .buttonStyle(.glassProminent)
-                .padding(.top, 8)
+                .padding(20)
             }
-            .padding(32)
-            .navigationTitle("Study")
+            .background(Color(.systemGroupedBackground))
+            .safeAreaInset(edge: .bottom) {
+                if !store.courses.isEmpty && !store.loadFailed {
+                    Button {
+                        guard let selectedCourse else { return }
+                        onStart(selectedCourse)
+                    } label: {
+                        Label("Start studying", systemImage: "play.fill")
+                            .font(.headline)
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.blue)
+                    .disabled(selectedCourse == nil)
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 12)
+                    .background(.regularMaterial)
+                }
+            }
+            .navigationTitle("New study session")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Close", systemImage: "xmark") {
-                        dismiss()
-                    }
+                    Button("Close", systemImage: "xmark") { dismiss() }
                 }
+            }
+            .sheet(isPresented: $showCourses) {
+                CoursesPage(store: store)
+                    .presentationDetents([.large])
+                    .presentationDragIndicator(.visible)
             }
         }
     }
