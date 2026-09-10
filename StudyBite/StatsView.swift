@@ -5,7 +5,7 @@ import SwiftUI
 struct StatsView: View {
     @State private var showSettings = false
     private let weeklyCourses = CourseWeeklySeries.sampleWeek()
-
+    
     var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 0) {
@@ -46,12 +46,10 @@ struct StatsView: View {
         Button {
             showSettings = true
         } label: {
-            Image("perfilePic")
-                .resizable()
-                .scaledToFit()
-                .frame(width: 50, height: 50)
+            ProfileAvatarView(size: 50)
         }
         .buttonStyle(.plain)
+        .accessibilityLabel("Open settings")
     }
 
     private var weeklyMetrics: some View {
@@ -227,6 +225,8 @@ private struct CourseWeeklySeries: Identifiable {
                 minutes: [12, 3, 14, 2, 10, 1, 6]
             )
         ]
+        
+        
 
         return sampleCourses.map { course in
             let dailyMinutes = course.minutes.enumerated().compactMap {

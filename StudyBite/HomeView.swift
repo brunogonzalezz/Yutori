@@ -4,24 +4,41 @@ import SwiftUI
 struct HomeView: View {
     
     @State var showSettings = false
+    @AppStorage("profileName") private var profileName = "Bruno Gonzalez"
+    @AppStorage("lastHomeGreeting") private var lastGreeting = ""
+    @Environment(\.scenePhase) private var scenePhase
+    @State private var greeting = "Hi!"
+    @State private var isVisible = false
+
+    private let greetings = [
+        "Hi!", "Welcome back!", "Good to see you!",
+        "Ready to study?", "Let's get started!", "Time to focus!"
+    ]
     
     var body: some View {
         
         VStack(spacing: 0) {
-            HStack {
+            HStack(spacing: 14) {
                 Button {
                     showSettings = true
                 } label: {
-                    Image("perfilePic")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 50, height: 50)
+                    ProfileAvatarView(size: 50)
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("Open settings")
                 
-                Text("Hi, Bruno!")
-                    .font(.system(size: 20))
-                    .fontWeight(.semibold)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(greeting)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(.secondary)
+
+                    Text(profileName)
+                        .font(.system(size: 22, weight: .bold, design: .rounded))
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.8)
+                }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("\(greeting) \(profileName)")
                 
                 Spacer()
             }
@@ -165,12 +182,12 @@ struct HomeView: View {
             }
             .padding(.horizontal, 28)
             .offset(y: -25)
-            
-            Spacer()
         }
-        .sheet(isPresented: $showSettings) {
-            SettingsView()
-        }
+    }
+
+    private func changeGreeting() {
+        greeting = greetings.filter { $0 != lastGreeting }.randomElement() ?? "Hi!"
+        lastGreeting = greeting
     }
 }
 
