@@ -322,6 +322,10 @@ struct SettingsView: View {
                 .background(cardColor, in: RoundedRectangle(cornerRadius: 22))
                 .padding(.top, 8)
 
+            ResetStudySessionsButton()
+                .background(cardColor, in: RoundedRectangle(cornerRadius: 22))
+                .padding(.top, 12)
+
             Text("Version \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—")")
                 .font(.system(size: 13))
                 .foregroundStyle(.gray)
@@ -489,6 +493,32 @@ struct SettingsAvatar: Shape {
 
 #Preview {
     SettingsView()
+}
+
+private struct ResetStudySessionsButton: View {
+    @State private var showConfirmation = false
+
+    var body: some View {
+        Button(role: .destructive) {
+            showConfirmation = true
+        } label: {
+            Label("Delete all study sessions", systemImage: "trash")
+                .font(.system(size: 18))
+                .foregroundStyle(.red)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(16)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .alert("Delete all study sessions?", isPresented: $showConfirmation) {
+            Button("Delete all sessions", role: .destructive) {
+                StudySessionStore.shared.deleteAllSessions()
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("This cannot be undone. Your dish will return to level 0. Your courses and profile will be kept.")
+        }
+    }
 }
 
 private struct NameFrameKey: PreferenceKey {

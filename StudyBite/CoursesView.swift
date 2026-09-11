@@ -119,8 +119,15 @@ struct CoursesPage: View {
                     Button("Close", systemImage: "xmark") { dismiss() }
                 }
             }
-            .sheet(item: $editingCourse) { course in
-                CourseEditorView(course: course, store: store)
+            .navigationDestination(isPresented: Binding(
+                get: { editingCourse != nil },
+                set: { if !$0 { editingCourse = nil } }
+            )) {
+                if let course = editingCourse {
+                    CourseEditorView(course: course, store: store) {
+                        editingCourse = nil
+                    }
+                }
             }
         }
         .tint(.primary)
@@ -144,7 +151,12 @@ private struct CourseEditorView: View {
     @Environment(\.dismiss) private var dismiss
     @State var course: StudyCourse
     let store: CourseStore
-    @State private var saveFailed = false
+    let onDeleted: () -> Void
+    private enum EditorAlert: String, Identifiable {
+        case confirmDelete, deleteFailed, saveFailed
+        var id: String { rawValue }
+    }
+    @State private var activeAlert: EditorAlert?
 
     private let icons = [
         ("book.fill", "Book"), ("percent", "Maths"), ("atom", "Science"),
@@ -178,7 +190,8 @@ private struct CourseEditorView: View {
     }
 
     var body: some View {
-        NavigationStack {
+        Group {
+            VStack(spacing: 0) {
             Form {
                 Section {
                     HStack(spacing: 12) {
@@ -242,9 +255,51 @@ private struct CourseEditorView: View {
                     }
                     .padding(.vertical, 4)
                 }
+                if store.courses.contains(where: { $0.id == course.id }) {
+                    Section {
+                    Button(role: .destructive) {
+                        activeAlert = .confirmDelete
+                    } label: {
+                        Label("Delete course", systemImage: "trash")
+                            .font(.headline)
+                            .foregroundStyle(.red)
+                            .frame(maxWidth: .infinity, minHeight: 54)
+                            .background(Color.red.opacity(0.08), in: RoundedRectangle(cornerRadius: 18))
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .tint(.red)
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.clear)
+                    }
+                }
+            }
+            }
+            .alert(item: $activeAlert) { alert in
+                switch alert {
+                case .confirmDelete:
+                    return Alert(
+                        title: Text("Delete this course?"),
+                        message: Text("Your completed study sessions will be kept."),
+                        primaryButton: .destructive(Text("Delete course")) {
+                            do {
+                                try store.delete(course)
+                                onDeleted()
+                            } catch {
+                                activeAlert = .deleteFailed
+                            }
+                        },
+                        secondaryButton: .cancel()
+                    )
+                case .deleteFailed:
+                    return Alert(title: Text("Couldn't delete course"), message: Text("Please try again. Your course hasn't been deleted."))
+                case .saveFailed:
+                    return Alert(title: Text("Couldn't save course"), message: Text("Please try again. Your changes haven't been saved."))
+                }
             }
             .navigationTitle(store.courses.contains(where: { $0.id == course.id }) ? "Edit course" : "New course")
             .navigationBarTitleDisplayMode(.inline)
+            .navigationBarBackButtonHidden()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
@@ -255,16 +310,11 @@ private struct CourseEditorView: View {
                             try store.save(course)
                             dismiss()
                         } catch {
-                            saveFailed = true
+                            activeAlert = .saveFailed
                         }
                     }
                     .disabled(!validName)
                 }
-            }
-            .alert("Couldn't save course", isPresented: $saveFailed) {
-                Button("OK", role: .cancel) { }
-            } message: {
-                Text("Please try again. Your changes haven't been saved.")
             }
         }
         .tint(.primary)

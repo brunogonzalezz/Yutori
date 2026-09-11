@@ -48,6 +48,14 @@ final class CourseStore {
         courses = updated
     }
 
+    func delete(_ course: StudyCourse) throws {
+        guard !loadFailed else { throw SaveError.unavailable }
+        let updated = courses.filter { $0.id != course.id }
+        let data = try JSONEncoder().encode(updated)
+        defaults.set(data, forKey: storageKey)
+        courses = updated
+    }
+
     enum SaveError: Error {
         case invalidName, unavailable
     }

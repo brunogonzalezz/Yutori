@@ -4,6 +4,8 @@ import SwiftUI
 
 struct StatsView: View {
     @State private var showSettings = false
+    @State private var selectedPeriod = "weekly"
+    private let periods = ["daily", "weekly", "monthly", "lifetime"]
     private let weeklyCourses = CourseWeeklySeries.sampleWeek()
     
     var body: some View {
@@ -13,7 +15,28 @@ struct StatsView: View {
                     .padding(.leading, 9)
                     .padding(.bottom, 36)
 
-                Text("My weekly stats")
+                HStack(spacing: 7) {
+                    Text("My")
+                    Menu {
+                        Picker("Period", selection: $selectedPeriod) {
+                            ForEach(periods, id: \.self) { period in
+                                Text(period.capitalized).tag(period)
+                            }
+                        }
+                    } label: {
+                        HStack(spacing: 5) {
+                            Text(selectedPeriod)
+                            Image(systemName: "chevron.down")
+                                .font(.system(size: 13, weight: .semibold))
+                        }
+                        .frame(minHeight: 44)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Stats period")
+                    .accessibilityValue(selectedPeriod)
+                    Text("stats")
+                }
                     .font(.system(size: 28, weight: .bold))
                     .lineLimit(1)
                     .minimumScaleFactor(0.9)
