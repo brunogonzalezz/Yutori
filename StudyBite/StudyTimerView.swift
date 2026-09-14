@@ -12,6 +12,9 @@ struct StudyTimerView: View {
     @State private var showSummary = false
     @State private var endedAt = Date.now
     @State private var sessionStore = StudySessionStore.shared
+    @State private var levelBeforeSave = 0
+    @State private var savedDuration: TimeInterval?
+    @State private var showEvolution = false
 
     var body: some View {
         GeometryReader { geometry in
@@ -21,15 +24,11 @@ struct StudyTimerView: View {
             TimelineView(.periodic(from: .now, by: 1)) { context in
                 let progress = DishProgress(totalSeconds: sessionStore.dishProgress.totalSeconds + elapsedTime(at: context.date))
                 VStack(spacing: 18) {
-                    Image(progress.imageName)
-                        .resizable()
-                        .interpolation(.high)
-                        .scaledToFit()
-                        .frame(width: min(geometry.size.width - 120, 250), height: min(geometry.size.width - 120, 250))
-                        .accessibilityLabel("Dish level \(progress.level) of 5")
+                    DishArtworkView(level: progress.level, availableWidth: geometry.size.width)
 
                     DishProgressBar(progress: progress)
                         .frame(width: max(0, geometry.size.width - 120))
+                        .padding(.top, progress.level == 5 ? -6 : 0)
 
                 Text(formattedTime(at: context.date))
                     .font(.system(size: 68, weight: .bold))
@@ -60,6 +59,7 @@ struct StudyTimerView: View {
                     accumulatedTime = elapsedTime(at: endedAt)
                     isRunning = false
                     runningSince = nil
+                    levelBeforeSave = sessionStore.dishProgress.level
                     showSummary = true
                 } label: {
                     Image(systemName: "xmark")
@@ -81,14 +81,32 @@ struct StudyTimerView: View {
         }
         .background(Color.white.ignoresSafeArea())
         .toolbar(.hidden, for: .navigationBar)
-        .sheet(isPresented: $showSummary) {
+        .overlay {
+            if showEvolution {
+                DishEvolutionView(fromLevel: levelBeforeSave, toLevel: sessionStore.dishProgress.level) {
+                    guard let savedDuration else { return }
+                    showEvolution = false
+                    onFinish(savedDuration)
+                }
+            }
+        }
+        .sheet(isPresented: $showSummary, onDismiss: completeSavedSession) {
             SessionSummaryView(course: course, measuredDuration: accumulatedTime, endedAt: endedAt) { duration in
+                savedDuration = duration
                 showSummary = false
-                onFinish(duration)
             }
         }
         .onAppear {
             startTimerIfNeeded()
+        }
+    }
+
+    private func completeSavedSession() {
+        guard let savedDuration else { return }
+        if sessionStore.dishProgress.level > levelBeforeSave {
+            showEvolution = true
+        } else {
+            onFinish(savedDuration)
         }
     }
 
@@ -132,6 +150,82 @@ struct StudyTimerView: View {
         hasStarted = true
         runningSince = .now
         isRunning = true
+    }
+}
+
+private struct DishEvolutionView: View {
+    let fromLevel: Int
+    let toLevel: Int
+    let onContinue: () -> Void
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var charging = false
+    @State private var glow = false
+    @State private var revealed = false
+    @State private var ready = false
+
+    var body: some View {
+        GeometryReader { geometry in
+            VStack(spacing: 24) {
+                Spacer(minLength: 24)
+                VStack(spacing: 8) {
+                    Text(revealed ? "A new level of delicious." : "Something is cooking…")
+                        .font(.system(size: 26, weight: .bold, design: .rounded))
+                    Text(revealed ? "Level \(toLevel) unlocked" : "Your study time is paying off")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                .multilineTextAlignment(.center)
+                ZStack {
+                    Circle()
+                        .fill(Color.orange.opacity(glow ? 0.3 : 0.08))
+                        .frame(width: 240, height: 240)
+                        .blur(radius: 24)
+                        .scaleEffect(charging && !reduceMotion ? 1.2 : 0.85)
+                    ForEach(0..<12) { index in
+                        let angle = Double(index) * .pi / 6
+                        Image(systemName: index.isMultiple(of: 2) ? "sparkle" : "circle.fill")
+                            .font(.system(size: index.isMultiple(of: 2) ? 18 : 5))
+                            .foregroundStyle(Color.orange.opacity(0.8))
+                            .offset(x: cos(angle) * (revealed ? 150 : 110),
+                                    y: sin(angle) * (revealed ? 150 : 110))
+                            .opacity(charging ? (ready ? 0.35 : 1) : 0)
+                    }
+                    DishArtworkView(level: revealed ? toLevel : fromLevel, availableWidth: geometry.size.width)
+                        .brightness(glow ? 0.8 : 0)
+                        .scaleEffect(reduceMotion ? 1 : glow ? 0.9 : 1)
+                        .shadow(color: .orange.opacity(glow ? 0.6 : 0), radius: 20)
+                }
+                .frame(height: 320)
+                Text("Every study bite helps you grow.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .opacity(ready ? 1 : 0)
+                Button("Continue", action: onContinue)
+                    .font(.headline)
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: 260, minHeight: 52)
+                    .background(.black, in: Capsule())
+                    .buttonStyle(.plain)
+                    .opacity(ready ? 1 : 0)
+                    .disabled(!ready)
+                Spacer(minLength: 24)
+            }
+            .padding(.horizontal, 24)
+            .frame(width: geometry.size.width, height: geometry.size.height)
+        }
+        .background(Color.white.ignoresSafeArea())
+        .task {
+            do {
+                withAnimation(.easeInOut(duration: 0.8)) { charging = true }
+                try await Task.sleep(for: .milliseconds(reduceMotion ? 300 : 900))
+                withAnimation(.easeInOut(duration: 0.6)) { glow = !reduceMotion }
+                try await Task.sleep(for: .milliseconds(reduceMotion ? 200 : 650))
+                revealed = true
+                withAnimation(.easeOut(duration: 0.7)) { glow = false }
+                try await Task.sleep(for: .milliseconds(700))
+                withAnimation(.easeInOut(duration: 0.3)) { ready = true }
+            } catch { }
+        }
     }
 }
 

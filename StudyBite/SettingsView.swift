@@ -326,6 +326,25 @@ struct SettingsView: View {
                 .background(cardColor, in: RoundedRectangle(cornerRadius: 22))
                 .padding(.top, 12)
 
+            Button {
+                isEditingName = false
+                StudySessionStore.shared.advanceDishPreview()
+            } label: {
+                VStack(alignment: .leading, spacing: 4) {
+                    Label("Next dish level", systemImage: "forward.end.fill")
+                        .font(.system(size: 18))
+                    Text("Temporary preview · Level \(StudySessionStore.shared.dishProgress.level) of 5")
+                        .font(.system(size: 13))
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(16)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .background(cardColor, in: RoundedRectangle(cornerRadius: 22))
+            .padding(.top, 12)
+
             Text("Version \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—")")
                 .font(.system(size: 13))
                 .foregroundStyle(.gray)

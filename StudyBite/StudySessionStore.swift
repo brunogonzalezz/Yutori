@@ -56,9 +56,25 @@ final class StudySessionStore {
     private let key = "studySessions.v1"
     private let dishBaselineKey = "dishProgress.existingSessionIDs.v1"
     private var existingDishSessionIDs: Set<UUID> = []
+    // Temporary visual testing override; never written to saved study data.
+    private var previewDishOffset: TimeInterval = 0
+
+    private var earnedDishSeconds: TimeInterval {
+        DishProgress(sessions: sessions.filter { !existingDishSessionIDs.contains($0.id) }).totalSeconds
+    }
 
     var dishProgress: DishProgress {
-        DishProgress(sessions: sessions.filter { !existingDishSessionIDs.contains($0.id) })
+        DishProgress(totalSeconds: earnedDishSeconds + previewDishOffset)
+    }
+
+    func advanceDishPreview() {
+        stepDishPreview(by: 1)
+    }
+
+    func stepDishPreview(by step: Int) {
+        let count = DishProgress.maximumLevel + 1
+        let nextLevel = ((dishProgress.level + step) % count + count) % count
+        previewDishOffset = Double(nextLevel) * DishProgress.secondsPerLevel - earnedDishSeconds
     }
 
     init(defaults: UserDefaults = .standard) {
@@ -98,6 +114,7 @@ final class StudySessionStore {
     }
 
     func deleteAllSessions() {
+        previewDishOffset = 0
         defaults.removeObject(forKey: key)
         defaults.set([String](), forKey: dishBaselineKey)
         existingDishSessionIDs = []

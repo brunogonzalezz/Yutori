@@ -1,5 +1,6 @@
 
 import SwiftUI
+import UIKit
 
 struct HomeView: View {
     
@@ -9,17 +10,6 @@ struct HomeView: View {
     @AppStorage("profileName") private var profileName = "Bruno Gonzalez"
     private var greeting: String { Self.sessionGreeting }
     private var dishProgress: DishProgress { sessionStore.dishProgress }
-
-    private var dishImageSize: CGSize {
-        // Apply one scale to the original canvases, preserving the artwork's growth.
-        let sizes: [CGSize] = [
-            CGSize(width: 180, height: 180), CGSize(width: 233, height: 233),
-            CGSize(width: 224, height: 224), CGSize(width: 223, height: 209),
-            CGSize(width: 251, height: 251), CGSize(width: 287, height: 287)
-        ]
-        let size = sizes[dishProgress.level]
-        return CGSize(width: size.width, height: size.height)
-    }
 
     private var recentCourseSessions: [StudySession] {
         Array(sessionStore.sessions.prefix(3))
@@ -45,7 +35,6 @@ struct HomeView: View {
 
     var body: some View {
         GeometryReader { geometry in
-        let imageScale = min(1, max(0, geometry.size.width - 80) / 287)
         ScrollView(showsIndicators: false) {
         VStack(spacing: 0) {
             HStack(spacing: 14) {
@@ -77,20 +66,42 @@ struct HomeView: View {
             
             VStack(spacing: 20) {
                 
-                Image(dishProgress.imageName)
-                    .resizable()
-                    .interpolation(.high)
-                    .scaledToFit()
-                    .frame(width: dishImageSize.width * imageScale, height: dishImageSize.height * imageScale)
+                DishArtworkView(level: dishProgress.level, availableWidth: geometry.size.width)
                     .frame(maxWidth: .infinity)
-                    .accessibilityLabel("Dish level \(dishProgress.level) of 5")
+                    .padding(.bottom, dishProgress.level == 5 ? -6 : 0)
+                    .overlay(alignment: .bottomTrailing) {
+                        HStack(spacing: 0) {
+                            Button {
+                                sessionStore.stepDishPreview(by: -1)
+                            } label: {
+                                Image(systemName: "chevron.left")
+                                    .frame(width: 36, height: 44)
+                            }
+                            .accessibilityLabel("Preview previous dish level")
+                            Button {
+                                sessionStore.stepDishPreview(by: 1)
+                            } label: {
+                                Image(systemName: "chevron.right")
+                                    .frame(width: 36, height: 44)
+                            }
+                            .accessibilityLabel("Preview next dish level")
+                        }
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(.secondary)
+                        .buttonStyle(.plain)
+                        .padding(.trailing, 8)
+                    }
                 
-                VStack(alignment: .leading, spacing: 8) {
+                // The badge extends below the track; tuck the left-aligned caption
+                // into that reserved space without moving the track or badge.
+                VStack(alignment: .leading, spacing: -4) {
                     DishProgressBar(progress: dishProgress)
                     
-                    Text(sessionStore.loadFailed ? "Progress unavailable" : dishProgress.isComplete ? "Dish complete!" : "\(dishProgress.remainingMinutes) min to level \(dishProgress.level + 1)")
+                    Text(sessionStore.loadFailed ? "Progress unavailable" : dishProgress.isComplete ? "Dish complete!" : "\(dishProgress.remainingMinutes) min remaining")
                         .font(.system(size: 16))
                         .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
                 }
                 .padding(.horizontal, 60)
             }
@@ -152,6 +163,95 @@ struct HomeView: View {
     HomeView()
 }
 
+
+struct DishArtworkView: View {
+    let level: Int
+    let availableWidth: CGFloat
+    @Environment(\.displayScale) private var displayScale
+
+    // Original canvases and measured nontransparent bounds; the PNGs remain untouched.
+    private static let artwork: [(canvas: CGSize, bounds: CGRect)] = [
+        (CGSize(width: 180, height: 180), CGRect(x: 4, y: 34, width: 173, height: 127)),
+        (CGSize(width: 233, height: 233), CGRect(x: 57, y: 72, width: 119, height: 99)),
+        (CGSize(width: 224, height: 224), CGRect(x: 31, y: 51, width: 162, height: 132)),
+        (CGSize(width: 223, height: 209), CGRect(x: 11, y: 24, width: 201, height: 162)),
+        (CGSize(width: 251, height: 251), CGRect(x: 3, y: 18, width: 245, height: 216)),
+        (CGSize(width: 287, height: 287), CGRect(x: 3, y: 7, width: 280, height: 270))
+    ]
+
+    var body: some View {
+        let index = min(max(level, 0), 5)
+        let asset = Self.artwork[index]
+        let targetWidths: [CGFloat] = [205, 174, 210, 240, 253, 266]
+        let screenFactor = min(1, max(0, availableWidth - 80) / 266)
+        let width = (targetWidths[index] * screenFactor * displayScale).rounded() / displayScale
+        let scale = width / asset.bounds.width
+
+        ZStack {
+            PixelDishImage(level: index, bounds: asset.bounds, canvas: asset.canvas)
+                .frame(width: width, height: (asset.bounds.height * scale * displayScale).rounded() / displayScale)
+        }
+        .padding(.top, index == 0 ? 14 * screenFactor : 0)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Dish level \(index) of 5")
+    }
+}
+
+// Use the original pixel data directly, without SwiftUI's resized/clipped intermediate layers.
+private struct PixelDishImage: UIViewRepresentable {
+    let level: Int
+    let bounds: CGRect
+    let canvas: CGSize
+
+    func makeUIView(context: Context) -> PixelDishSurface {
+        PixelDishSurface()
+    }
+
+    func updateUIView(_ view: PixelDishSurface, context: Context) {
+        guard view.displayedLevel != level else { return }
+        view.displayedLevel = level
+        let image = UIImage(named: "DishLevel\(level)")?.cgImage
+        // Cropping changes only the display bounds, not the source pixels or assets.
+        if let image {
+            let scaleX = CGFloat(image.width) / canvas.width
+            let scaleY = CGFloat(image.height) / canvas.height
+            let sourceBounds = CGRect(x: bounds.minX * scaleX, y: bounds.minY * scaleY,
+                                      width: bounds.width * scaleX, height: bounds.height * scaleY)
+            view.artwork.contents = image.cropping(to: sourceBounds)
+        }
+    }
+}
+
+private final class PixelDishSurface: UIView {
+    let artwork = CALayer()
+    var displayedLevel: Int?
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        isOpaque = false
+        isUserInteractionEnabled = false
+        artwork.magnificationFilter = .nearest
+        // The ×4 exports are reduced on Retina screens; linear sampling avoids
+        // skipping source pixels while nearest preserves edges when enlarged.
+        artwork.minificationFilter = .linear
+        artwork.contentsGravity = .resize
+        artwork.actions = ["contents": NSNull(), "bounds": NSNull(), "position": NSNull()]
+        layer.addSublayer(artwork)
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        let scale = window?.screen.scale ?? traitCollection.displayScale
+        let origin = convert(CGPoint.zero, to: nil)
+        let x = (origin.x * scale).rounded() / scale - origin.x
+        let y = (origin.y * scale).rounded() / scale - origin.y
+        artwork.frame = CGRect(x: x, y: y,
+                               width: (bounds.width * scale).rounded() / scale,
+                               height: (bounds.height * scale).rounded() / scale)
+    }
+}
 
 struct DishProgressBar: View {
     let progress: DishProgress
