@@ -1,6 +1,20 @@
 import Foundation
 import Observation
 
+@Observable
+final class StudyTestClock {
+    static let shared = StudyTestClock()
+    var enabled = false
+    var selectedDay = Date.now
+
+    func date(for realDate: Date, now: Date = .now, calendar: Calendar = .autoupdatingCurrent) -> Date {
+        guard enabled else { return realDate }
+        let offset = calendar.dateComponents([.day], from: calendar.startOfDay(for: now),
+                                             to: calendar.startOfDay(for: selectedDay)).day ?? 0
+        return calendar.date(byAdding: .day, value: offset, to: realDate) ?? realDate
+    }
+}
+
 struct DishProgress {
     static let secondsPerLevel: TimeInterval = 3600
     static let maximumLevel = 5
@@ -30,6 +44,20 @@ struct DishProgress {
 }
 
 struct StudySession: Identifiable, Codable, Equatable {
+    static let descriptionWordLimit = 30
+    static let descriptionCharacterLimit = 200
+
+    static func wordCount(_ text: String) -> Int {
+        text.split(whereSeparator: { $0.isWhitespace }).count
+    }
+
+    static func limitedDescription(_ text: String) -> String {
+        let shortened = String(text.prefix(descriptionCharacterLimit))
+        let words = shortened.split(whereSeparator: { $0.isWhitespace })
+        guard words.count > descriptionWordLimit else { return shortened }
+        return String(shortened[..<words[descriptionWordLimit - 1].endIndex])
+    }
+
     var id = UUID()
     let course: StudyCourse
     var blockDescription: String
@@ -44,6 +72,40 @@ struct StudySession: Identifiable, Codable, Equatable {
         if hours > 0 { return "\(hours)h \(minutes)m" }
         if minutes > 0 { return "\(minutes)m" }
         return "\(seconds)s"
+    }
+}
+
+struct WeeklyStudyStats {
+    let days: [Date]
+    let sessions: [StudySession]
+    let courses: [StudyCourse]
+    private let calendar: Calendar
+
+    init(sessions: [StudySession], courses: [StudyCourse], now: Date = .now,
+         calendar: Calendar = .autoupdatingCurrent) {
+        var weekCalendar = calendar
+        weekCalendar.firstWeekday = 2
+        self.calendar = weekCalendar
+        let start = weekCalendar.dateInterval(of: .weekOfYear, for: now)!.start
+        let end = weekCalendar.date(byAdding: .day, value: 7, to: start)!
+        days = (0..<7).map { weekCalendar.date(byAdding: .day, value: $0, to: start)! }
+        let included = sessions.filter {
+            $0.endedAt >= start && $0.endedAt < end && $0.endedAt <= now &&
+            $0.duration.isFinite && $0.duration > 0
+        }
+        self.sessions = included
+        var seen = Set<UUID>()
+        self.courses = included.sorted { $0.endedAt > $1.endedAt }.compactMap { session in
+            guard seen.insert(session.course.id).inserted else { return nil }
+            return courses.first { $0.id == session.course.id } ?? session.course
+        }
+    }
+
+    var totalMinutes: Int { Int(sessions.reduce(0) { $0 + $1.duration } / 60) }
+
+    func minutes(for course: StudyCourse, on day: Date) -> Double {
+        sessions.filter { $0.course.id == course.id && calendar.isDate($0.endedAt, inSameDayAs: day) }
+            .reduce(0) { $0 + $1.duration } / 60
     }
 }
 
@@ -102,7 +164,9 @@ final class StudySessionStore {
         session.blockDescription = session.blockDescription.trimmingCharacters(in: .whitespacesAndNewlines)
         guard session.duration.isFinite, session.duration >= 1,
               session.duration <= 3_599_999,
-              !session.blockDescription.isEmpty, session.blockDescription.count <= 500 else {
+              !session.blockDescription.isEmpty,
+              session.blockDescription.count <= StudySession.descriptionCharacterLimit,
+              StudySession.wordCount(session.blockDescription) <= StudySession.descriptionWordLimit else {
             throw SaveError.invalidSession
         }
         var updated = sessions.filter { $0.id != session.id }

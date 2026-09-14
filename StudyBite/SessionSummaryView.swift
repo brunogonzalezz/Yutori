@@ -5,20 +5,20 @@ struct SessionSummaryView: View {
     let course: StudyCourse
     let measuredDuration: TimeInterval
     let endedAt: Date
+    let onDiscard: () -> Void
     let onSave: (TimeInterval) -> Void
     @State private var sessionID = UUID()
     @State private var blockDescription = ""
-    @State private var hours = "0"
-    @State private var minutes = "0"
-    @State private var seconds = "0"
+    @State private var hours = 0
+    @State private var minutes = 0
+    @State private var seconds = 0
     @State private var initialized = false
     @State private var saveFailed = false
     @State private var saved = false
+    @State private var isEditingTime = false
 
     private var correctedDuration: TimeInterval? {
-        guard let h = Int(hours), let m = Int(minutes), let s = Int(seconds),
-              (0...999).contains(h), (0...59).contains(m), (0...59).contains(s) else { return nil }
-        let total = h * 3600 + m * 60 + s
+        let total = hours * 3600 + minutes * 60 + seconds
         return total > 0 ? TimeInterval(total) : nil
     }
 
@@ -39,25 +39,53 @@ struct SessionSummaryView: View {
                     TextField("Describe this study block", text: $blockDescription, axis: .vertical)
                         .lineLimit(3...6)
                         .onChange(of: blockDescription) { _, value in
-                            if value.count > 500 { blockDescription = String(value.prefix(500)) }
+                            let limited = StudySession.limitedDescription(value)
+                            if limited != value { blockDescription = limited }
                         }
                 }
                 Section {
-                    HStack(spacing: 16) {
-                        timeField("Hours", text: $hours)
-                        timeField("Minutes", text: $minutes)
-                        timeField("Seconds", text: $seconds)
+                    HStack {
+                        Label(isEditingTime ? "Study time" : "Recorded time", systemImage: "timer")
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Text(String(format: "%02d:%02d:%02d", hours, minutes, seconds))
+                            .font(.title3.weight(.semibold))
+                            .monospacedDigit()
                     }
-                    Button("Use recorded time") { resetTime() }
+                    if isEditingTime {
+                    HStack(spacing: 0) {
+                        timeWheel("Hours", selection: $hours, range: 0...999)
+                        Text(":")
+                            .font(.system(size: 28, weight: .semibold))
+                            .foregroundStyle(.secondary)
+                            .padding(.top, 16)
+                        timeWheel("Minutes", selection: $minutes, range: 0...59)
+                        Text(":")
+                            .font(.system(size: 28, weight: .semibold))
+                            .foregroundStyle(.secondary)
+                            .padding(.top, 16)
+                        timeWheel("Seconds", selection: $seconds, range: 0...59)
+                    }
+                    Button("Use recorded time") {
+                        resetTime()
+                        isEditingTime = false
+                    }
                     if correctedDuration == nil {
-                        Text("Enter a positive duration. Minutes and seconds must be between 0 and 59.")
+                        Text("Choose at least one second.")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                     }
+                    } else {
+                        Button("Edit study time", systemImage: "pencil") {
+                            isEditingTime = true
+                        }
+                        .font(.subheadline)
+                    }
                 } header: {
                     Text("Study time")
-                } footer: {
-                    Text("You can increase or decrease the recorded time before saving.")
+                }
+                Section {
+                    DiscardSessionButton(onDiscard: onDiscard)
                 }
             }
             .navigationTitle("Session summary")
@@ -87,21 +115,35 @@ struct SessionSummaryView: View {
         .interactiveDismissDisabled()
     }
 
-    private func timeField(_ title: String, text: Binding<String>) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+    private func timeWheel(_ title: String, selection: Binding<Int>, range: ClosedRange<Int>) -> some View {
+        VStack(spacing: 0) {
             Text(title).font(.caption).foregroundStyle(.secondary)
-            TextField("0", text: text)
-                .keyboardType(.numberPad)
-                .monospacedDigit()
-                .accessibilityLabel(title)
+            GeometryReader { geometry in
+                Picker(title, selection: selection) {
+                    ForEach(range, id: \.self) { value in
+                        Text(String(format: "%02d", value))
+                            .font(.system(size: 30, weight: .semibold))
+                            .monospacedDigit()
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
+                            .tag(value)
+                    }
+                }
+                .pickerStyle(.wheel)
+                .labelsHidden()
+                .frame(width: geometry.size.width, height: 216)
+                .clipped()
+            }
+            .frame(height: 216)
         }
+        .frame(maxWidth: .infinity)
     }
 
     private func resetTime() {
         let total = min(3_599_999, max(1, Int(measuredDuration)))
-        hours = String(total / 3600)
-        minutes = String((total % 3600) / 60)
-        seconds = String(total % 60)
+        hours = total / 3600
+        minutes = (total % 3600) / 60
+        seconds = total % 60
     }
 
     private func save() {
@@ -109,12 +151,36 @@ struct SessionSummaryView: View {
         do {
             try StudySessionStore.shared.save(StudySession(
                 id: sessionID, course: course, blockDescription: blockDescription,
-                duration: duration, endedAt: endedAt
+                duration: duration, endedAt: StudyTestClock.shared.date(for: endedAt)
             ))
             saved = true
             onSave(duration)
         } catch {
             saveFailed = true
+        }
+    }
+}
+
+private struct DiscardSessionButton: View {
+    let onDiscard: () -> Void
+    @State private var confirmDiscard = false
+
+    var body: some View {
+        Button(role: .destructive) {
+            confirmDiscard = true
+        } label: {
+            Label("Delete session", systemImage: "trash")
+                .font(.subheadline)
+                .foregroundStyle(.red)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .alert("Delete this session?", isPresented: $confirmDiscard) {
+            Button("Delete session", role: .destructive, action: onDiscard)
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("This study time won't be saved or added to your dish.")
         }
     }
 }

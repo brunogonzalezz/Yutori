@@ -32,11 +32,16 @@ final class CourseStore {
         }
     }
 
+    func isColorAvailable(_ color: CourseColor, for courseID: UUID) -> Bool {
+        !courses.contains { $0.id != courseID && $0.color == color }
+    }
+
     func save(_ draft: StudyCourse) throws {
         guard !loadFailed else { throw SaveError.unavailable }
         var course = draft
         course.name = course.name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !course.name.isEmpty, course.name.count <= 60 else { throw SaveError.invalidName }
+        guard isColorAvailable(course.color, for: course.id) else { throw SaveError.colorInUse }
         var updated = courses
         if let index = updated.firstIndex(where: { $0.id == course.id }) {
             updated[index] = course
@@ -57,6 +62,6 @@ final class CourseStore {
     }
 
     enum SaveError: Error {
-        case invalidName, unavailable
+        case invalidName, unavailable, colorInUse
     }
 }

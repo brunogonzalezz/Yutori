@@ -326,24 +326,10 @@ struct SettingsView: View {
                 .background(cardColor, in: RoundedRectangle(cornerRadius: 22))
                 .padding(.top, 12)
 
-            Button {
-                isEditingName = false
-                StudySessionStore.shared.advanceDishPreview()
-            } label: {
-                VStack(alignment: .leading, spacing: 4) {
-                    Label("Next dish level", systemImage: "forward.end.fill")
-                        .font(.system(size: 18))
-                    Text("Temporary preview · Level \(StudySessionStore.shared.dishProgress.level) of 5")
-                        .font(.system(size: 13))
-                        .foregroundStyle(.secondary)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
+            StudyTestDateSettings()
                 .padding(16)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .background(cardColor, in: RoundedRectangle(cornerRadius: 22))
-            .padding(.top, 12)
+                .background(cardColor, in: RoundedRectangle(cornerRadius: 22))
+                .padding(.top, 12)
 
             Text("Version \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—")")
                 .font(.system(size: 13))
@@ -512,6 +498,22 @@ struct SettingsAvatar: Shape {
 
 #Preview {
     SettingsView()
+}
+
+private struct StudyTestDateSettings: View {
+    @Bindable private var clock = StudyTestClock.shared
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Toggle("Test date (temporary)", isOn: $clock.enabled)
+            if clock.enabled {
+                DatePicker("App date", selection: $clock.selectedDay, displayedComponents: .date)
+                Text("Used for weekly stats and new sessions. The timer runs normally.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
 }
 
 private struct ResetStudySessionsButton: View {

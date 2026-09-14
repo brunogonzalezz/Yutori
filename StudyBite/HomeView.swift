@@ -62,7 +62,7 @@ struct HomeView: View {
                 Spacer()
             }
             .padding(.horizontal, 25)
-            .padding(.bottom, 32)
+            .padding(.bottom, dishProgress.level == 1 ? 50 : 40)
             
             VStack(spacing: 20) {
                 
@@ -136,8 +136,9 @@ struct HomeView: View {
                                     .fixedSize(horizontal: false, vertical: true)
                             }
                             Spacer(minLength: 8)
-                            Text(session.formattedDuration)
+                            Text("+\(session.formattedDuration)")
                                 .font(.system(size: 17, weight: .medium))
+                                .foregroundStyle(Color(red: 0.16, green: 0.52, blue: 0.32))
                                 .fixedSize()
                         }
                         .accessibilityElement(children: .combine)

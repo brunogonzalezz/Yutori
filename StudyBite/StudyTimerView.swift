@@ -14,6 +14,7 @@ struct StudyTimerView: View {
     @State private var sessionStore = StudySessionStore.shared
     @State private var levelBeforeSave = 0
     @State private var savedDuration: TimeInterval?
+    @State private var discardedSession = false
     @State private var showEvolution = false
 
     var body: some View {
@@ -91,7 +92,10 @@ struct StudyTimerView: View {
             }
         }
         .sheet(isPresented: $showSummary, onDismiss: completeSavedSession) {
-            SessionSummaryView(course: course, measuredDuration: accumulatedTime, endedAt: endedAt) { duration in
+            SessionSummaryView(course: course, measuredDuration: accumulatedTime, endedAt: endedAt, onDiscard: {
+                discardedSession = true
+                showSummary = false
+            }) { duration in
                 savedDuration = duration
                 showSummary = false
             }
@@ -102,6 +106,10 @@ struct StudyTimerView: View {
     }
 
     private func completeSavedSession() {
+        if discardedSession {
+            onFinish(0)
+            return
+        }
         guard let savedDuration else { return }
         if sessionStore.dishProgress.level > levelBeforeSave {
             showEvolution = true
@@ -162,15 +170,27 @@ private struct DishEvolutionView: View {
     @State private var glow = false
     @State private var revealed = false
     @State private var ready = false
+    @AppStorage("lastEvolutionMessage") private var lastMessage = -1
+    @State private var messageIndex: Int?
+
+    private static let messages: [(before: String, after: String, detail: String, footer: String)] = [
+        ("Something is cooking…", "A new level of delicious.", "Your study time is paying off", "Every study bite helps you grow."),
+        ("A little focus. A big change.", "Look what you cooked up!", "Your next level is almost ready", "Small sessions. Real progress."),
+        ("Your effort is showing…", "Made with focus.", "Good things take study time", "You earned every bit of this."),
+        ("Something good is on its way…", "Fresh progress, served.", "A new chapter for your dish", "Keep your curiosity growing."),
+        ("Time to add a little magic…", "Another bite, another level.", "All those minutes add up", "One step closer to something great."),
+        ("Ready for a little surprise?", "Now that's progress!", "Your dish has something to show you", "A little more learned. A little more earned.")
+    ]
 
     var body: some View {
+        let message = Self.messages[messageIndex ?? 0]
         GeometryReader { geometry in
             VStack(spacing: 24) {
                 Spacer(minLength: 24)
                 VStack(spacing: 8) {
-                    Text(revealed ? "A new level of delicious." : "Something is cooking…")
+                    Text(revealed ? message.after : message.before)
                         .font(.system(size: 26, weight: .bold, design: .rounded))
-                    Text(revealed ? "Level \(toLevel) unlocked" : "Your study time is paying off")
+                    Text(revealed ? "Level \(toLevel) unlocked" : message.detail)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
@@ -196,15 +216,18 @@ private struct DishEvolutionView: View {
                         .shadow(color: .orange.opacity(glow ? 0.6 : 0), radius: 20)
                 }
                 .frame(height: 320)
-                Text("Every study bite helps you grow.")
+                Text(message.footer)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .opacity(ready ? 1 : 0)
-                Button("Continue", action: onContinue)
-                    .font(.headline)
-                    .foregroundStyle(.white)
-                    .frame(maxWidth: 260, minHeight: 52)
-                    .background(.black, in: Capsule())
+                Button(action: onContinue) {
+                    Text("Continue")
+                        .font(.headline)
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: 260, minHeight: 52)
+                        .background(.black, in: Capsule())
+                        .contentShape(Capsule())
+                }
                     .buttonStyle(.plain)
                     .opacity(ready ? 1 : 0)
                     .disabled(!ready)
@@ -215,6 +238,11 @@ private struct DishEvolutionView: View {
         }
         .background(Color.white.ignoresSafeArea())
         .task {
+            if messageIndex == nil {
+                let next = Self.messages.indices.filter { $0 != lastMessage }.randomElement() ?? 0
+                messageIndex = next
+                lastMessage = next
+            }
             do {
                 withAnimation(.easeInOut(duration: 0.8)) { charging = true }
                 try await Task.sleep(for: .milliseconds(reduceMotion ? 300 : 900))

@@ -1,6 +1,37 @@
 import SwiftUI
+import UIKit
 
 extension CourseColor {
+    static let selectable: [CourseColor] = [.teal, .blue, .indigo, .purple, .pink, .red, .orange, .lemon, .green, .sand]
+
+    // Stronger strokes keep each course legible against the white chart background.
+    var chartTint: Color {
+        switch self {
+        case .teal: Color(red: 0.18, green: 0.64, blue: 0.56)
+        case .blue: Color(red: 0.28, green: 0.53, blue: 0.84)
+        case .purple: Color(red: 0.60, green: 0.43, blue: 0.77)
+        case .red: Color(red: 0.84, green: 0.36, blue: 0.43)
+        case .orange: Color(red: 0.89, green: 0.56, blue: 0.27)
+        case .lemon: Color(red: 0.71, green: 0.64, blue: 0.20)
+        case .indigo: Color(red: 0.34, green: 0.36, blue: 0.65)
+        case .pink: Color(red: 0.78, green: 0.39, blue: 0.67)
+        case .green: Color(red: 0.39, green: 0.61, blue: 0.24)
+        case .sand: Color(red: 0.59, green: 0.45, blue: 0.32)
+        default: tint
+        }
+    }
+
+    var iconTint: Color {
+        var hue: CGFloat = 0
+        var saturation: CGFloat = 0
+        var brightness: CGFloat = 0
+        var alpha: CGFloat = 0
+        UIColor(tint).getHue(&hue, saturation: &saturation, brightness: &brightness, alpha: &alpha)
+        return Color(hue: Double(hue),
+                     saturation: Double(min(1, saturation * 1.6)),
+                     brightness: Double(brightness * 0.52))
+    }
+
     var tint: Color {
         switch self {
         case .blue: Color(red: 0.67, green: 0.81, blue: 0.96)
@@ -140,9 +171,9 @@ struct CourseBadge: View {
     var body: some View {
         Image(systemName: course.icon)
             .font(.system(size: 21, weight: .semibold))
-            .foregroundStyle(Color(white: 0.22))
+            .foregroundStyle(course.color.iconTint)
             .frame(width: 44, height: 44)
-            .background(course.color.tint, in: RoundedRectangle(cornerRadius: 14))
+            .background(course.color.tint, in: Circle())
             .accessibilityHidden(true)
     }
 }
@@ -157,6 +188,7 @@ private struct CourseEditorView: View {
         var id: String { rawValue }
     }
     @State private var activeAlert: EditorAlert?
+    @State private var preparedColor = false
 
     private let icons = [
         ("book.fill", "Book"), ("percent", "Maths"), ("atom", "Science"),
@@ -209,7 +241,8 @@ private struct CourseEditorView: View {
                 }
                 Section("Color") {
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 48))], spacing: 12) {
-                        ForEach(CourseColor.allCases, id: \.self) { color in
+                        ForEach(CourseColor.selectable, id: \.self) { color in
+                            let available = store.isColorAvailable(color, for: course.id)
                             Button {
                                 course.color = color
                             } label: {
@@ -217,7 +250,11 @@ private struct CourseEditorView: View {
                                     .fill(color.tint)
                                     .frame(width: 40, height: 40)
                                     .overlay {
-                                        if course.color == color {
+                                        if !available {
+                                            Image(systemName: "lock.fill")
+                                                .font(.caption)
+                                                .foregroundStyle(.secondary)
+                                        } else if course.color == color {
                                             Image(systemName: "checkmark")
                                                 .font(.body.bold())
                                                 .foregroundStyle(Color(white: 0.22))
@@ -226,11 +263,21 @@ private struct CourseEditorView: View {
                                     .frame(width: 48, height: 48)
                             }
                             .buttonStyle(.plain)
+                            .disabled(!available)
+                            .opacity(available ? 1 : 0.4)
                             .accessibilityLabel(color.rawValue.capitalized)
+                            .accessibilityHint(available ? "Available" : "Used by another course")
                             .accessibilityAddTraits(course.color == color ? .isSelected : [])
                         }
                     }
                     .padding(.vertical, 4)
+                    if !store.isColorAvailable(course.color, for: course.id) {
+                        Text(CourseColor.selectable.contains { store.isColorAvailable($0, for: course.id) }
+                             ? "Choose an unused color. Each course has its own color."
+                             : "All colors are in use. Free a color by deleting a course first.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                 }
                 Section("Icon") {
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 48))], spacing: 12) {
@@ -300,6 +347,14 @@ private struct CourseEditorView: View {
             .navigationTitle(store.courses.contains(where: { $0.id == course.id }) ? "Edit course" : "New course")
             .navigationBarTitleDisplayMode(.inline)
             .navigationBarBackButtonHidden()
+            .onAppear {
+                guard !preparedColor else { return }
+                preparedColor = true
+                if !store.courses.contains(where: { $0.id == course.id }),
+                   let available = CourseColor.selectable.first(where: { store.isColorAvailable($0, for: course.id) }) {
+                    course.color = available
+                }
+            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
@@ -313,7 +368,7 @@ private struct CourseEditorView: View {
                             activeAlert = .saveFailed
                         }
                     }
-                    .disabled(!validName)
+                    .disabled(!validName || !store.isColorAvailable(course.color, for: course.id))
                 }
             }
         }
