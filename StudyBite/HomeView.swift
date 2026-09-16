@@ -3,6 +3,12 @@ import SwiftUI
 import UIKit
 
 struct HomeView: View {
+    var dishNamespace: Namespace.ID? = nil
+    var hideDishForEvolution = false
+    var isCollecting = false
+    var onCollect: ((CGRect) -> Void)? = nil
+    var onSelectBowl: (() -> Void)? = nil
+    @State private var dishFrame: CGRect = .zero
     
     @State var showSettings = false
     @State private var sessionStore = StudySessionStore.shared
@@ -64,9 +70,15 @@ struct HomeView: View {
             .padding(.horizontal, 25)
             .padding(.bottom, dishProgress.level == 1 ? 50 : 40)
             
+            if sessionStore.hasActiveBowl {
             VStack(spacing: 20) {
                 
                 DishArtworkView(level: dishProgress.level, availableWidth: geometry.size.width)
+                    .onGeometryChange(for: CGRect.self) { proxy in
+                        proxy.frame(in: .global)
+                    } action: { dishFrame = $0 }
+                    .modifier(DishTravelModifier(namespace: dishNamespace, isSource: !hideDishForEvolution))
+                    .opacity(hideDishForEvolution || isCollecting ? 0 : 1)
                     .frame(maxWidth: .infinity)
                     .padding(.bottom, dishProgress.level == 5 ? -6 : 0)
                     .overlay(alignment: .bottomTrailing) {
@@ -104,9 +116,51 @@ struct HomeView: View {
                         .minimumScaleFactor(0.8)
                 }
                 .padding(.horizontal, 60)
+
+                if dishProgress.isComplete, sessionStore.canCollectBowl, let onCollect {
+                    Button {
+                        onCollect(dishFrame)
+                    } label: {
+                        Text("Collect")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 22)
+                            .frame(height: 36)
+                            .background(.black, in: Capsule())
+                            .frame(minHeight: 44)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(isCollecting)
+                }
             }
             .padding(.bottom, 32)
-            
+            } else {
+                VStack(spacing: 12) {
+                    Text("Ready for your next bowl?")
+                        .font(.system(size: 21, weight: .semibold, design: .rounded))
+                    Text("Choose a bowl to keep growing while you study.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                    Button {
+                        onSelectBowl?()
+                    } label: {
+                        Text("Choose a bowl")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 22)
+                            .frame(height: 40)
+                            .background(.black, in: Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.top, 8)
+                }
+                .frame(maxWidth: .infinity, minHeight: 240)
+                .padding(.horizontal, 32)
+                .padding(.bottom, 32)
+            }
+
             VStack(alignment: .leading, spacing: 14) {
                 
                 Spacer()
@@ -165,9 +219,25 @@ struct HomeView: View {
 }
 
 
+struct DishTravelModifier: ViewModifier {
+    let namespace: Namespace.ID?
+    let isSource: Bool
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if let namespace {
+            content.matchedGeometryEffect(id: "evolvingDish", in: namespace, isSource: isSource)
+        } else {
+            content
+        }
+    }
+}
+
 struct DishArtworkView: View {
     let level: Int
     let availableWidth: CGFloat
+    var preferredWidth: CGFloat? = nil
+    var kind: BowlKind? = nil
     @Environment(\.displayScale) private var displayScale
 
     // Original canvases and measured nontransparent bounds; the PNGs remain untouched.
@@ -180,16 +250,29 @@ struct DishArtworkView: View {
         (CGSize(width: 287, height: 287), CGRect(x: 3, y: 7, width: 280, height: 270))
     ]
 
+    // Visible alpha bounds in the original ×4 exports, with a two-pixel edge margin.
+    private static let teriyakiArtwork: [(canvas: CGSize, bounds: CGRect)] = [
+        (CGSize(width: 764, height: 764), CGRect(x: 9, y: 142, width: 750, height: 537)),
+        (CGSize(width: 932, height: 932), CGRect(x: 225, y: 285, width: 482, height: 402)),
+        (CGSize(width: 696, height: 696), CGRect(x: 14, y: 102, width: 664, height: 518)),
+        (CGSize(width: 1124, height: 748), CGRect(x: 148, y: 52, width: 828, height: 646)),
+        (CGSize(width: 1032, height: 1032), CGRect(x: 36, y: 137, width: 960, height: 778)),
+        (CGSize(width: 1140, height: 1140), CGRect(x: 20, y: 18, width: 1098, height: 1058))
+    ]
+
     var body: some View {
         let index = min(max(level, 0), 5)
-        let asset = Self.artwork[index]
+        let bowlKind = kind ?? StudySessionStore.shared.activeBowlKind
+        let asset = bowlKind == .katsuRamen ? Self.artwork[index] : Self.teriyakiArtwork[index]
         let targetWidths: [CGFloat] = [205, 174, 210, 240, 253, 266]
         let screenFactor = min(1, max(0, availableWidth - 80) / 266)
-        let width = (targetWidths[index] * screenFactor * displayScale).rounded() / displayScale
+        let targetWidth = preferredWidth.map { min($0, max(0, availableWidth - 48)) }
+            ?? (targetWidths[index] * screenFactor)
+        let width = (targetWidth * displayScale).rounded() / displayScale
         let scale = width / asset.bounds.width
 
         ZStack {
-            PixelDishImage(level: index, bounds: asset.bounds, canvas: asset.canvas)
+            PixelDishImage(imageName: bowlKind.imageName(level: index), bounds: asset.bounds, canvas: asset.canvas)
                 .frame(width: width, height: (asset.bounds.height * scale * displayScale).rounded() / displayScale)
         }
         .padding(.top, index == 0 ? 14 * screenFactor : 0)
@@ -200,7 +283,7 @@ struct DishArtworkView: View {
 
 // Use the original pixel data directly, without SwiftUI's resized/clipped intermediate layers.
 private struct PixelDishImage: UIViewRepresentable {
-    let level: Int
+    let imageName: String
     let bounds: CGRect
     let canvas: CGSize
 
@@ -209,9 +292,9 @@ private struct PixelDishImage: UIViewRepresentable {
     }
 
     func updateUIView(_ view: PixelDishSurface, context: Context) {
-        guard view.displayedLevel != level else { return }
-        view.displayedLevel = level
-        let image = UIImage(named: "DishLevel\(level)")?.cgImage
+        guard view.displayedImageName != imageName else { return }
+        view.displayedImageName = imageName
+        let image = UIImage(named: imageName)?.cgImage
         // Cropping changes only the display bounds, not the source pixels or assets.
         if let image {
             let scaleX = CGFloat(image.width) / canvas.width
@@ -225,7 +308,7 @@ private struct PixelDishImage: UIViewRepresentable {
 
 private final class PixelDishSurface: UIView {
     let artwork = CALayer()
-    var displayedLevel: Int?
+    var displayedImageName: String?
 
     override init(frame: CGRect) {
         super.init(frame: frame)

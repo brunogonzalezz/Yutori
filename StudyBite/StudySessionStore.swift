@@ -109,6 +109,21 @@ struct WeeklyStudyStats {
     }
 }
 
+enum BowlKind: String, Codable, CaseIterable {
+    case katsuRamen, teriyaki
+    var name: String { self == .katsuRamen ? "Katsu Ramen" : "Teriyaki Bowl" }
+    func imageName(level: Int) -> String {
+        self == .katsuRamen ? "DishLevel\(level)" : "TeriyakiLevel\(level)"
+    }
+}
+
+struct CollectedBowl: Identifiable, Codable {
+    var id = UUID()
+    var collectedAt = Date.now
+    var kind: BowlKind? = nil
+    var bowlKind: BowlKind { kind ?? .katsuRamen }
+}
+
 @Observable
 final class StudySessionStore {
     static let shared = StudySessionStore()
@@ -120,13 +135,61 @@ final class StudySessionStore {
     private var existingDishSessionIDs: Set<UUID> = []
     // Temporary visual testing override; never written to saved study data.
     private var previewDishOffset: TimeInterval = 0
+    private struct Collection: Codable {
+        var bowls: [CollectedBowl] = []
+        var usedSeconds: TimeInterval = 0
+        var needsSelection: Bool?
+        var activeKind: BowlKind?
+    }
+    private var collection = Collection()
+    private let collectionKey = "collectedBowls.v1"
+    private(set) var collectionLoadFailed = false
+    var collectedBowls: [CollectedBowl] { collection.bowls }
+    var activeBowlKind: BowlKind { collection.activeKind ?? .katsuRamen }
+    var collectedKinds: Set<BowlKind> { Set(collection.bowls.map(\.bowlKind)) }
+    var hasActiveBowl: Bool {
+        !(collection.needsSelection ?? !collection.bowls.isEmpty)
+    }
+
+    @discardableResult
+    func selectNextBowl(_ kind: BowlKind = .katsuRamen) -> Bool {
+        guard !hasActiveBowl, !collectionLoadFailed else { return false }
+        var updated = collection
+        updated.needsSelection = false
+        updated.activeKind = kind
+        guard let data = try? JSONEncoder().encode(updated) else { return false }
+        defaults.set(data, forKey: collectionKey)
+        collection = updated
+        previewDishOffset = 0
+        return true
+    }
+    private var availableDishSeconds: TimeInterval {
+        max(0, earnedDishSeconds - collection.usedSeconds)
+    }
+    var canCollectBowl: Bool {
+        hasActiveBowl && !loadFailed && !collectionLoadFailed && DishProgress(totalSeconds: availableDishSeconds).isComplete
+    }
+
+    @discardableResult
+    func collectBowl() -> Bool {
+        guard canCollectBowl else { return false }
+        var updated = collection
+        updated.bowls.insert(CollectedBowl(kind: activeBowlKind), at: 0)
+        updated.needsSelection = true
+        updated.usedSeconds += Double(DishProgress.maximumLevel) * DishProgress.secondsPerLevel
+        guard let data = try? JSONEncoder().encode(updated) else { return false }
+        defaults.set(data, forKey: collectionKey)
+        collection = updated
+        previewDishOffset = 0
+        return true
+    }
 
     private var earnedDishSeconds: TimeInterval {
         DishProgress(sessions: sessions.filter { !existingDishSessionIDs.contains($0.id) }).totalSeconds
     }
 
     var dishProgress: DishProgress {
-        DishProgress(totalSeconds: earnedDishSeconds + previewDishOffset)
+        DishProgress(totalSeconds: availableDishSeconds + previewDishOffset)
     }
 
     func advanceDishPreview() {
@@ -136,11 +199,19 @@ final class StudySessionStore {
     func stepDishPreview(by step: Int) {
         let count = DishProgress.maximumLevel + 1
         let nextLevel = ((dishProgress.level + step) % count + count) % count
-        previewDishOffset = Double(nextLevel) * DishProgress.secondsPerLevel - earnedDishSeconds
+        previewDishOffset = Double(nextLevel) * DishProgress.secondsPerLevel - availableDishSeconds
     }
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
+        if let data = defaults.data(forKey: collectionKey) {
+            if let saved = try? JSONDecoder().decode(Collection.self, from: data),
+               saved.usedSeconds.isFinite, saved.usedSeconds >= 0 {
+                collection = saved
+            } else {
+                collectionLoadFailed = true
+            }
+        }
         if let data = defaults.data(forKey: key) {
             do {
                 sessions = try JSONDecoder().decode([StudySession].self, from: data)
@@ -178,6 +249,13 @@ final class StudySessionStore {
     }
 
     func deleteAllSessions() {
+        // Reset current study progress while keeping already collected bowls.
+        if !collectionLoadFailed {
+            collection.usedSeconds = 0
+            if let data = try? JSONEncoder().encode(collection) {
+                defaults.set(data, forKey: collectionKey)
+            }
+        }
         previewDishOffset = 0
         defaults.removeObject(forKey: key)
         defaults.set([String](), forKey: dishBaselineKey)

@@ -3,6 +3,7 @@ import SwiftUI
 
 struct StudyTimerView: View {
     let course: StudyCourse
+    var onEvolution: ((Int, Int, TimeInterval) -> Void)? = nil
     let onFinish: (TimeInterval) -> Void
 
     @State private var accumulatedTime: TimeInterval = 0
@@ -112,7 +113,11 @@ struct StudyTimerView: View {
         }
         guard let savedDuration else { return }
         if sessionStore.dishProgress.level > levelBeforeSave {
-            showEvolution = true
+            if let onEvolution {
+                onEvolution(levelBeforeSave, sessionStore.dishProgress.level, savedDuration)
+            } else {
+                showEvolution = true
+            }
         } else {
             onFinish(savedDuration)
         }
@@ -161,15 +166,17 @@ struct StudyTimerView: View {
     }
 }
 
-private struct DishEvolutionView: View {
+struct DishEvolutionView: View {
     let fromLevel: Int
     let toLevel: Int
+    var dishNamespace: Namespace.ID? = nil
     let onContinue: () -> Void
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var charging = false
     @State private var glow = false
     @State private var revealed = false
     @State private var ready = false
+    @State private var displayedLevel: Int?
     @AppStorage("lastEvolutionMessage") private var lastMessage = -1
     @State private var messageIndex: Int?
 
@@ -184,13 +191,15 @@ private struct DishEvolutionView: View {
 
     var body: some View {
         let message = Self.messages[messageIndex ?? 0]
+        let currentLevel = displayedLevel ?? fromLevel
+        let evolutionCount = max(1, toLevel - fromLevel)
         GeometryReader { geometry in
             VStack(spacing: 24) {
                 Spacer(minLength: 24)
-                VStack(spacing: 8) {
-                    Text(revealed ? message.after : message.before)
+                VStack(spacing: 10) {
+                    Text(revealed ? (currentLevel < toLevel ? "And there's more…" : message.after) : message.before)
                         .font(.system(size: 26, weight: .bold, design: .rounded))
-                    Text(revealed ? "Level \(toLevel) unlocked" : message.detail)
+                    Text(revealed ? "Level \(currentLevel) unlocked" : message.detail)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
@@ -209,17 +218,20 @@ private struct DishEvolutionView: View {
                             .offset(x: cos(angle) * (revealed ? 150 : 110),
                                     y: sin(angle) * (revealed ? 150 : 110))
                             .opacity(charging ? (ready ? 0.35 : 1) : 0)
+                            .accessibilityHidden(true)
                     }
-                    DishArtworkView(level: revealed ? toLevel : fromLevel, availableWidth: geometry.size.width)
+                    DishArtworkView(level: currentLevel, availableWidth: geometry.size.width)
+                        .modifier(DishTravelModifier(namespace: dishNamespace, isSource: true))
                         .brightness(glow ? 0.8 : 0)
                         .scaleEffect(reduceMotion ? 1 : glow ? 0.9 : 1)
                         .shadow(color: .orange.opacity(glow ? 0.6 : 0), radius: 20)
                 }
                 .frame(height: 320)
-                Text(message.footer)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .opacity(ready ? 1 : 0)
+                    Text(evolutionCount > 1 ? "\(evolutionCount) levels earned, one study bite at a time." : message.footer)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .opacity(ready ? 1 : 0)
                 Button(action: onContinue) {
                     Text("Continue")
                         .font(.headline)
@@ -246,16 +258,23 @@ private struct DishEvolutionView: View {
             do {
                 withAnimation(.easeInOut(duration: 0.8)) { charging = true }
                 try await Task.sleep(for: .milliseconds(reduceMotion ? 300 : 900))
-                withAnimation(.easeInOut(duration: 0.6)) { glow = !reduceMotion }
-                try await Task.sleep(for: .milliseconds(reduceMotion ? 200 : 650))
-                revealed = true
-                withAnimation(.easeOut(duration: 0.7)) { glow = false }
-                try await Task.sleep(for: .milliseconds(700))
+                if toLevel > fromLevel {
+                    for level in (fromLevel + 1)...toLevel {
+                        withAnimation(.easeInOut(duration: 0.6)) { glow = !reduceMotion }
+                        try await Task.sleep(for: .milliseconds(reduceMotion ? 200 : 650))
+                        displayedLevel = level
+                        revealed = true
+                        withAnimation(.easeOut(duration: 0.7)) { glow = false }
+                        // Let each intermediate dish be seen before the next burst.
+                        try await Task.sleep(for: .milliseconds(level < toLevel ? 1100 : 700))
+                    }
+                }
                 withAnimation(.easeInOut(duration: 0.3)) { ready = true }
             } catch { }
         }
     }
 }
+
 
 #Preview {
     NavigationStack {
