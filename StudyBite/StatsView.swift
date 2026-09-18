@@ -21,39 +21,44 @@ struct StatsView: View {
             VStack(alignment: .leading, spacing: 0) {
                 profileButton
                     .padding(.leading, 9)
-                    .padding(.bottom, 24)
+                    .padding(.bottom, 16)
 
-                Text("My weekly stats")
+                Text("Your study journey")
                     .font(.system(size: 28, weight: .bold))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.9)
-                    .padding(.leading, 8)
-                    .padding(.bottom, 28)
+                    .foregroundStyle(AppTheme.ink)
+                    .padding(.horizontal, 8)
+                    .padding(.bottom, 18)
 
                 weeklyMetrics(stats)
-                    .padding(.bottom, 30)
+                    .padding(.bottom, 28)
 
                 if sessionStore.loadFailed {
                     Text("Couldn't load your sessions. Please reopen the app and try again.")
                         .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(AppTheme.secondaryInk)
                         .padding(.bottom, 20)
                 }
 
-                Text("My weekly summary")
-                    .font(.system(size: 26, weight: .bold))
+                Text("Study activity")
+                    .font(.system(size: 28, weight: .bold))
                     .lineLimit(1)
                     .minimumScaleFactor(0.9)
                     .padding(.leading, 8)
-                    .padding(.bottom, 20)
+                    .padding(.bottom, 32)
 
                 WeeklySummaryChart(courses: CourseWeeklySeries.series(from: stats), days: stats.days)
-                    .frame(height: 190)
+                    .frame(height: 240)
+
+                StudyCalendarView(sessions: sessions, courses: courses,
+                                  bowls: sessionStore.collectedBowls,
+                                  now: testClock.date(for: .now))
+                    .padding(.horizontal, 8)
+                    .padding(.top, 30)
             }
             .padding(.horizontal, 16)
             .padding(.bottom, 100)
         }
-        .background(Color(.systemBackground))
+        .background(AppTheme.paper)
         }
         .sheet(isPresented: $showSettings) {
             SettingsView()
@@ -71,133 +76,228 @@ struct StatsView: View {
     }
 
     private func weeklyMetrics(_ stats: WeeklyStudyStats) -> some View {
-        HStack(spacing: 8) {
-            MetricView(value: sessionStore.loadFailed ? "—" : "\(stats.sessions.count)", label: "sessions")
+        let totalSeconds = stats.sessions.reduce(0) { $0 + $1.duration }
+        let totalHours = totalSeconds / 3600
+        let showsDays = totalHours >= 10_000
+        let studyTime = (showsDays ? totalHours / 24 : totalHours)
+            .formatted(.number.precision(.fractionLength(0)))
+        let studyTimeLabel = showsDays ? "days studied" : "hours studied"
+        let average = stats.sessions.isEmpty ? 0 : totalSeconds / Double(stats.sessions.count)
+        let averageText = average > 0 && average < 60 ? "<1" : "\(Int((average / 60).rounded()))"
+        let now = testClock.date(for: .now)
+        let collected = sessionStore.collectedBowls.filter { bowl in
+            bowl.collectedAt <= now && stats.days.contains {
+                Calendar.autoupdatingCurrent.isDate(bowl.collectedAt, inSameDayAs: $0)
+            }
+        }.count
 
-            Divider()
-                .frame(height: 50)
-
-            MetricView(value: sessionStore.loadFailed ? "—" : "\(stats.totalMinutes)", label: "min studied")
-
-            Divider()
-                .frame(height: 50)
-
-            MetricView(value: sessionStore.loadFailed ? "—" : "\(stats.courses.count)", label: "subjects")
+        return VStack(spacing: 16) {
+            MetricRowLayout(weights: [0.29, 0, 0.42, 0, 0.29]) {
+                MetricView(value: sessionStore.loadFailed ? "—" : "\(stats.sessions.count)", label: "sessions")
+                metricSeparator
+                MetricView(value: sessionStore.loadFailed ? "—" : studyTime, label: studyTimeLabel)
+                metricSeparator
+                MetricView(value: sessionStore.loadFailed ? "—" : "\(stats.courses.count)", label: "subjects")
+            }
+            MetricRowLayout(weights: [0.5, 0, 0.5]) {
+                MetricView(value: "\(collected)", label: "bowls collected")
+                metricSeparator
+                MetricView(value: sessionStore.loadFailed ? "—" : averageText, label: "session average", suffix: sessionStore.loadFailed ? "" : "m")
+            }
         }
+        .padding(.horizontal, 4)
     }
 
+    private var metricSeparator: some View {
+        Rectangle()
+            .fill(AppTheme.muted)
+            .frame(width: 1, height: 52)
+            .accessibilityHidden(true)
+    }
+}
+
+// The longer middle caption gets more room without shifting either row off centre.
+private struct MetricRowLayout: Layout {
+    let weights: [CGFloat]
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let width = proposal.width ?? 360
+        let available = max(0, width - CGFloat(weights.filter { $0 == 0 }.count))
+        let height = subviews.enumerated().map { index, view in
+            view.sizeThatFits(ProposedViewSize(width: weights[index] == 0 ? 1 : available * weights[index], height: nil)).height
+        }.max() ?? 0
+        return CGSize(width: width, height: height)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let available = max(0, bounds.width - CGFloat(weights.filter { $0 == 0 }.count))
+        var x = bounds.minX
+        for (index, view) in subviews.enumerated() {
+            let width = weights[index] == 0 ? 1 : available * weights[index]
+            view.place(at: CGPoint(x: x + width / 2, y: bounds.midY), anchor: .center,
+                       proposal: ProposedViewSize(width: width, height: nil))
+            x += width
+        }
+    }
 }
 
 private struct MetricView: View {
     let value: String
     let label: String
+    var suffix: String = ""
+    @ScaledMetric(relativeTo: .largeTitle) private var numberSize = 46.0
+    @ScaledMetric(relativeTo: .subheadline) private var labelSize = 17.0
 
     var body: some View {
         VStack(spacing: 1) {
-            Text(value)
-                .font(.system(size: 40, weight: .bold))
-                .minimumScaleFactor(0.8)
-
+            (Text(value).font(.system(size: numberSize, weight: .bold))
+             + Text(suffix).font(.system(size: numberSize * 0.80, weight: .bold)))
+                .foregroundStyle(AppTheme.ink)
+                .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.55)
             Text(label)
-                .font(.system(size: 17, weight: .semibold))
-                .foregroundStyle(.secondary)
+                .font(.system(size: labelSize, weight: .semibold))
+                .foregroundStyle(Color(red: 161 / 255, green: 154 / 255, blue: 138 / 255))
                 .lineLimit(1)
                 .minimumScaleFactor(0.75)
         }
+        .padding(.horizontal, 4)
         .frame(maxWidth: .infinity)
+        .multilineTextAlignment(.center)
+        .accessibilityElement(children: .combine)
     }
 }
 
 private struct WeeklySummaryChart: View {
     let courses: [CourseWeeklySeries]
     let days: [Date]
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    private var yAxisMaximum: Int {
-        let highestValue = courses
-            .flatMap(\.dailyMinutes)
-            .map(\.minutes)
-            .max() ?? 0
-
-        return Swift.max(30, Int(ceil(Double(highestValue) / 30)) * 30)
+    private struct ActivityBar: Identifiable {
+        let id: String
+        let course: String
+        let date: Date
+        let minutes: Double
+        let color: Color
+        let dayIndex: Double
     }
 
-    private var yAxisValues: [Int] {
-        let step = yAxisMaximum / 3
-        return Array(stride(from: 0, through: yAxisMaximum, by: step))
+    private var bars: [ActivityBar] {
+        days.enumerated().flatMap { index, date in
+            let entries = courses.compactMap { course -> (CourseWeeklySeries, Double)? in
+                guard let minutes = course.dailyMinutes.first(where: { $0.date == date })?.minutes,
+                      minutes > 0 else { return nil }
+                return (course, minutes)
+            }
+            return entries.sorted { $0.0.id.uuidString < $1.0.id.uuidString }.map { entry in
+                ActivityBar(id: "\(index)-\(entry.0.id)", course: entry.0.name,
+                            date: date, minutes: entry.1, color: entry.0.color,
+                            dayIndex: Double(index))
+            }
+        }
     }
 
-    private var weekDomain: ClosedRange<Date> {
-        let firstDate = days.first ?? .now
-        let lastDate = days.last ?? firstDate
-        return firstDate...lastDate
+    private var maximumDailyMinutes: Double {
+        let totals = Dictionary(grouping: bars, by: \.dayIndex).values.map { segments in
+            segments.reduce(0.0) { $0 + $1.minutes }
+        }
+        return totals.max() ?? 0
+    }
+
+    private var usesHours: Bool { maximumDailyMinutes >= 120 }
+    private var divisor: Double { usesHours ? 60 : 1 }
+    private var tickStep: Double {
+        let maximum = maximumDailyMinutes / divisor
+        let desired = max(1.0, maximum * 1.12 / 4)
+        let magnitude = pow(10, floor(log10(desired)))
+        return ceil(([1.0, 2, 5, 10].first { $0 * magnitude >= desired } ?? 10) * magnitude)
     }
 
     var body: some View {
-        Chart {
-            ForEach(courses) { course in
-                ForEach(course.dailyMinutes) { day in
-                    AreaMark(
-                        x: .value("Day", day.date),
-                        yStart: .value("Baseline", 0),
-                        yEnd: .value("Study time", day.minutes),
-                        series: .value("Course", course.id.uuidString)
-                    )
-                    .foregroundStyle(course.fillColor)
-                    .interpolationMethod(.monotone)
+        activityChart()
+            .padding(.trailing, 24)
+            .frame(maxWidth: .infinity)
+    }
 
-                    LineMark(
-                        x: .value("Day", day.date),
-                        y: .value("Study time", day.minutes),
-                        series: .value("Course", course.id.uuidString)
-                    )
-                    .foregroundStyle(course.color)
-                    .lineStyle(
-                        StrokeStyle(
-                            lineWidth: 2.5,
-                            lineCap: .round,
-                            lineJoin: .round
-                        )
-                    )
-                    .interpolationMethod(.monotone)
-                }
-            }
+    private func activityChart() -> some View {
+        let activity: [ActivityBar] = bars
+        let heights: [Double] = activity.map { $0.minutes }
+        let range: ClosedRange<Double> = 0.0...(tickStep * 4.0)
+        let animation: Animation? = reduceMotion ? nil : .easeInOut(duration: 0.3)
+        return Chart(activity) { bar in
+            activityMark(bar)
         }
         .chartLegend(.hidden)
-        .chartXScale(domain: weekDomain)
-        .chartYScale(domain: 0...yAxisMaximum)
-        .chartXAxis {
-            AxisMarks(values: .stride(by: .day)) { value in
-                AxisValueLabel {
-                    if let date = value.as(Date.self) {
-                        Text(date, format: .dateTime.weekday(.abbreviated))
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(.secondary)
-                            .textCase(.uppercase)
-                    }
-                }
-            }
+        .chartXScale(domain: days.indices.map { String($0) })
+        .chartYScale(domain: range)
+        .chartXAxis { dayAxis }
+        .chartYAxis { durationAxis }
+        .animation(animation, value: heights)
+        .overlay { emptyState }
+    }
+
+    private func activityMark(_ bar: ActivityBar) -> some ChartContent {
+        let centre: String = String(Int(bar.dayIndex))
+        let height: Double = bar.minutes / divisor
+        let day: String = bar.date.formatted(.dateTime.weekday(.wide))
+        let minutes: String = bar.minutes.formatted(.number.precision(.fractionLength(0...1)))
+        let label = Text(verbatim: bar.course + ", " + day)
+        let value = Text(verbatim: minutes + " minutes")
+        return BarMark(
+            x: .value("Day", centre),
+            y: .value("Study time", height),
+            width: .ratio(0.65)
+        )
+        .foregroundStyle(bar.color)
+        .cornerRadius(10)
+        .accessibilityLabel(label)
+        .accessibilityValue(value)
+    }
+
+    private var dayAxis: some AxisContent {
+        AxisMarks(values: days.indices.map { String($0) }) { value in
+            AxisValueLabel(anchor: .top, collisionResolution: .disabled) { dayLabel(value) }
         }
-        .chartYAxis {
-            AxisMarks(position: .leading, values: yAxisValues) { _ in
-                AxisGridLine(stroke: StrokeStyle(lineWidth: 1))
-                    .foregroundStyle(Color.secondary.opacity(0.20))
-            }
+    }
+
+    @ViewBuilder
+    private func dayLabel(_ value: AxisValue) -> some View {
+        if let key = value.as(String.self), let position = Int(key), days.indices.contains(position) {
+            Text(days[position], format: .dateTime.weekday(.abbreviated))
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(AppTheme.secondaryInk)
+                .textCase(.uppercase)
+                .padding(.top, 6)
         }
-        .chartPlotStyle { plotArea in
-            plotArea
-                .clipped()
-                .overlay(alignment: .leading) {
-                    Rectangle()
-                        .fill(Color.secondary.opacity(0.24))
-                        .frame(width: 2)
-                }
-                .overlay(alignment: .bottom) {
-                    Rectangle()
-                        .fill(Color.secondary.opacity(0.24))
-                        .frame(height: 2)
-                }
+    }
+
+    private var durationAxis: some AxisContent {
+        let ticks: [Double] = (0...4).map { Double($0) * tickStep }
+        return AxisMarks(position: .leading, values: ticks) { value in
+            AxisValueLabel { durationLabel(value) }
         }
-        .accessibilityHidden(true)
+    }
+
+    @ViewBuilder
+    private func durationLabel(_ value: AxisValue) -> some View {
+        if let amount = value.as(Double.self) {
+            Text(amount.formatted(.number.precision(.fractionLength(0))))
+                .font(.system(size: 11))
+                .foregroundStyle(AppTheme.secondaryInk.opacity(0.65))
+                .padding(.trailing, 6)
+        }
+    }
+
+    @ViewBuilder
+    private var emptyState: some View {
+        if bars.isEmpty {
+            Text("Your study activity will appear here")
+                .font(.subheadline)
+                .foregroundStyle(AppTheme.secondaryInk)
+                .multilineTextAlignment(.center)
+                .padding(24)
+        }
     }
 }
 
@@ -213,22 +313,6 @@ private struct CourseWeeklySeries: Identifiable {
     let name: String
     let color: Color
     let dailyMinutes: [DailyStudyMinutes]
-
-    // Preblend the pastel against the background, then draw it fully opaque.
-    // An overlapping area replaces the one below instead of mixing their colors.
-    var fillColor: Color {
-        Color(uiColor: UIColor { traits in
-            var red: CGFloat = 0, green: CGFloat = 0, blue: CGFloat = 0, alpha: CGFloat = 0
-            UIColor(color).resolvedColor(with: traits).getRed(&red, green: &green, blue: &blue, alpha: &alpha)
-            var backgroundRed: CGFloat = 0, backgroundGreen: CGFloat = 0, backgroundBlue: CGFloat = 0
-            UIColor.systemBackground.resolvedColor(with: traits)
-                .getRed(&backgroundRed, green: &backgroundGreen, blue: &backgroundBlue, alpha: &alpha)
-            let amount: CGFloat = 0.42
-            return UIColor(red: red * amount + backgroundRed * (1 - amount),
-                           green: green * amount + backgroundGreen * (1 - amount),
-                           blue: blue * amount + backgroundBlue * (1 - amount), alpha: 1)
-        })
-    }
 
     static func series(from stats: WeeklyStudyStats) -> [CourseWeeklySeries] {
         stats.courses.map { course in

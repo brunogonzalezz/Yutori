@@ -5,6 +5,7 @@ struct BowlPickerView: View {
     @State private var store = StudySessionStore.shared
     @State private var selection = 0
     private let availableBowls = ["Katsu Ramen", "Teriyaki Bowl", "Tofu Curry"]
+    var dismissOnSelection = true
     let onSelect: () -> Void
 
     var body: some View {
@@ -20,7 +21,7 @@ struct BowlPickerView: View {
                                                 kind: index == 1 ? .teriyaki : .katsuRamen)
                                     .overlay {
                                         if index > 1 {
-                                            Color(.systemGray3)
+                                            AppTheme.muted
                                                 .mask {
                                                     DishArtworkView(level: 0, availableWidth: geometry.size.width,
                                                                     preferredWidth: min(210, geometry.size.height * 0.70), kind: .katsuRamen)
@@ -54,20 +55,20 @@ struct BowlPickerView: View {
                 if store.collectionLoadFailed {
                     Text("Couldn't load your bowls. Please reopen the app and try again.")
                         .font(.footnote)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(AppTheme.secondaryInk)
                 }
 
                 Button {
                     if selection < 2, store.selectNextBowl(selection == 1 ? .teriyaki : .katsuRamen) {
                         onSelect()
-                        dismiss()
+                        if dismissOnSelection { dismiss() }
                     }
                 } label: {
                     Text(selection < 2 ? "Select bowl" : "Coming soon")
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundStyle(.white)
                         .frame(maxWidth: .infinity, minHeight: 50)
-                        .background(selection < 2 ? Color.black : Color(.systemGray3), in: Capsule())
+                        .background(selection < 2 ? AppTheme.ink : AppTheme.muted, in: Capsule())
                         .contentShape(Capsule())
                 }
                 .buttonStyle(.plain)
@@ -75,13 +76,13 @@ struct BowlPickerView: View {
                 .padding(.horizontal, 40)
                 .padding(.bottom, 24)
             }
-            .background(Color(.systemBackground))
+            .background(AppTheme.paper)
             .navigationTitle("Choose a bowl")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Close", systemImage: "xmark") { dismiss() }
-                        .tint(.primary)
+                        .tint(AppTheme.ink)
                 }
             }
         }

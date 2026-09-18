@@ -22,20 +22,20 @@ struct BowlsView: View {
                     if !store.collectedBowls.isEmpty {
                         Text(store.collectedBowls.count.formatted())
                             .font(.system(size: 13, weight: .semibold, design: .rounded))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(AppTheme.secondaryInk)
                             .padding(.horizontal, 10)
                             .padding(.vertical, 5)
-                            .background(Color(.secondarySystemBackground), in: Capsule())
+                            .background(AppTheme.surface, in: Capsule())
                     }
                 }
 
                 if store.collectionLoadFailed {
                     Text("Couldn't load your bowls. Please reopen the app and try again.")
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(AppTheme.secondaryInk)
                 } else if store.collectedBowls.isEmpty {
                     Text("Your completed bowls will appear here.")
                         .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(AppTheme.secondaryInk)
                 } else {
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 140, maximum: 180), spacing: 14)],
                               alignment: .leading, spacing: 22) {
@@ -44,18 +44,18 @@ struct BowlsView: View {
                                 DishArtworkView(level: 5, availableWidth: 180, preferredWidth: 106, kind: bowl.bowlKind)
                                     .frame(maxWidth: .infinity)
                                     .frame(height: 126)
-                                    .background(Color(.secondarySystemBackground).opacity(0.65),
+                                    .background(AppTheme.surface.opacity(0.65),
                                                 in: RoundedRectangle(cornerRadius: 20))
                                     .overlay {
                                         RoundedRectangle(cornerRadius: 20)
-                                            .strokeBorder(Color.primary.opacity(0.035), lineWidth: 1)
+                                            .strokeBorder(AppTheme.ink.opacity(0.035), lineWidth: 1)
                                     }
                                 VStack(alignment: .leading, spacing: 3) {
                                     Text(bowl.bowlKind.name)
                                         .font(.system(size: 14, weight: .semibold))
                                     Text(bowl.collectedAt, format: .dateTime.day().month(.abbreviated).year())
                                         .font(.system(size: 11))
-                                        .foregroundStyle(.secondary)
+                                        .foregroundStyle(AppTheme.secondaryInk)
                                 }
                                 .padding(.horizontal, 4)
                             }
@@ -76,17 +76,17 @@ struct BowlsView: View {
                             Text(store.collectionLoadFailed ? "Discover all bowls" :
                                     "\(store.collectedKinds.count) of 20 discovered")
                                 .font(.system(size: 13))
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(AppTheme.secondaryInk)
                         }
                         Spacer()
                         Image(systemName: "chevron.right")
                             .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(AppTheme.secondaryInk)
                     }
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(AppTheme.ink)
                     .padding(22)
                     .frame(maxWidth: .infinity, minHeight: 110)
-                    .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 24))
+                    .background(AppTheme.surface, in: RoundedRectangle(cornerRadius: 24))
                     .contentShape(RoundedRectangle(cornerRadius: 24))
                 }
                 .buttonStyle(.plain)
@@ -96,7 +96,7 @@ struct BowlsView: View {
             .padding(.horizontal, 25)
             .padding(.bottom, 100)
         }
-        .background(Color(.systemBackground))
+        .background(AppTheme.paper)
         .toolbar(.hidden, for: .navigationBar)
         .sheet(isPresented: $showSettings) {
             SettingsView()
@@ -116,7 +116,7 @@ private struct BowlCollectionPage: View {
                 .padding(.top, 20)
                 .padding(.bottom, 32)
         }
-        .background(Color(.systemBackground))
+        .background(AppTheme.paper)
         .navigationTitle("Collection")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.visible, for: .navigationBar)
@@ -144,13 +144,13 @@ private struct BowlCollectionView: View {
                         .font(.system(size: 22, weight: .bold, design: .rounded))
                     Text("Study. Cook. Discover.")
                         .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(AppTheme.secondaryInk)
                 }
                 Spacer()
                 Text(loadFailed ? "— / 20" : "\(collectedKinds.count) / 20")
                     .font(.system(size: 13, weight: .semibold, design: .rounded))
                     .monospacedDigit()
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(AppTheme.secondaryInk)
             }
 
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 78), spacing: 10)], spacing: 18) {
@@ -162,7 +162,7 @@ private struct BowlCollectionView: View {
                             if unlocked {
                                 DishArtworkView(level: 5, availableWidth: 130, preferredWidth: 68, kind: kind)
                             } else {
-                                Color(.systemGray3)
+                                AppTheme.muted
                                     .frame(width: 68, height: 68)
                                     .mask {
                                         DishArtworkView(level: 5, availableWidth: 130, preferredWidth: 68, kind: kind)
@@ -171,15 +171,15 @@ private struct BowlCollectionView: View {
                         }
                         .frame(maxWidth: .infinity)
                         .frame(height: 82)
-                        .background(unlocked ? Color(.systemBackground) : Color.primary.opacity(0.025),
+                        .background(unlocked ? AppTheme.paper : AppTheme.ink.opacity(0.025),
                                     in: RoundedRectangle(cornerRadius: 16))
 
                         Text(String(format: "%03d", index + 1))
                             .font(.system(size: 10, weight: .medium, design: .monospaced))
-                            .foregroundStyle(.tertiary)
+                            .foregroundStyle(AppTheme.secondaryInk.opacity(0.75))
                         Text(dishes[index])
                             .font(.system(size: 11, weight: unlocked ? .semibold : .medium))
-                            .foregroundStyle(unlocked ? Color.primary : Color.secondary)
+                            .foregroundStyle(unlocked ? AppTheme.ink : AppTheme.secondaryInk)
                             .multilineTextAlignment(.center)
                             .lineLimit(2)
                             .frame(height: 30, alignment: .top)
@@ -190,11 +190,11 @@ private struct BowlCollectionView: View {
             }
         }
         .padding(16)
-        .background(Color(.secondarySystemBackground).opacity(0.5),
+        .background(AppTheme.surface.opacity(0.5),
                     in: RoundedRectangle(cornerRadius: 26))
         .overlay {
             RoundedRectangle(cornerRadius: 26)
-                .strokeBorder(Color.primary.opacity(0.05), lineWidth: 1)
+                .strokeBorder(AppTheme.ink.opacity(0.05), lineWidth: 1)
         }
     }
 }

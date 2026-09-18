@@ -2,55 +2,15 @@ import SwiftUI
 import UIKit
 
 extension CourseColor {
-    static let selectable: [CourseColor] = [.teal, .blue, .indigo, .purple, .pink, .red, .orange, .lemon, .green, .sand]
+    static let selectable: [CourseColor] = [.red, .orange, .lemon, .moss, .green, .teal, .pink, .indigo, .purple, .blue, .sky, .sand]
 
-    // Stronger strokes keep each course legible against the white chart background.
-    var chartTint: Color {
-        switch self {
-        case .teal: Color(red: 0.18, green: 0.64, blue: 0.56)
-        case .blue: Color(red: 0.28, green: 0.53, blue: 0.84)
-        case .purple: Color(red: 0.60, green: 0.43, blue: 0.77)
-        case .red: Color(red: 0.84, green: 0.36, blue: 0.43)
-        case .orange: Color(red: 0.89, green: 0.56, blue: 0.27)
-        case .lemon: Color(red: 0.71, green: 0.64, blue: 0.20)
-        case .indigo: Color(red: 0.34, green: 0.36, blue: 0.65)
-        case .pink: Color(red: 0.78, green: 0.39, blue: 0.67)
-        case .green: Color(red: 0.39, green: 0.61, blue: 0.24)
-        case .sand: Color(red: 0.59, green: 0.45, blue: 0.32)
-        default: tint
-        }
-    }
-
-    var iconTint: Color {
-        var hue: CGFloat = 0
-        var saturation: CGFloat = 0
-        var brightness: CGFloat = 0
-        var alpha: CGFloat = 0
-        UIColor(tint).getHue(&hue, saturation: &saturation, brightness: &brightness, alpha: &alpha)
-        return Color(hue: Double(hue),
-                     saturation: Double(min(1, saturation * 1.6)),
-                     brightness: Double(brightness * 0.52))
-    }
+    var chartTint: Color { tint }
+    var iconTint: Color { .white }
 
     var tint: Color {
-        switch self {
-        case .blue: Color(red: 0.67, green: 0.81, blue: 0.96)
-        case .teal: Color(red: 0.62, green: 0.84, blue: 0.82)
-        case .green: Color(red: 0.72, green: 0.86, blue: 0.68)
-        case .orange: Color(red: 0.98, green: 0.77, blue: 0.57)
-        case .pink: Color(red: 0.96, green: 0.73, blue: 0.82)
-        case .purple: Color(red: 0.81, green: 0.72, blue: 0.92)
-        case .red: Color(red: 0.94, green: 0.67, blue: 0.67)
-        case .indigo: Color(red: 0.71, green: 0.75, blue: 0.91)
-        case .mint: Color(red: 0.74, green: 0.92, blue: 0.82)
-        case .peach: Color(red: 0.99, green: 0.83, blue: 0.73)
-        case .lemon: Color(red: 0.97, green: 0.92, blue: 0.66)
-        case .lavender: Color(red: 0.88, green: 0.82, blue: 0.96)
-        case .rose: Color(red: 0.93, green: 0.79, blue: 0.82)
-        case .sky: Color(red: 0.75, green: 0.88, blue: 0.97)
-        case .sage: Color(red: 0.77, green: 0.83, blue: 0.73)
-        case .sand: Color(red: 0.9, green: 0.84, blue: 0.72)
-        }
+        Color(red: Double((rgbHex >> 16) & 0xff) / 255,
+              green: Double((rgbHex >> 8) & 0xff) / 255,
+              blue: Double(rgbHex & 0xff) / 255)
     }
 }
 
@@ -67,7 +27,7 @@ struct CoursesSettingsSection: View {
                     .font(.system(size: 17))
                 Spacer()
                 Text("\(store.courses.count)")
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(AppTheme.secondaryInk)
                 Image(systemName: "chevron.right")
                     .font(.system(size: 14, weight: .semibold))
             }
@@ -76,7 +36,7 @@ struct CoursesSettingsSection: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .background(Color(red: 0.95, green: 0.95, blue: 0.965), in: RoundedRectangle(cornerRadius: 38))
+        .background(AppTheme.surface, in: RoundedRectangle(cornerRadius: 38))
         .sheet(isPresented: $showCourses) {
             CoursesPage(store: store)
                 .presentationDetents([.large])
@@ -111,11 +71,11 @@ struct CoursesPage: View {
                                         .multilineTextAlignment(.leading)
                                     Spacer(minLength: 8)
                                     Image(systemName: "pencil")
-                                        .foregroundStyle(.secondary)
+                                        .foregroundStyle(AppTheme.secondaryInk)
                                 }
                                 .padding(12)
                                 .frame(maxWidth: .infinity, minHeight: 64)
-                                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 18))
+                                .background(AppTheme.surface, in: RoundedRectangle(cornerRadius: 18))
                                 .contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)
@@ -125,7 +85,7 @@ struct CoursesPage: View {
                 }
                 .padding(20)
             }
-            .background(Color(.systemGroupedBackground))
+            .background(AppTheme.paper)
             .safeAreaInset(edge: .bottom) {
                 if !store.loadFailed {
                     Button {
@@ -135,12 +95,12 @@ struct CoursesPage: View {
                             .font(.headline)
                             .foregroundStyle(.white)
                             .frame(maxWidth: .infinity, minHeight: 54)
-                            .background(Color.blue, in: RoundedRectangle(cornerRadius: 18))
+                            .background(AppTheme.ink, in: RoundedRectangle(cornerRadius: 18))
                     }
                     .buttonStyle(.plain)
                     .padding(.horizontal, 20)
                     .padding(.vertical, 12)
-                    .background(.regularMaterial)
+                    .background(AppTheme.paper)
                 }
             }
             .navigationTitle("My Courses")
@@ -161,7 +121,7 @@ struct CoursesPage: View {
                 }
             }
         }
-        .tint(.primary)
+        .tint(AppTheme.ink)
     }
 }
 
@@ -190,31 +150,25 @@ private struct CourseEditorView: View {
     @State private var activeAlert: EditorAlert?
     @State private var preparedColor = false
 
+    // Eight complete rows, grouped by subject.
     private let icons = [
-        ("book.fill", "Book"), ("percent", "Maths"), ("atom", "Science"),
-        ("globe.europe.africa.fill", "Geography"), ("clock.fill", "History"),
-        ("textformat.abc", "Language"), ("paintpalette.fill", "Art"),
-        ("music.note", "Music"), ("desktopcomputer", "Computing"),
-        ("leaf.fill", "Biology"), ("flask.fill", "Chemistry"),
-        ("function", "Calculus"), ("pencil", "Writing"),
-        ("briefcase.fill", "Business"), ("brain.head.profile", "Psychology"),
+        ("book.fill", "Book"), ("books.vertical.fill", "Literature"),
         ("graduationcap.fill", "Education"), ("studentdesk", "Study"),
-        ("books.vertical.fill", "Literature"), ("character.bubble.fill", "Conversation"),
-        ("number", "Numbers"), ("sum", "Algebra"), ("chart.bar.fill", "Statistics"),
-        ("chart.pie.fill", "Data"), ("ruler.fill", "Geometry"),
-        ("testtube.2", "Laboratory"), ("bolt.fill", "Physics"),
-        ("sparkles", "Astronomy"), ("moon.stars.fill", "Space"),
-        ("sun.max.fill", "Weather"), ("drop.fill", "Water"),
-        ("pawprint.fill", "Zoology"), ("heart.fill", "Health"),
-        ("cross.case.fill", "Medicine"), ("stethoscope", "Nursing"),
-        ("building.columns.fill", "Classics"), ("map.fill", "Maps"),
-        ("hammer.fill", "Engineering"), ("gearshape.fill", "Mechanics"),
-        ("curlybraces", "Programming"), ("network", "Networks"),
-        ("camera.fill", "Photography"), ("film.fill", "Cinema"),
-        ("theatermasks.fill", "Theatre"), ("scissors", "Crafts"),
-        ("sportscourt.fill", "Sports"), ("figure.run", "Exercise"),
-        ("fork.knife", "Nutrition"), ("dollarsign.circle.fill", "Economics"),
-        ("lightbulb.fill", "Ideas"), ("puzzlepiece.fill", "Logic")
+        ("pencil", "Writing"), ("textformat.abc", "Language"),
+        ("number", "Numbers"), ("percent", "Maths"), ("sum", "Algebra"),
+        ("function", "Calculus"), ("ruler.fill", "Geometry"), ("chart.bar.fill", "Statistics"),
+        ("atom", "Science"), ("flask.fill", "Chemistry"), ("testtube.2", "Laboratory"),
+        ("bolt.fill", "Physics"), ("gearshape.fill", "Mechanics"), ("hammer.fill", "Engineering"),
+        ("leaf.fill", "Biology"), ("pawprint.fill", "Zoology"), ("drop.fill", "Water"),
+        ("sun.max.fill", "Weather"), ("moon.stars.fill", "Space"), ("sparkles", "Astronomy"),
+        ("heart.fill", "Health"), ("cross.case.fill", "Medicine"), ("stethoscope", "Nursing"),
+        ("brain.head.profile", "Psychology"), ("figure.run", "Exercise"), ("fork.knife", "Nutrition"),
+        ("globe.europe.africa.fill", "Geography"), ("map.fill", "Maps"), ("clock.fill", "History"),
+        ("building.columns.fill", "Classics"), ("character.bubble.fill", "Conversation"), ("briefcase.fill", "Business"),
+        ("paintpalette.fill", "Art"), ("music.note", "Music"), ("camera.fill", "Photography"),
+        ("film.fill", "Cinema"), ("theatermasks.fill", "Theatre"), ("scissors", "Crafts"),
+        ("desktopcomputer", "Computing"), ("curlybraces", "Programming"), ("network", "Networks"),
+        ("chart.pie.fill", "Data"), ("dollarsign.circle.fill", "Economics"), ("sportscourt.fill", "Sports")
     ]
 
     private var validName: Bool {
@@ -232,6 +186,7 @@ private struct CourseEditorView: View {
                             .font(.headline)
                     }
                 }
+                .listRowBackground(AppTheme.surface)
                 Section("Name") {
                     TextField("Course name", text: $course.name)
                         .textInputAutocapitalization(.words)
@@ -239,8 +194,9 @@ private struct CourseEditorView: View {
                             if value.count > 60 { course.name = String(value.prefix(60)) }
                         }
                 }
+                .listRowBackground(AppTheme.surface)
                 Section("Color") {
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 48))], spacing: 12) {
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(minimum: 0), spacing: 4), count: 6), spacing: 12) {
                         ForEach(CourseColor.selectable, id: \.self) { color in
                             let available = store.isColorAvailable(color, for: course.id)
                             Button {
@@ -253,21 +209,21 @@ private struct CourseEditorView: View {
                                         if !available {
                                             Image(systemName: "lock.fill")
                                                 .font(.caption)
-                                                .foregroundStyle(.secondary)
-                                        } else if course.color == color {
+                                                .foregroundStyle(AppTheme.secondaryInk)
+                                        } else if course.color.paletteColor == color.paletteColor {
                                             Image(systemName: "checkmark")
                                                 .font(.body.bold())
-                                                .foregroundStyle(Color(white: 0.22))
+                                                .foregroundStyle(.white)
                                         }
                                     }
-                                    .frame(width: 48, height: 48)
+                                    .frame(maxWidth: .infinity, minHeight: 48)
                             }
                             .buttonStyle(.plain)
                             .disabled(!available)
                             .opacity(available ? 1 : 0.4)
-                            .accessibilityLabel(color.rawValue.capitalized)
+                            .accessibilityLabel(color.displayName)
                             .accessibilityHint(available ? "Available" : "Used by another course")
-                            .accessibilityAddTraits(course.color == color ? .isSelected : [])
+                            .accessibilityAddTraits(course.color.paletteColor == color.paletteColor ? .isSelected : [])
                         }
                     }
                     .padding(.vertical, 4)
@@ -276,23 +232,24 @@ private struct CourseEditorView: View {
                              ? "Choose an unused color. Each course has its own color."
                              : "All colors are in use. Free a color by deleting a course first.")
                             .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(AppTheme.secondaryInk)
                     }
                 }
+                .listRowBackground(AppTheme.surface)
                 Section("Icon") {
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 48))], spacing: 12) {
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(minimum: 0), spacing: 4), count: 6), spacing: 12) {
                         ForEach(icons, id: \.0) { icon, name in
                             Button {
                                 course.icon = icon
                             } label: {
                                 Image(systemName: icon)
                                     .font(.system(size: 23))
-                                    .foregroundStyle(Color.primary)
-                                    .frame(width: 48, height: 48)
+                                    .foregroundStyle(course.icon == icon ? Color.white : AppTheme.ink)
+                                    .frame(maxWidth: .infinity, minHeight: 48)
                                     .background(course.icon == icon ? course.color.tint : Color.clear, in: RoundedRectangle(cornerRadius: 12))
                                     .overlay {
                                         RoundedRectangle(cornerRadius: 12)
-                                            .strokeBorder(course.icon == icon ? Color.primary.opacity(0.6) : .clear, lineWidth: 2)
+                                            .strokeBorder(course.icon == icon ? AppTheme.ink.opacity(0.6) : .clear, lineWidth: 2)
                                     }
                             }
                             .buttonStyle(.plain)
@@ -302,6 +259,7 @@ private struct CourseEditorView: View {
                     }
                     .padding(.vertical, 4)
                 }
+                .listRowBackground(AppTheme.surface)
                 if store.courses.contains(where: { $0.id == course.id }) {
                     Section {
                     Button(role: .destructive) {
@@ -319,8 +277,11 @@ private struct CourseEditorView: View {
                     .listRowInsets(EdgeInsets())
                     .listRowBackground(Color.clear)
                     }
+                .listRowBackground(AppTheme.surface)
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(AppTheme.paper)
             }
             .alert(item: $activeAlert) { alert in
                 switch alert {
@@ -372,6 +333,6 @@ private struct CourseEditorView: View {
                 }
             }
         }
-        .tint(.primary)
+        .tint(AppTheme.ink)
     }
 }

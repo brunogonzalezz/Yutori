@@ -3,7 +3,53 @@ import Observation
 
 enum CourseColor: String, Codable, CaseIterable {
     case blue, teal, green, orange, pink, purple, red, indigo
-    case mint, peach, lemon, lavender, rose, sky, sage, sand
+    case mint, peach, lemon, lavender, rose, sky, sage, sand, moss
+
+    // Keep stored identifiers compatible with existing courses and sessions.
+    var paletteColor: CourseColor {
+        switch self {
+        case .mint: .teal
+        case .peach: .orange
+        case .lavender: .purple
+        case .rose: .pink
+        case .sage: .green
+        default: self
+        }
+    }
+
+    var displayName: String {
+        switch paletteColor {
+        case .sky: "Asagi Blue"
+        case .moss: "Moss Olive"
+        case .red: "Torii Vermilion"
+        case .blue: "Aizome Indigo"
+        case .green: "Matcha Green"
+        case .pink: "Sakura Pink"
+        case .lemon: "Golden Yellow"
+        case .teal: "Jade Teal"
+        case .purple: "Plum Purple"
+        case .orange: "Persimmon Orange"
+        case .indigo: "Kōbai Rose"
+        default: "Walnut Brown"
+        }
+    }
+
+    var rgbHex: UInt32 {
+        switch paletteColor {
+        case .sky: 0x69A6BE
+        case .moss: 0x92905B
+        case .red: 0xC65347
+        case .blue: 0x365D88
+        case .green: 0x718A52
+        case .pink: 0xD77F9A
+        case .lemon: 0xC5A044
+        case .teal: 0x438E89
+        case .purple: 0x80628F
+        case .orange: 0xD9844B
+        case .indigo: 0xAD5275
+        default: 0x8E6A50
+        }
+    }
 }
 
 struct StudyCourse: Identifiable, Codable, Equatable {
@@ -33,7 +79,7 @@ final class CourseStore {
     }
 
     func isColorAvailable(_ color: CourseColor, for courseID: UUID) -> Bool {
-        !courses.contains { $0.id != courseID && $0.color == color }
+        !courses.contains { $0.id != courseID && $0.color.paletteColor == color.paletteColor }
     }
 
     func save(_ draft: StudyCourse) throws {
@@ -59,6 +105,12 @@ final class CourseStore {
         let data = try JSONEncoder().encode(updated)
         defaults.set(data, forKey: storageKey)
         courses = updated
+    }
+
+    func resetAllData() {
+        defaults.removeObject(forKey: storageKey)
+        courses = []
+        loadFailed = false
     }
 
     enum SaveError: Error {

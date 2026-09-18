@@ -35,6 +35,7 @@ struct SessionSummaryView: View {
                         Text(course.name).font(.headline)
                     }
                 }
+                .listRowBackground(AppTheme.surface)
                 Section("What did you study?") {
                     TextField("Describe this study block", text: $blockDescription, axis: .vertical)
                         .lineLimit(3...6)
@@ -43,10 +44,11 @@ struct SessionSummaryView: View {
                             if limited != value { blockDescription = limited }
                         }
                 }
+                .listRowBackground(AppTheme.surface)
                 Section {
                     HStack {
                         Label(isEditingTime ? "Study time" : "Recorded time", systemImage: "timer")
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(AppTheme.secondaryInk)
                         Spacer()
                         Text(String(format: "%02d:%02d:%02d", hours, minutes, seconds))
                             .font(.title3.weight(.semibold))
@@ -57,12 +59,12 @@ struct SessionSummaryView: View {
                         timeWheel("Hours", selection: $hours, range: 0...999)
                         Text(":")
                             .font(.system(size: 28, weight: .semibold))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(AppTheme.secondaryInk)
                             .padding(.top, 16)
                         timeWheel("Minutes", selection: $minutes, range: 0...59)
                         Text(":")
                             .font(.system(size: 28, weight: .semibold))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(AppTheme.secondaryInk)
                             .padding(.top, 16)
                         timeWheel("Seconds", selection: $seconds, range: 0...59)
                     }
@@ -73,7 +75,7 @@ struct SessionSummaryView: View {
                     if correctedDuration == nil {
                         Text("Choose at least one second.")
                             .font(.footnote)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(AppTheme.secondaryInk)
                     }
                     } else {
                         Button("Edit study time", systemImage: "pencil") {
@@ -84,10 +86,14 @@ struct SessionSummaryView: View {
                 } header: {
                     Text("Study time")
                 }
+                .listRowBackground(AppTheme.surface)
                 Section {
                     DiscardSessionButton(onDiscard: onDiscard)
                 }
+                .listRowBackground(AppTheme.surface)
             }
+            .scrollContentBackground(.hidden)
+            .background(AppTheme.paper)
             .navigationTitle("Session summary")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -111,13 +117,13 @@ struct SessionSummaryView: View {
                 Text("Your session is still here. Please try again.")
             }
         }
-        .tint(.blue)
+        .tint(AppTheme.ink)
         .interactiveDismissDisabled()
     }
 
     private func timeWheel(_ title: String, selection: Binding<Int>, range: ClosedRange<Int>) -> some View {
         VStack(spacing: 0) {
-            Text(title).font(.caption).foregroundStyle(.secondary)
+            Text(title).font(.caption).foregroundStyle(AppTheme.secondaryInk)
             GeometryReader { geometry in
                 Picker(title, selection: selection) {
                     ForEach(range, id: \.self) { value in

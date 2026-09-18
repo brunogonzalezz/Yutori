@@ -55,7 +55,7 @@ struct HomeView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(greeting)
                         .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(AppTheme.secondaryInk)
 
                     Text(profileName)
                         .font(.system(size: 22, weight: .bold, design: .rounded))
@@ -99,7 +99,7 @@ struct HomeView: View {
                             .accessibilityLabel("Preview next dish level")
                         }
                         .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(AppTheme.secondaryInk)
                         .buttonStyle(.plain)
                         .padding(.trailing, 8)
                     }
@@ -111,7 +111,7 @@ struct HomeView: View {
                     
                     Text(sessionStore.loadFailed ? "Progress unavailable" : dishProgress.isComplete ? "Dish complete!" : "\(dishProgress.remainingMinutes) min remaining")
                         .font(.system(size: 16))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(AppTheme.secondaryInk)
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
                 }
@@ -126,7 +126,7 @@ struct HomeView: View {
                             .foregroundStyle(.white)
                             .padding(.horizontal, 22)
                             .frame(height: 36)
-                            .background(.black, in: Capsule())
+                            .background(AppTheme.ink, in: Capsule())
                             .frame(minHeight: 44)
                             .contentShape(Rectangle())
                     }
@@ -141,7 +141,7 @@ struct HomeView: View {
                         .font(.system(size: 21, weight: .semibold, design: .rounded))
                     Text("Choose a bowl to keep growing while you study.")
                         .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(AppTheme.secondaryInk)
                         .multilineTextAlignment(.center)
                     Button {
                         onSelectBowl?()
@@ -151,7 +151,7 @@ struct HomeView: View {
                             .foregroundStyle(.white)
                             .padding(.horizontal, 22)
                             .frame(height: 40)
-                            .background(.black, in: Capsule())
+                            .background(AppTheme.ink, in: Capsule())
                     }
                     .buttonStyle(.plain)
                     .padding(.top, 8)
@@ -171,11 +171,11 @@ struct HomeView: View {
                 
                 if sessionStore.loadFailed {
                     Text("Couldn't load your sessions. Please reopen the app and try again.")
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(AppTheme.secondaryInk)
                 } else if sessionStore.sessions.isEmpty {
                     Text("Your completed study sessions will appear here.")
                         .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(AppTheme.secondaryInk)
                 } else {
                     ForEach(recentCourseSessions) { session in
                         let course = courseStore.courses.first { $0.id == session.course.id } ?? session.course
@@ -186,13 +186,13 @@ struct HomeView: View {
                                     .font(.system(size: 18, weight: .semibold))
                                 Text(session.blockDescription)
                                     .font(.system(size: 14))
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(AppTheme.secondaryInk)
                                     .fixedSize(horizontal: false, vertical: true)
                             }
                             Spacer(minLength: 8)
                             Text("+\(session.formattedDuration)")
                                 .font(.system(size: 17, weight: .medium))
-                                .foregroundStyle(Color(red: 0.16, green: 0.52, blue: 0.32))
+                                .foregroundStyle(CourseColor.green.tint)
                                 .fixedSize()
                         }
                         .accessibilityElement(children: .combine)
@@ -208,6 +208,7 @@ struct HomeView: View {
         .padding(.bottom, 32)
         }
         }
+        .background(AppTheme.paper.ignoresSafeArea())
         .sheet(isPresented: $showSettings) {
             SettingsView()
         }
@@ -239,6 +240,12 @@ struct DishArtworkView: View {
     var preferredWidth: CGFloat? = nil
     var kind: BowlKind? = nil
     @Environment(\.displayScale) private var displayScale
+    private static let targetWidths: [CGFloat] = [205, 174, 210, 240, 253, 266]
+
+    static func naturalWidth(level: Int, availableWidth: CGFloat) -> CGFloat {
+        let index = min(max(level, 0), targetWidths.count - 1)
+        return targetWidths[index] * min(1, max(0, availableWidth - 80) / 266)
+    }
 
     // Original canvases and measured nontransparent bounds; the PNGs remain untouched.
     private static let artwork: [(canvas: CGSize, bounds: CGRect)] = [
@@ -264,10 +271,9 @@ struct DishArtworkView: View {
         let index = min(max(level, 0), 5)
         let bowlKind = kind ?? StudySessionStore.shared.activeBowlKind
         let asset = bowlKind == .katsuRamen ? Self.artwork[index] : Self.teriyakiArtwork[index]
-        let targetWidths: [CGFloat] = [205, 174, 210, 240, 253, 266]
         let screenFactor = min(1, max(0, availableWidth - 80) / 266)
         let targetWidth = preferredWidth.map { min($0, max(0, availableWidth - 48)) }
-            ?? (targetWidths[index] * screenFactor)
+            ?? Self.naturalWidth(level: index, availableWidth: availableWidth)
         let width = (targetWidth * displayScale).rounded() / displayScale
         let scale = width / asset.bounds.width
 
@@ -343,18 +349,10 @@ struct DishProgressBar: View {
     var body: some View {
         GeometryReader { geometry in
             ZStack(alignment: .leading) {
-                Capsule().fill(Color.gray.opacity(0.25)).frame(height: 7)
-                Capsule().fill(.black)
+                Capsule().fill(AppTheme.surface).frame(height: 7)
+                Capsule().fill(AppTheme.ink)
                     .frame(width: geometry.size.width * progress.fraction, height: 7)
-                ZStack {
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(.black)
-                        .frame(width: 28, height: 28)
-                        .rotationEffect(.degrees(45))
-                    Text("\(min(progress.level + 1, DishProgress.maximumLevel))")
-                        .font(.system(size: 15, weight: .bold))
-                        .foregroundStyle(.white)
-                }
+                DishLevelBadge(level: min(progress.level + 1, DishProgress.maximumLevel))
                 .frame(maxWidth: .infinity, alignment: .trailing)
             }
             .frame(height: 36)
@@ -363,5 +361,21 @@ struct DishProgressBar: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(progress.isComplete ? "Dish complete" : "Progress to level \(progress.level + 1)")
         .accessibilityValue("\(Int(progress.fraction * 100)) percent")
+    }
+}
+
+struct DishLevelBadge: View {
+    let level: Int
+
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 8)
+                .fill(AppTheme.ink)
+                .frame(width: 28, height: 28)
+                .rotationEffect(.degrees(45))
+            Text("\(level)")
+                .font(.system(size: 15, weight: .bold))
+                .foregroundStyle(.white)
+        }
     }
 }

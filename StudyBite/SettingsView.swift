@@ -21,6 +21,8 @@ struct SettingsView: View {
     @State private var nameFrame: CGRect = .zero
     @State private var selectedLanguage = "English"
     @State private var selectedAppearance = "Light"
+    @State private var confirmReset = false
+    @State private var isResetting = false
 
     private let colors = ProfileAvatarView.colors
 
@@ -54,7 +56,7 @@ struct SettingsView: View {
 
                     TextField("Your name", text: $draftName)
                         .textFieldStyle(.plain)
-                        .tint(.black)
+                        .tint(AppTheme.ink)
                         .font(.system(size: 26, weight: .bold))
                         .multilineTextAlignment(.center)
                         .textContentType(.name)
@@ -83,7 +85,7 @@ struct SettingsView: View {
                         .padding(.bottom, 28)
                 }
             }
-                .background(Color.white)
+                .background(AppTheme.paper)
                 .toolbar {
                     ToolbarItem(placement: .topBarTrailing) {
                         Button {
@@ -132,7 +134,7 @@ struct SettingsView: View {
                     photoError = true
                     return
                 }
-                guard !Task.isCancelled else { return }
+                guard !Task.isCancelled, !isResetting else { return }
                 // Store a compact square thumbnail rather than the full original photo.
                 let size = CGSize(width: 512, height: 512)
                 let format = UIGraphicsImageRendererFormat()
@@ -172,13 +174,15 @@ struct SettingsView: View {
                                                 .foregroundStyle(option.color)
                                         }
                                     }
-                                Text(option.name).font(.subheadline).foregroundStyle(.primary)
+                                Text(option.name).font(.subheadline).foregroundStyle(AppTheme.ink)
                             }
                         }
                         .buttonStyle(.plain)
                     }
                 }
                 .padding(24)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                .background(AppTheme.paper.ignoresSafeArea())
                 .navigationTitle("Avatar color")
                 .navigationBarTitleDisplayMode(.inline)
             }
@@ -190,17 +194,18 @@ struct SettingsView: View {
                     LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 3), spacing: 24) {
                         ForEach(0..<9) { index in
                             RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                .fill(Color(white: 0.86))
+                                .fill(AppTheme.muted)
                                 .frame(width: 84, height: 84)
                                 .overlay {
                                     RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                        .strokeBorder(Color.black.opacity(0.05), lineWidth: 1)
+                                        .strokeBorder(AppTheme.ink.opacity(0.05), lineWidth: 1)
                                 }
                                 .accessibilityLabel("App icon placeholder \(index + 1)")
                         }
                     }
                     .padding(24)
                 }
+                .background(AppTheme.paper.ignoresSafeArea())
                 .navigationTitle("App Icon")
                 .navigationBarTitleDisplayMode(.inline)
             }
@@ -222,7 +227,7 @@ struct SettingsView: View {
         }
     }
 
-    private let cardColor = Color(red: 0.95, green: 0.95, blue: 0.965)
+    private let cardColor = AppTheme.surface
 
     private var settingsContent: some View {
         VStack(spacing: 0) {
@@ -234,7 +239,7 @@ struct SettingsView: View {
 
             Text("Restore Purchase")
                 .font(.system(size: 12))
-                .foregroundStyle(.gray)
+                .foregroundStyle(AppTheme.secondaryInk)
                 .padding(.top, 10)
                 .padding(.bottom, 28)
 
@@ -318,9 +323,27 @@ struct SettingsView: View {
                 settingsRow("Privacy Policy", icon: "lock.shield.fill")
             }
 
-            settingsRow("Delete account", icon: "trash", destructive: true)
+            Button {
+                isEditingName = false
+                confirmReset = true
+            } label: {
+                settingsRow("Delete account", icon: "trash", destructive: true)
+                    .contentShape(Rectangle())
+            }
+                .buttonStyle(.plain)
                 .background(cardColor, in: RoundedRectangle(cornerRadius: 22))
                 .padding(.top, 8)
+                .alert("Reset StudyBite?", isPresented: $confirmReset) {
+                    Button("Delete everything", role: .destructive) {
+                        isResetting = true
+                        selectedPhoto = nil
+                        isEditingName = false
+                        AppReset.shared.reset()
+                    }
+                    Button("Cancel", role: .cancel) {}
+                } message: {
+                    Text("This deletes all local sessions, courses, collected bowls, progress, profile and settings. You'll start from zero. This cannot be undone.")
+                }
 
             ResetStudySessionsButton()
                 .background(cardColor, in: RoundedRectangle(cornerRadius: 22))
@@ -333,24 +356,24 @@ struct SettingsView: View {
 
             Text("Version \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—")")
                 .font(.system(size: 13))
-                .foregroundStyle(.gray)
+                .foregroundStyle(AppTheme.secondaryInk)
                 .padding(.top, 12)
 
             VStack(spacing: 2) {
                 Text("Made with love by")
                     .font(.system(size: 11))
-                    .foregroundStyle(.gray)
+                    .foregroundStyle(AppTheme.secondaryInk)
                 Link(destination: URL(string: "https://x.com/brunogonzalez__")!) {
                     Text("Bruno Gonzalez")
                         .font(.system(size: 19, weight: .semibold))
-                        .foregroundStyle(Color(white: 0.35))
+                        .foregroundStyle(AppTheme.ink)
                 }
                 .buttonStyle(.plain)
                 .accessibilityHint("Opens Bruno Gonzalez's profile on X")
             }
             .padding(.top, 34)
         }
-        .foregroundStyle(.black)
+        .foregroundStyle(AppTheme.ink)
     }
 
     private func settingsSection<Content: View>(
@@ -360,7 +383,7 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: 7) {
             Text(title)
                 .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(Color(red: 0.58, green: 0.58, blue: 0.62))
+                .foregroundStyle(AppTheme.secondaryInk)
                 .padding(.leading, 4)
                 .accessibilityAddTraits(.isHeader)
             VStack(spacing: 0, content: content)
@@ -390,7 +413,7 @@ struct SettingsView: View {
                 if let selection {
                     Text(selection)
                         .font(.system(size: 14))
-                        .foregroundStyle(Color(white: 0.35))
+                        .foregroundStyle(AppTheme.ink)
                         .lineLimit(1)
                         .minimumScaleFactor(0.85)
                 }
@@ -398,11 +421,11 @@ struct SettingsView: View {
             if !destructive {
                 Image(systemName: selection == nil ? "chevron.right" : "chevron.up.chevron.down")
                     .font(.system(size: 18, weight: .medium))
-                    .foregroundStyle(Color(white: 0.43))
+                    .foregroundStyle(AppTheme.secondaryInk)
                     .accessibilityHidden(true)
             }
         }
-        .foregroundStyle(destructive ? Color.red : Color(white: 0.24))
+        .foregroundStyle(destructive ? Color.red : AppTheme.ink)
         .padding(.horizontal, 16)
         .padding(.vertical, 15)
         .frame(maxWidth: .infinity, minHeight: 53)
@@ -412,7 +435,7 @@ struct SettingsView: View {
 
     private var settingsDivider: some View {
         Rectangle()
-            .fill(Color.black.opacity(0.055))
+            .fill(AppTheme.ink.opacity(0.055))
             .frame(height: 0.5)
     }
 
@@ -465,6 +488,7 @@ struct SettingsView: View {
     }
 
     private func saveName() {
+        guard !isResetting else { return }
         let name = String(draftName.trimmingCharacters(in: .whitespacesAndNewlines).prefix(40))
         if !name.isEmpty { profileName = name }
         draftName = profileName
@@ -510,7 +534,7 @@ private struct StudyTestDateSettings: View {
                 DatePicker("App date", selection: $clock.selectedDay, displayedComponents: .date)
                 Text("Used for weekly stats and new sessions. The timer runs normally.")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(AppTheme.secondaryInk)
             }
         }
     }
@@ -553,7 +577,7 @@ private struct AboutStudyBiteView: View {
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        Color.white
+        AppTheme.paper
             .ignoresSafeArea()
             .navigationBarBackButtonHidden(true)
             .toolbar {
@@ -562,7 +586,7 @@ private struct AboutStudyBiteView: View {
                         dismiss()
                     } label: {
                         Image(systemName: "chevron.left")
-                            .foregroundStyle(.black)
+                            .foregroundStyle(AppTheme.ink)
                     }
                     .accessibilityLabel("Back")
                 }

@@ -147,6 +147,14 @@ final class StudySessionStore {
     var collectedBowls: [CollectedBowl] { collection.bowls }
     var activeBowlKind: BowlKind { collection.activeKind ?? .katsuRamen }
     var collectedKinds: Set<BowlKind> { Set(collection.bowls.map(\.bowlKind)) }
+    var earnedDishProgress: DishProgress { DishProgress(totalSeconds: availableDishSeconds) }
+
+    func discoveredLevel(for kind: BowlKind) -> Int {
+        if collectedKinds.contains(kind) { return DishProgress.maximumLevel }
+        return hasActiveBowl && activeBowlKind == kind ? earnedDishProgress.level : 0
+    }
+
+    func clearDishPreview() { previewDishOffset = 0 }
     var hasActiveBowl: Bool {
         !(collection.needsSelection ?? !collection.bowls.isEmpty)
     }
@@ -174,7 +182,7 @@ final class StudySessionStore {
     func collectBowl() -> Bool {
         guard canCollectBowl else { return false }
         var updated = collection
-        updated.bowls.insert(CollectedBowl(kind: activeBowlKind), at: 0)
+        updated.bowls.insert(CollectedBowl(collectedAt: StudyTestClock.shared.date(for: .now), kind: activeBowlKind), at: 0)
         updated.needsSelection = true
         updated.usedSeconds += Double(DishProgress.maximumLevel) * DishProgress.secondsPerLevel
         guard let data = try? JSONEncoder().encode(updated) else { return false }
@@ -262,6 +270,23 @@ final class StudySessionStore {
         existingDishSessionIDs = []
         sessions = []
         loadFailed = false
+    }
+
+    func resetAllData() {
+        defaults.removeObject(forKey: key)
+        defaults.removeObject(forKey: dishBaselineKey)
+        defaults.removeObject(forKey: "bowlWallet.v1")
+        collection = Collection()
+        collection.needsSelection = true
+        // Preserve only the empty state: no bowl is selected after a full reset.
+        if let data = try? JSONEncoder().encode(collection) {
+            defaults.set(data, forKey: collectionKey)
+        }
+        sessions = []
+        existingDishSessionIDs = []
+        previewDishOffset = 0
+        loadFailed = false
+        collectionLoadFailed = false
     }
 
     enum SaveError: Error {

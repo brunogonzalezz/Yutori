@@ -6,9 +6,12 @@ struct StudyTimerView: View {
     var onEvolution: ((Int, Int, TimeInterval) -> Void)? = nil
     let onFinish: (TimeInterval) -> Void
 
-    @State private var accumulatedTime: TimeInterval = 0
-    @State private var runningSince: Date?
-    @State private var isRunning = false
+    @State private var stopwatch = StudyStopwatch()
+    @State private var startingSeconds: TimeInterval
+    @State private var highestRevealedLevel: Int
+    @State private var dishFrame: CGRect = .zero
+    @State private var liveEvolutionActive = false
+    @Environment(\.scenePhase) private var scenePhase
     @State private var hasStarted = false
     @State private var showSummary = false
     @State private var endedAt = Date.now
@@ -18,28 +21,42 @@ struct StudyTimerView: View {
     @State private var discardedSession = false
     @State private var showEvolution = false
 
+    init(course: StudyCourse,
+         onEvolution: ((Int, Int, TimeInterval) -> Void)? = nil,
+         onFinish: @escaping (TimeInterval) -> Void) {
+        self.course = course
+        self.onEvolution = onEvolution
+        self.onFinish = onFinish
+        let store = StudySessionStore.shared
+        _startingSeconds = State(initialValue: store.earnedDishProgress.totalSeconds)
+        _highestRevealedLevel = State(initialValue: store.earnedDishProgress.level)
+    }
+
     var body: some View {
         GeometryReader { geometry in
         ScrollView(showsIndicators: false) {
         VStack(spacing: 18) {
             Spacer(minLength: 24)
             TimelineView(.periodic(from: .now, by: 1)) { context in
-                let progress = DishProgress(totalSeconds: sessionStore.dishProgress.totalSeconds + elapsedTime(at: context.date))
+                let progress = DishProgress(totalSeconds: startingSeconds + stopwatch.elapsed(at: context.date))
                 VStack(spacing: 18) {
-                    DishArtworkView(level: progress.level, availableWidth: geometry.size.width)
+                    DishArtworkView(level: highestRevealedLevel, availableWidth: geometry.size.width)
+                        .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { dishFrame = $0 }
+                        .frame(maxWidth: .infinity)
+                        .opacity(liveEvolutionActive ? 0 : 1)
 
                     DishProgressBar(progress: progress)
                         .frame(width: max(0, geometry.size.width - 120))
                         .padding(.top, progress.level == 5 ? -6 : 0)
 
-                Text(formattedTime(at: context.date))
+                Text(stopwatch.formattedElapsed(at: context.date))
                     .font(.system(size: 68, weight: .bold))
-                    .foregroundStyle(.black)
+                    .foregroundStyle(AppTheme.ink)
                     .monospacedDigit()
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
                     .accessibilityLabel("Elapsed study time")
-                    .accessibilityValue(formattedTime(at: context.date))
+                    .accessibilityValue(stopwatch.formattedElapsed(at: context.date))
                 }
             }
 
@@ -47,28 +64,23 @@ struct StudyTimerView: View {
                 Button {
                     toggleTimer()
                 } label: {
-                    Image(systemName: isRunning ? "pause.fill" : "play.fill")
+                    Image(systemName: stopwatch.isRunning ? "pause.fill" : "play.fill")
                         .font(.system(size: 27, weight: .bold))
-                        .foregroundStyle(Color(white: 0.85))
+                        .foregroundStyle(AppTheme.paper)
                         .frame(width: 60, height: 60)
-                        .background(Color(white: 0.29), in: Circle())
+                        .background(AppTheme.ink, in: Circle())
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel(isRunning ? "Pause" : "Resume")
+                .accessibilityLabel(stopwatch.isRunning ? "Pause" : "Resume")
 
                 Button {
-                    endedAt = .now
-                    accumulatedTime = elapsedTime(at: endedAt)
-                    isRunning = false
-                    runningSince = nil
-                    levelBeforeSave = sessionStore.dishProgress.level
-                    showSummary = true
+                    finishSession(at: .now)
                 } label: {
                     Image(systemName: "xmark")
                         .font(.system(size: 27, weight: .bold))
-                        .foregroundStyle(Color(red: 1, green: 0.55, blue: 0.59))
+                        .foregroundStyle(AppTheme.paper)
                         .frame(width: 60, height: 60)
-                        .background(Color(red: 0.85, green: 0.06, blue: 0.17), in: Circle())
+                        .background(CourseColor.red.tint, in: Circle())
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Finish study session")
@@ -80,9 +92,28 @@ struct StudyTimerView: View {
         .frame(width: geometry.size.width, alignment: .center)
         .frame(minHeight: geometry.size.height)
         }
+        .opacity(liveEvolutionActive ? 0 : 1)
+        .animation(.easeInOut(duration: 0.3), value: liveEvolutionActive)
+        .allowsHitTesting(!liveEvolutionActive)
+        .accessibilityHidden(liveEvolutionActive)
         }
-        .background(Color.white.ignoresSafeArea())
+        .background(AppTheme.paper.ignoresSafeArea())
         .toolbar(.hidden, for: .navigationBar)
+        .overlay {
+            TimelineView(.periodic(from: .now, by: 1)) { context in
+                LiveDishEvolutionView(
+                    initialLevel: DishProgress(totalSeconds: startingSeconds).level,
+                    targetLevel: DishProgress(totalSeconds: startingSeconds + stopwatch.elapsed(at: context.date)).level,
+                    kind: sessionStore.activeBowlKind,
+                    sourceFrame: dishFrame,
+                    isActive: scenePhase == .active && !showSummary && !showEvolution,
+                    onActivity: { liveEvolutionActive = $0 }
+                ) { level in
+                    highestRevealedLevel = max(highestRevealedLevel, level)
+                }
+            }
+            .allowsHitTesting(false)
+        }
         .overlay {
             if showEvolution {
                 DishEvolutionView(fromLevel: levelBeforeSave, toLevel: sessionStore.dishProgress.level) {
@@ -93,7 +124,7 @@ struct StudyTimerView: View {
             }
         }
         .sheet(isPresented: $showSummary, onDismiss: completeSavedSession) {
-            SessionSummaryView(course: course, measuredDuration: accumulatedTime, endedAt: endedAt, onDiscard: {
+            SessionSummaryView(course: course, measuredDuration: stopwatch.accumulated, endedAt: endedAt, onDiscard: {
                 discardedSession = true
                 showSummary = false
             }) { duration in
@@ -123,35 +154,25 @@ struct StudyTimerView: View {
         }
     }
 
-    private func elapsedTime(at date: Date) -> TimeInterval {
-        guard isRunning, let runningSince else {
-            return accumulatedTime
+    private func finishSession(at date: Date) {
+        guard !showSummary else { return }
+        endedAt = date
+        stopwatch.pause(at: date)
+        // Only celebrate levels not already revealed during this session.
+        levelBeforeSave = max(DishProgress(totalSeconds: startingSeconds).level, highestRevealedLevel)
+        guard stopwatch.accumulated >= 1 else {
+            onFinish(0)
+            return
         }
-
-        return accumulatedTime + max(0, date.timeIntervalSince(runningSince))
-    }
-
-    private func formattedTime(at date: Date) -> String {
-        let totalSeconds = Int(elapsedTime(at: date))
-        let hours = totalSeconds / 3_600
-        let minutes = (totalSeconds % 3_600) / 60
-        let seconds = totalSeconds % 60
-
-        return hours > 0
-            ? String(format: "%d:%02d:%02d", hours, minutes, seconds)
-            : String(format: "%02d:%02d", minutes, seconds)
+        showSummary = true
     }
 
     private func toggleTimer() {
         let now = Date.now
-
-        if isRunning {
-            accumulatedTime = elapsedTime(at: now)
-            isRunning = false
-            runningSince = nil
+        if stopwatch.isRunning {
+            stopwatch.pause(at: now)
         } else {
-            runningSince = now
-            isRunning = true
+            stopwatch.resume(at: now)
         }
     }
 
@@ -161,8 +182,7 @@ struct StudyTimerView: View {
         }
 
         hasStarted = true
-        runningSince = .now
-        isRunning = true
+        stopwatch.resume(at: .now)
     }
 }
 
@@ -201,7 +221,7 @@ struct DishEvolutionView: View {
                         .font(.system(size: 26, weight: .bold, design: .rounded))
                     Text(revealed ? "Level \(currentLevel) unlocked" : message.detail)
                         .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(AppTheme.secondaryInk)
                 }
                 .multilineTextAlignment(.center)
                 ZStack {
@@ -229,7 +249,7 @@ struct DishEvolutionView: View {
                 .frame(height: 320)
                     Text(evolutionCount > 1 ? "\(evolutionCount) levels earned, one study bite at a time." : message.footer)
                         .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(AppTheme.secondaryInk)
                 .multilineTextAlignment(.center)
                 .opacity(ready ? 1 : 0)
                 Button(action: onContinue) {
@@ -237,7 +257,7 @@ struct DishEvolutionView: View {
                         .font(.headline)
                         .foregroundStyle(.white)
                         .frame(maxWidth: 260, minHeight: 52)
-                        .background(.black, in: Capsule())
+                        .background(AppTheme.ink, in: Capsule())
                         .contentShape(Capsule())
                 }
                     .buttonStyle(.plain)
@@ -248,7 +268,7 @@ struct DishEvolutionView: View {
             .padding(.horizontal, 24)
             .frame(width: geometry.size.width, height: geometry.size.height)
         }
-        .background(Color.white.ignoresSafeArea())
+        .background(AppTheme.paper.ignoresSafeArea())
         .task {
             if messageIndex == nil {
                 let next = Self.messages.indices.filter { $0 != lastMessage }.randomElement() ?? 0
@@ -256,6 +276,7 @@ struct DishEvolutionView: View {
                 lastMessage = next
             }
             do {
+                EvolutionSound.shared.prepare()
                 withAnimation(.easeInOut(duration: 0.8)) { charging = true }
                 try await Task.sleep(for: .milliseconds(reduceMotion ? 300 : 900))
                 if toLevel > fromLevel {
@@ -264,6 +285,7 @@ struct DishEvolutionView: View {
                         try await Task.sleep(for: .milliseconds(reduceMotion ? 200 : 650))
                         displayedLevel = level
                         revealed = true
+                        EvolutionSound.shared.play()
                         withAnimation(.easeOut(duration: 0.7)) { glow = false }
                         // Let each intermediate dish be seen before the next burst.
                         try await Task.sleep(for: .milliseconds(level < toLevel ? 1100 : 700))
