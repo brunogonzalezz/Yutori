@@ -22,7 +22,6 @@ struct StudyBiteApp: App {
                 .foregroundStyle(AppTheme.ink)
                 .tint(AppTheme.ink)
                 .background(AppTheme.paper.ignoresSafeArea())
-                .presentationBackground(AppTheme.paper)
         }
     }
 }

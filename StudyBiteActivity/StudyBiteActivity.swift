@@ -36,27 +36,40 @@ struct StudySessionActivityWidget: Widget {
             .padding(.horizontal, 20)
             .padding(.vertical, 14)
             .foregroundStyle(ink)
-            .background(Color.white)
+             .background {
+                ZStack {
+                    Color.white
+                    ActivityCourseMosaic(icon: context.attributes.courseIcon ?? "book.fill",
+                                         sessionID: context.attributes.sessionID,
+                                         accumulated: context.state.accumulated)
+                }
+            }
             .activityBackgroundTint(.white)
             .activitySystemActionForegroundColor(ink)
         } dynamicIsland: { context in
             DynamicIsland {
                 DynamicIslandExpandedRegion(.bottom) {
-                    HStack(alignment: .center, spacing: 10) {
-                        controls(context.attributes.sessionID,
-                                 paused: context.state.runningSince == nil,
-                                 size: 54, spacing: 10)
-                            .fixedSize()
-                        clock(context.state)
-                            .font(.system(size: 30, weight: .heavy))
-                            .foregroundStyle(paper)
-                            .multilineTextAlignment(.center)
-                            .frame(maxWidth: .infinity, alignment: .center)
+                    // Keep both columns inside the usable area below the camera.
+                    // Fixed-size lateral regions can extend beyond the system's lower mask.
+                    HStack(alignment: .center, spacing: 12) {
                         bowl(context.state, large: true)
-                            .frame(width: 100, height: 100)
+                            .frame(width: 132, height: 100)
+                        VStack(spacing: 8) {
+                            clock(context.state)
+                                .font(.system(size: 38, weight: .bold))
+                                .foregroundStyle(.white)
+                                .multilineTextAlignment(.center)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 44)
+                            controls(context.attributes.sessionID,
+                                     paused: context.state.runningSince == nil,
+                                     size: 48, spacing: 16, systemStyle: true)
+                        }
+                        .frame(maxWidth: .infinity)
                     }
-                    .frame(maxWidth: .infinity, minHeight: 100, alignment: .center)
-                    .padding(.bottom, 2)
+                    .frame(height: 100)
+                    .padding(.horizontal, 12)
+                    .padding(.bottom, 8)
                 }
             } compactLeading: {
                 bowl(context.state)
@@ -83,29 +96,31 @@ struct StudySessionActivityWidget: Widget {
         StudyActivityClock(state: state)
     }
 
-    private func controls(_ id: String, paused: Bool, size: CGFloat = 44, spacing: CGFloat? = nil) -> some View {
-        HStack(spacing: spacing ?? (size == 60 ? 24 : 16)) {
+    private func controls(_ id: String, paused: Bool, size: CGFloat = 44, spacing: CGFloat? = nil, systemStyle: Bool = false) -> some View {
+        let pauseColor = systemStyle ? Color(red: 44 / 255, green: 44 / 255, blue: 46 / 255) : ink
+        let stopColor = systemStyle ? Color(red: 255 / 255, green: 59 / 255, blue: 48 / 255) : vermilion
+        return HStack(spacing: spacing ?? (size == 60 ? 24 : 16)) {
             Button(intent: ToggleStudySessionIntent(sessionID: id)) {
                 Image(systemName: paused ? "play.fill" : "pause.fill")
                     .font(.system(size: size * 0.45, weight: .bold))
                     .frame(width: size, height: size)
-                    .background(ink, in: Circle())
+                    .background(pauseColor, in: Circle())
                     .contentShape(Circle())
             }
-            .tint(ink)
+            .tint(pauseColor)
             .accessibilityLabel(paused ? "Resume session" : "Pause session")
             Button(intent: FinishStudySessionIntent(sessionID: id)) {
                 Image(systemName: "xmark")
                     .font(.system(size: size * 0.45, weight: .bold))
                     .frame(width: size, height: size)
-                    .background(vermilion, in: Circle())
+                    .background(stopColor, in: Circle())
                     .contentShape(Circle())
             }
-            .tint(vermilion)
+            .tint(stopColor)
             .accessibilityLabel("Finish session")
         }
         .buttonStyle(.plain)
-        .foregroundStyle(paper)
+        .foregroundStyle(systemStyle ? Color.white : paper)
     }
 }
 
@@ -138,5 +153,37 @@ private struct StudyActivityClock: View {
         .monospacedDigit()
         .lineLimit(1)
         .minimumScaleFactor(0.6)
+    }
+}
+
+private struct ActivityCourseMosaic: View {
+    let icon: String
+    let sessionID: String
+    let accumulated: TimeInterval
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        Canvas { context, size in
+            let cell: CGFloat = 64
+            let seed = UUID(uuidString: sessionID)?.uuid.0 ?? 0
+            let xDirection: CGFloat = seed & 1 == 0 ? 1 : -1
+            let yDirection: CGFloat = seed & 2 == 0 ? 1 : -1
+            // ActivityKit supplies snapshots rather than continuous animation frames.
+            let drift = reduceMotion ? 0 : CGFloat(accumulated.truncatingRemainder(dividingBy: 44) / 44) * cell * 2
+            var symbol = context.resolve(Image(systemName: icon).renderingMode(.template))
+            symbol.shading = .color(ink)
+            context.opacity = 0.05
+            for row in -3...Int(size.height / cell + 3) {
+                for column in -3...Int(size.width / cell + 3) {
+                    let stagger: CGFloat = row.isMultiple(of: 2) ? 0 : cell / 2
+                    context.draw(symbol, in: CGRect(x: CGFloat(column) * cell + stagger + drift * xDirection,
+                                                    y: CGFloat(row) * cell + drift * yDirection,
+                                                    width: 20, height: 20))
+                }
+            }
+        }
+        .clipped()
+        .accessibilityHidden(true)
+        .allowsHitTesting(false)
     }
 }

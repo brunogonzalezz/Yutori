@@ -8,7 +8,7 @@ struct StatsView: View {
     @State private var sessionStore = StudySessionStore.shared
     @State private var courseStore = CourseStore.shared
     @State private var testClock = StudyTestClock.shared
-    
+
     var body: some View {
         // Read the observable stores in the parent so every mutation redraws Stats.
         let sessions = sessionStore.sessions
@@ -67,7 +67,10 @@ struct StatsView: View {
         .background(AppTheme.paper)
         }
         .sheet(isPresented: $showSettings) {
+            Group {
             SettingsView()
+
+            }.modifier(FloatingSheet())
         }
     }
 

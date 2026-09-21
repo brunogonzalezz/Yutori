@@ -26,7 +26,7 @@ struct DishProgress {
 
     init(sessions: [StudySession]) {
         totalSeconds = sessions.reduce(0) { total, session in
-            total + (session.duration.isFinite ? max(0, session.duration) : 0)
+            total + (session.dishDuration.isFinite ? max(0, session.dishDuration) : 0)
         }
     }
 
@@ -63,6 +63,12 @@ struct StudySession: Identifiable, Codable, Equatable {
     var blockDescription: String
     var duration: TimeInterval
     let endedAt: Date
+    var startingDishSeconds: TimeInterval? = nil
+    var bowlKind: BowlKind? = nil
+    var pauseCount: Int? = nil
+    var originalDuration: TimeInterval? = nil
+
+    var dishDuration: TimeInterval { originalDuration ?? duration }
 
     var formattedDuration: String {
         let total = Int(duration)
@@ -250,9 +256,29 @@ final class StudySessionStore {
               StudySession.wordCount(session.blockDescription) <= StudySession.descriptionWordLimit else {
             throw SaveError.invalidSession
         }
+        if let existing = sessions.first(where: { $0.id == session.id }) {
+            let original = existing.originalDuration ?? existing.duration
+            guard abs(session.duration - original) <= 10 * 3600 else { throw SaveError.invalidSession }
+            session.originalDuration = original
+        } else {
+            // Newly recorded sessions must always carry their historical bowl snapshot.
+            guard let start = session.startingDishSeconds, start.isFinite, start >= 0,
+                  session.bowlKind != nil, let pauses = session.pauseCount, pauses >= 0 else {
+                throw SaveError.invalidSession
+            }
+            session.originalDuration = session.duration
+        }
         var updated = sessions.filter { $0.id != session.id }
         updated.append(session)
         updated.sort { $0.endedAt > $1.endedAt }
+        let data = try JSONEncoder().encode(updated)
+        defaults.set(data, forKey: key)
+        sessions = updated
+    }
+
+    func deleteSession(id: UUID) throws {
+        guard !loadFailed else { throw SaveError.unavailable }
+        let updated = sessions.filter { $0.id != id }
         let data = try JSONEncoder().encode(updated)
         defaults.set(data, forKey: key)
         sessions = updated

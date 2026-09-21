@@ -145,6 +145,7 @@ struct TabBarView: View {
 
         .allowsHitTesting(!returningHome && collectingFrame == nil)
         .sheet(isPresented: $showStartStudy, onDismiss: openPendingTimer) {
+            Group {
             StartStudyView { course in
                 sessionCourse = course
                 startTimerAfterSheetCloses = true
@@ -153,6 +154,8 @@ struct TabBarView: View {
             .presentationDetents([.height(520)])
             .presentationDragIndicator(.hidden)
             .presentationCornerRadius(32)
+
+            }.modifier(FloatingSheet())
         }
         }
     }

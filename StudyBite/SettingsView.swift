@@ -4,7 +4,7 @@ import PhotosUI
 import UIKit
 
 struct SettingsView: View {
-    
+
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
     @AppStorage("profileName") private var profileName = "Bruno Gonzalez"
@@ -154,6 +154,7 @@ struct SettingsView: View {
             }
         }
         .sheet(isPresented: $showColors) {
+            Group {
             NavigationStack {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 88))], spacing: 24) {
                     ForEach(colors, id: \.name) { option in
@@ -191,8 +192,11 @@ struct SettingsView: View {
                 .navigationBarTitleDisplayMode(.inline)
             }
             .presentationDetents([.medium])
+
+            }.modifier(FloatingSheet())
         }
         .sheet(isPresented: $showAppIcons) {
+            Group {
             NavigationStack {
                 ScrollView {
                     LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 3), spacing: 24) {
@@ -215,6 +219,8 @@ struct SettingsView: View {
             }
             .presentationDetents([.medium])
             .presentationDragIndicator(.visible)
+
+            }.modifier(FloatingSheet())
         }
         .alert("Couldn't open email", isPresented: $feedbackError) {
             Button("Copy email address") {

@@ -9,8 +9,10 @@ struct HomeView: View {
     var onCollect: ((CGRect) -> Void)? = nil
     var onSelectBowl: (() -> Void)? = nil
     @State private var dishFrame: CGRect = .zero
-    
+
     @State var showSettings = false
+    @State private var selectedSession: StudySession?
+    @State private var showsSessionHistory = false
     @State private var sessionStore = StudySessionStore.shared
     @State private var courseStore = CourseStore.shared
     @AppStorage("profileName") private var profileName = "Bruno Gonzalez"
@@ -51,7 +53,7 @@ struct HomeView: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Open settings")
-                
+
                 VStack(alignment: .leading, spacing: 2) {
                     Text(greeting)
                         .font(.system(size: 14, weight: .medium))
@@ -64,15 +66,15 @@ struct HomeView: View {
                 }
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel("\(greeting) \(profileName)")
-                
+
                 Spacer()
             }
             .padding(.horizontal, 25)
             .padding(.bottom, dishProgress.level == 1 ? 50 : (dishProgress.level == 5 ? 28 : 40))
-            
+
             if sessionStore.hasActiveBowl {
             VStack(spacing: 20) {
-                
+
                 DishArtworkView(level: dishProgress.level, availableWidth: geometry.size.width)
                     .onGeometryChange(for: CGRect.self) { proxy in
                         proxy.frame(in: .global)
@@ -103,12 +105,12 @@ struct HomeView: View {
                         .buttonStyle(.plain)
                         .padding(.trailing, 8)
                     }
-                
+
                 // The badge extends below the track; tuck the left-aligned caption
                 // into that reserved space without moving the track or badge.
                 VStack(alignment: .leading, spacing: -4) {
                     DishProgressBar(progress: dishProgress)
-                    
+
                     Text(sessionStore.loadFailed ? "Progress unavailable" : dishProgress.isComplete ? "Dish complete!" : "\(dishProgress.remainingMinutes) min remaining")
                         .font(.system(size: 16))
                         .foregroundStyle(AppTheme.secondaryInk)
@@ -162,13 +164,23 @@ struct HomeView: View {
             }
 
             VStack(alignment: .leading, spacing: 14) {
-                
+
                 Spacer()
                     .frame(height: 5)
-                
-                Text("Last sessions")
-                    .font(.system(size: 24, weight: .bold))
-                
+
+                Button { showsSessionHistory = true } label: {
+                    HStack(spacing: 8) {
+                        Text("Last sessions")
+                            .font(.system(size: 24, weight: .bold))
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(AppTheme.secondaryInk)
+                    }
+                    .foregroundStyle(AppTheme.ink)
+                }
+                .buttonStyle(.plain)
+                .accessibilityHint("View all sessions")
+
                 if sessionStore.loadFailed {
                     Text("Couldn't load your sessions. Please reopen the app and try again.")
                         .foregroundStyle(AppTheme.secondaryInk)
@@ -180,6 +192,7 @@ struct HomeView: View {
                     VStack(spacing: 0) {
                     ForEach(recentCourseSessions) { session in
                         let course = courseStore.courses.first { $0.id == session.course.id } ?? session.course
+                        Button { selectedSession = session } label: {
                         HStack(spacing: 12) {
                             CourseBadge(course: course)
                             VStack(alignment: .leading, spacing: 3) {
@@ -200,7 +213,11 @@ struct HomeView: View {
                         }
                         .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
                         .padding(.vertical, 4)
+                        .contentShape(Rectangle())
                         .accessibilityElement(children: .combine)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityHint("Open session summary")
                         if session.id != recentCourseSessions.last?.id {
                             Rectangle()
                                 .fill(AppTheme.ink.opacity(0.18))
@@ -222,8 +239,28 @@ struct HomeView: View {
         }
         }
         .background(AppTheme.paper.ignoresSafeArea())
+        .sheet(isPresented: $showsSessionHistory) {
+            Group {
+            SessionHistoryView()
+
+            }.modifier(FloatingSheet())
+        }
+        .sheet(item: $selectedSession) { session in
+            Group {
+            SessionSummaryView(course: session.course, measuredDuration: session.duration,
+                               startingSeconds: session.startingDishSeconds ?? 0,
+                               bowlKind: session.bowlKind ?? .katsuRamen,
+                               pauseCount: session.pauseCount ?? 0,
+                               endedAt: session.endedAt, onDiscard: {}, onSave: { _ in },
+                               savedSession: session)
+
+            }.modifier(FloatingSheet())
+        }
         .sheet(isPresented: $showSettings) {
+            Group {
             SettingsView()
+
+            }.modifier(FloatingSheet())
         }
     }
 }

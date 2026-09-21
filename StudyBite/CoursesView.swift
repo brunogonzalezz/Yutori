@@ -38,9 +38,12 @@ struct CoursesSettingsSection: View {
         .buttonStyle(.plain)
         .background(AppTheme.surface, in: RoundedRectangle(cornerRadius: 38))
         .sheet(isPresented: $showCourses) {
+            Group {
             CoursesPage(store: store)
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
+
+            }.modifier(FloatingSheet())
         }
     }
 }

@@ -45,7 +45,10 @@ struct BowlsView: View {
             }
             .background(AppTheme.paper)
             .toolbar(.hidden, for: .navigationBar)
-            .sheet(isPresented: $showSettings) { SettingsView() }
+            .sheet(isPresented: $showSettings) {
+            Group { SettingsView()
+            }.modifier(FloatingSheet())
+        }
         }
     }
 }

@@ -10,7 +10,17 @@ struct SessionSummaryView: View {
     let endedAt: Date
     let onDiscard: () -> Void
     let onSave: (TimeInterval) -> Void
+    var savedSession: StudySession? = nil
     @State private var sessionID = UUID()
+    @State private var adjustmentMinutes = 0
+    @State private var confirmsLargeAdjustment = false
+    @State private var confirmsLargeSave = false
+    @State private var approvedDuration: TimeInterval?
+    @State private var showsTimeEditor = false
+    @State private var confirmDelete = false
+    @State private var deleteFailed = false
+    @State private var timeTick: Int? = 0
+    @State private var initializedDraft = false
     @State private var blockDescription = ""
     @State private var saveFailed = false
     @State private var saved = false
@@ -54,9 +64,16 @@ struct SessionSummaryView: View {
     }
 
 
+    private var needsTimeConfirmation: Bool {
+        guard let session = savedSession, let duration = recordedDuration,
+              adjustmentMinutes != 0, approvedDuration != duration else { return false }
+        return abs(duration - (session.originalDuration ?? measuredDuration)) >= 3 * 3600
+    }
+
     private var recordedDuration: TimeInterval? {
-        guard measuredDuration.isFinite, measuredDuration >= 1, measuredDuration <= 3_599_999 else { return nil }
-        return measuredDuration
+        let duration = savedSession == nil ? measuredDuration : max(1, measuredDuration + Double(adjustmentMinutes) * 60)
+        guard duration.isFinite, duration >= 1, duration <= 3_599_999 else { return nil }
+        return duration
     }
 
     private var recordedTimeText: String {
@@ -71,11 +88,11 @@ struct SessionSummaryView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section {
-                    sessionOverview
-                }
-                .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 12, trailing: 0))
-                .listRowBackground(Color.clear)
+                    Section {
+                        sessionOverview
+                    }
+                    .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 0, trailing: 0))
+                    .listRowBackground(Color.clear)
                 Section("Course") {
                     Button {
                         descriptionFocused = false
@@ -120,14 +137,37 @@ struct SessionSummaryView: View {
                             .font(.title3.weight(.semibold))
                             .monospacedDigit()
                     }
+                    if savedSession != nil {
+                        Button("Edit", systemImage: "slider.horizontal.3") {
+                            descriptionFocused = false
+                            timeTick = adjustmentMinutes
+                            showsTimeEditor = true
+                        }
+                    }
                 } header: {
                     Text("Study time")
                 }
                 .listRowBackground(AppTheme.surface)
-                Section {
-                    DiscardSessionButton(onDiscard: onDiscard)
+                if savedSession != nil {
+                    Section {
+                        Button(role: .destructive) {
+                            confirmDelete = true
+                        } label: {
+                            Label("Delete session", systemImage: "trash")
+                                .font(.subheadline)
+                                .foregroundStyle(.red)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .listRowBackground(AppTheme.surface)
+                } else {
+                    Section {
+                        DiscardSessionButton(onDiscard: onDiscard)
+                    }
+                    .listRowBackground(AppTheme.surface)
                 }
-                .listRowBackground(AppTheme.surface)
             }
             .scrollContentBackground(.hidden)
             .background(AppTheme.paper)
@@ -138,9 +178,17 @@ struct SessionSummaryView: View {
                     Button("Back") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") { save() }
+                    Button("Save") {
+                        if needsTimeConfirmation { confirmsLargeSave = true }
+                        else { save() }
+                    }
                         .disabled(!canSave)
                 }
+            }
+            .onAppear {
+                guard !initializedDraft else { return }
+                initializedDraft = true
+                if let savedSession { blockDescription = savedSession.blockDescription }
             }
             .alert("Couldn't save session", isPresented: $saveFailed) {
                 Button("OK", role: .cancel) { }
@@ -149,13 +197,118 @@ struct SessionSummaryView: View {
             }
         }
         .tint(AppTheme.ink)
-        .interactiveDismissDisabled()
+        .interactiveDismissDisabled(savedSession == nil)
+        .alert("Confirm time adjustment", isPresented: $confirmsLargeSave) {
+            Button("Confirm and save") {
+                approvedDuration = recordedDuration
+                save()
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("You’re making a large change to your study time. Are you sure? This edited time will not evolve your bowl.")
+        }
+        .alert("Delete this session?", isPresented: $confirmDelete) {
+            Button("Delete", role: .destructive) {
+                guard let savedSession else { return }
+                do {
+                    try StudySessionStore.shared.deleteSession(id: savedSession.id)
+                    dismiss()
+                } catch { deleteFailed = true }
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("This session and its study time will be removed from your history.")
+        }
+        .alert("Couldn't delete session", isPresented: $deleteFailed) {
+            Button("OK", role: .cancel) { }
+        }
+        .sheet(isPresented: $showsTimeEditor) {
+            Group {
+            timeEditor
+                .presentationDetents([.height(340)])
+                .presentationDragIndicator(.visible)
+                .presentationCornerRadius(28)
+
+            }.modifier(FloatingSheet())
+        }
         .sheet(isPresented: $showsCoursePicker) {
+            Group {
             coursePickerSheet
                 .presentationDetents([.height(340)])
                 .presentationDragIndicator(.visible)
-                .presentationBackground(AppTheme.paper)
                 .presentationCornerRadius(28)
+
+            }.modifier(FloatingSheet())
+        }
+    }
+
+    private var timeEditor: some View {
+        let original = savedSession?.originalDuration ?? measuredDuration
+        let minimum = Int(ceil((max(1, original - 10 * 3600) - measuredDuration) / 60))
+        let maximum = Int(floor((min(3_599_999, original + 10 * 3600) - measuredDuration) / 60))
+        return VStack(spacing: 16) {
+            Text("Adjust recorded time").font(.headline)
+            Text(recordedTimeText).font(.system(size: 32, weight: .bold)).monospacedDigit()
+            HStack(spacing: 8) {
+                ForEach([-15, -5, 5, 15], id: \.self) { change in
+                    Button(change > 0 ? "+\(change) min" : "\(change) min") {
+                        let next = min(maximum, max(minimum, adjustmentMinutes + change))
+                        adjustmentMinutes = next
+                        timeTick = next
+                    }
+                    .font(.caption.weight(.semibold))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 9)
+                    .background(AppTheme.surface, in: Capsule())
+                    .disabled(change < 0 ? adjustmentMinutes <= minimum : adjustmentMinutes >= maximum)
+                }
+            }
+            GeometryReader { geometry in
+                ScrollView(.horizontal, showsIndicators: false) {
+                    LazyHStack(alignment: .center, spacing: 0) {
+                        ForEach(minimum...maximum, id: \.self) { tick in
+                            let distance = abs(tick - adjustmentMinutes)
+                            Capsule()
+                                .fill(AppTheme.ink.opacity(distance == 0 ? 1 : (distance <= 2 ? 0.5 : 0.22)))
+                                .frame(width: distance == 0 ? 5 : (distance <= 2 ? 4 : 2.5),
+                                       height: distance == 0 ? 44 : (distance <= 2 ? 36 : 26))
+                                .frame(width: 12, height: 56)
+                            .id(tick)
+                        }
+                    }
+                    .scrollTargetLayout()
+                }
+                .contentMargins(.horizontal, max(0, (geometry.size.width - 12) / 2), for: .scrollContent)
+                .scrollTargetBehavior(.viewAligned(limitBehavior: .alwaysByOne))
+                .scrollPosition(id: $timeTick, anchor: .center)
+                .onChange(of: timeTick) { _, value in
+                    if let value { adjustmentMinutes = min(maximum, max(minimum, value)) }
+                }
+                .sensoryFeedback(.selection, trigger: adjustmentMinutes) { old, new in
+                    old != new
+                }
+            }
+            .frame(height: 56)
+            Button("Done") {
+                if needsTimeConfirmation { confirmsLargeAdjustment = true }
+                else { showsTimeEditor = false }
+            }
+                .font(.headline).foregroundStyle(AppTheme.paper)
+                .frame(maxWidth: .infinity, minHeight: 44)
+                .background(AppTheme.ink, in: Capsule())
+                .padding(.horizontal, 32)
+        }
+        .foregroundStyle(AppTheme.ink)
+        .padding(.top, 24)
+        .padding(.bottom, 12)
+        .alert("Confirm time adjustment", isPresented: $confirmsLargeAdjustment) {
+            Button("Confirm") {
+                approvedDuration = recordedDuration
+                showsTimeEditor = false
+            }
+            Button("Keep editing", role: .cancel) { }
+        } message: {
+            Text("You’re making a large change to your study time. Are you sure? This edited time will not evolve your bowl.")
         }
     }
 
@@ -201,7 +354,7 @@ struct SessionSummaryView: View {
     }
 
     private var sessionOverview: some View {
-        let duration = recordedDuration ?? 0
+        let duration = savedSession?.dishDuration ?? measuredDuration
         let initial = DishProgress(totalSeconds: startingSeconds)
         let final = DishProgress(totalSeconds: startingSeconds + duration)
         let capacity = DishProgress.secondsPerLevel * Double(DishProgress.maximumLevel)
@@ -216,21 +369,21 @@ struct SessionSummaryView: View {
                     Image(systemName: "arrow.right")
                         .font(.system(size: 34, weight: .medium))
                         .foregroundStyle(AppTheme.ink)
-                        .frame(width: 40, height: 128)
+                        .frame(width: 40, height: 140)
                     overviewBowl(level: final.level, width: columnWidth)
                 }
             }
-            .frame(height: 158)
+            .frame(height: 170)
             GeometryReader { geometry in
                 let columnWidth = max(0, (geometry.size.width - 18) / 3)
                 HStack(spacing: 4) {
-                    overviewMetric("\(pauseCount)", label: pauseCount == 1 ? "Pause" : "Pauses")
+                    overviewMetric(savedSession != nil && savedSession?.pauseCount == nil ? "—" : "\(pauseCount)", label: pauseCount == 1 ? "Pause" : "Pauses")
                         .frame(width: columnWidth)
                     overviewSeparator
-                    overviewMetric("+\(percent)%", label: "Bowl progress")
+                    overviewMetric(savedSession != nil && savedSession?.startingDishSeconds == nil ? "—" : "\(percent)%", label: "Bowl progress")
                         .frame(width: columnWidth)
                     overviewSeparator
-                    overviewMetric("\(levels)", label: levels == 1 ? "Level gained" : "Levels gained")
+                    overviewMetric(savedSession != nil && savedSession?.startingDishSeconds == nil ? "—" : "\(levels)", label: levels == 1 ? "Level gained" : "Levels gained")
                         .frame(width: columnWidth)
                 }
                 .frame(height: geometry.size.height)
@@ -282,18 +435,24 @@ struct SessionSummaryView: View {
 
     private func overviewBowl(level: Int, width: CGFloat) -> some View {
         // Keep growth readable without letting the final bowls fill their entire column.
-        let scales: [CGFloat] = [0.64, 0.68, 0.76, 0.84, 0.92, 1.0]
+        let scales: [CGFloat] = [0.74, 0.77, 0.84, 0.90, 0.95, 1.0]
         let index = min(max(level, 0), scales.count - 1)
-        let artworkWidth = min(122, width) * scales[index]
+        let artworkWidth = min(140, width * 0.96) * scales[index]
         return VStack(spacing: 6) {
             GeometryReader { geometry in
+                if savedSession != nil && savedSession?.startingDishSeconds == nil {
+                    Image(systemName: "questionmark.circle")
+                        .font(.system(size: 44)).foregroundStyle(AppTheme.secondaryInk)
+                        .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
+                } else {
                 DishArtworkView(level: index, availableWidth: width + 48,
                                 preferredWidth: artworkWidth, kind: bowlKind)
                     .fixedSize()
                     .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
+                }
             }
-            .frame(width: width, height: 128)
-            Text("Level \(level)")
+            .frame(width: width, height: 140)
+            Text(savedSession != nil && savedSession?.startingDishSeconds == nil ? "Not recorded" : "Level \(level)")
                 .font(.system(size: 19, weight: .semibold))
                 .foregroundStyle(AppTheme.ink)
         }
@@ -315,12 +474,18 @@ struct SessionSummaryView: View {
     private func save() {
         guard canSave, let duration = recordedDuration else { return }
         do {
-            try StudySessionStore.shared.save(StudySession(
-                id: sessionID, course: currentCourse, blockDescription: blockDescription,
-                duration: duration, endedAt: StudyTestClock.shared.date(for: endedAt)
-            ))
+            let draft = StudySession(
+                id: savedSession?.id ?? sessionID, course: currentCourse, blockDescription: blockDescription,
+                duration: duration, endedAt: savedSession?.endedAt ?? StudyTestClock.shared.date(for: endedAt),
+                startingDishSeconds: savedSession == nil ? startingSeconds : savedSession?.startingDishSeconds,
+                bowlKind: savedSession == nil ? bowlKind : savedSession?.bowlKind,
+                pauseCount: savedSession == nil ? pauseCount : savedSession?.pauseCount,
+                originalDuration: savedSession?.originalDuration ?? measuredDuration
+            )
+            try StudySessionStore.shared.save(draft)
             saved = true
             onSave(duration)
+            if savedSession != nil { dismiss() }
         } catch {
             saveFailed = true
         }

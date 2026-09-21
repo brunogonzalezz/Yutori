@@ -83,13 +83,15 @@ struct SessionCourseView: View {
             }
         }
         .sheet(isPresented: $showCourses) {
+            Group {
             NavigationStack {
                 CourseEditorView(course: StudyCourse(name: ""), store: store, onSaved: { course in
                     selectedID = course.id
                 }, onDeleted: {})
             }
             .presentationDetents([.large])
-            .presentationBackground(AppTheme.paper)
+
+            }.modifier(FloatingSheet())
         }
     }
 }

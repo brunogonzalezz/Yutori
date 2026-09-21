@@ -147,6 +147,7 @@ struct StudyTimerView: View {
             }
         }
         .sheet(isPresented: $showSummary, onDismiss: completeSavedSession) {
+            Group {
             SessionSummaryView(course: course, measuredDuration: stopwatch.accumulated, startingSeconds: startingSeconds, bowlKind: sessionStore.activeBowlKind, pauseCount: activeSession.pauseCount, endedAt: endedAt, onDiscard: {
                 discardedSession = true
                 showSummary = false
@@ -154,6 +155,8 @@ struct StudyTimerView: View {
                 savedDuration = duration
                 showSummary = false
             }
+
+            }.modifier(FloatingSheet())
         }
         .onAppear {
             startTimerIfNeeded()
