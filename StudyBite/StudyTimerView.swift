@@ -50,7 +50,7 @@ struct StudyTimerView: View {
                         .padding(.top, progress.level == 5 ? -6 : 0)
 
                 Text(stopwatch.formattedElapsed(at: context.date))
-                    .font(.system(size: 68, weight: .bold))
+                    .font(.system(size: 68, weight: .bold, design: .rounded))
                     .foregroundStyle(AppTheme.ink)
                     .monospacedDigit()
                     .lineLimit(1)
@@ -65,7 +65,7 @@ struct StudyTimerView: View {
                     toggleTimer()
                 } label: {
                     Image(systemName: stopwatch.isRunning ? "pause.fill" : "play.fill")
-                        .font(.system(size: 27, weight: .bold))
+                        .font(.system(size: 27, weight: .bold, design: .rounded))
                         .foregroundStyle(AppTheme.paper)
                         .frame(width: 60, height: 60)
                         .background(AppTheme.ink, in: Circle())
@@ -77,7 +77,7 @@ struct StudyTimerView: View {
                     finishSession(at: .now)
                 } label: {
                     Image(systemName: "xmark")
-                        .font(.system(size: 27, weight: .bold))
+                        .font(.system(size: 27, weight: .bold, design: .rounded))
                         .foregroundStyle(AppTheme.paper)
                         .frame(width: 60, height: 60)
                         .background(CourseColor.red.tint, in: Circle())
@@ -156,7 +156,7 @@ struct StudyTimerView: View {
                 showSummary = false
             }
 
-            }.modifier(FloatingSheet())
+            }.presentationBackground(AppTheme.paper)
         }
         .onAppear {
             startTimerIfNeeded()
@@ -305,7 +305,7 @@ struct DishEvolutionView: View {
                     ForEach(0..<12) { index in
                         let angle = Double(index) * .pi / 6
                         Image(systemName: index.isMultiple(of: 2) ? "sparkle" : "circle.fill")
-                            .font(.system(size: index.isMultiple(of: 2) ? 18 : 5))
+                            .font(.system(size: index.isMultiple(of: 2) ? 18 : 5, design: .rounded))
                             .foregroundStyle(Color.orange.opacity(0.8))
                             .offset(x: cos(angle) * (revealed ? 150 : 110),
                                     y: sin(angle) * (revealed ? 150 : 110))

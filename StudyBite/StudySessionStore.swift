@@ -155,6 +155,25 @@ final class StudySessionStore {
     var collectedKinds: Set<BowlKind> { Set(collection.bowls.map(\.bowlKind)) }
     var earnedDishProgress: DishProgress { DishProgress(totalSeconds: availableDishSeconds) }
 
+    private let unlockSecondsKey = "bowlUnlock.studySeconds.v1"
+    private(set) var bowlUnlockSeconds: TimeInterval = 0
+    var unlockedBowlCount: Int { BowlCatalog.unlockedCount(seconds: bowlUnlockSeconds) }
+    var nextBowlMilestone: Int? {
+        unlockedBowlCount < BowlCatalog.entries.count
+            ? BowlCatalog.entries[unlockedBowlCount].requiredHours : nil
+    }
+    func isBowlUnlocked(_ entry: BowlCatalogEntry) -> Bool { entry.id < unlockedBowlCount }
+
+    private func updateBowlUnlocks() {
+        // Manual time edits never count toward bowl unlocks. Earned unlocks are permanent.
+        let studied = sessions.reduce(0.0) { total, session in
+            total + (session.dishDuration.isFinite ? max(0, session.dishDuration) : 0)
+        }
+        bowlUnlockSeconds = max(bowlUnlockSeconds, studied)
+        defaults.set(bowlUnlockSeconds, forKey: unlockSecondsKey)
+    }
+
+
     func discoveredLevel(for kind: BowlKind) -> Int {
         if collectedKinds.contains(kind) { return DishProgress.maximumLevel }
         return hasActiveBowl && activeBowlKind == kind ? earnedDishProgress.level : 0
@@ -167,7 +186,9 @@ final class StudySessionStore {
 
     @discardableResult
     func selectNextBowl(_ kind: BowlKind = .katsuRamen) -> Bool {
-        guard !hasActiveBowl, !loadFailed, !collectionLoadFailed else { return false }
+        guard !hasActiveBowl, !loadFailed, !collectionLoadFailed,
+              let entry = BowlCatalog.entries.first(where: { $0.kind == kind }),
+              isBowlUnlocked(entry) else { return false }
         var updated = collection
         updated.needsSelection = false
         updated.activeKind = kind
@@ -221,6 +242,8 @@ final class StudySessionStore {
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
+        let savedUnlockSeconds = defaults.double(forKey: unlockSecondsKey)
+        bowlUnlockSeconds = savedUnlockSeconds.isFinite ? max(0, savedUnlockSeconds) : 0
         if let data = defaults.data(forKey: collectionKey) {
             if let saved = try? JSONDecoder().decode(Collection.self, from: data),
                saved.usedSeconds.isFinite, saved.usedSeconds >= 0 {
@@ -244,6 +267,7 @@ final class StudySessionStore {
             existingDishSessionIDs = Set(sessions.map(\.id))
             defaults.set(existingDishSessionIDs.map(\.uuidString), forKey: dishBaselineKey)
         }
+        if !loadFailed { updateBowlUnlocks() }
     }
 
     func save(_ draft: StudySession) throws {
@@ -274,6 +298,7 @@ final class StudySessionStore {
         let data = try JSONEncoder().encode(updated)
         defaults.set(data, forKey: key)
         sessions = updated
+        updateBowlUnlocks()
     }
 
     func deleteSession(id: UUID) throws {
@@ -301,6 +326,8 @@ final class StudySessionStore {
     }
 
     func resetAllData() {
+        bowlUnlockSeconds = 0
+        defaults.removeObject(forKey: unlockSecondsKey)
         defaults.removeObject(forKey: key)
         defaults.set([String](), forKey: dishBaselineKey)
         defaults.removeObject(forKey: "bowlWallet.v1")

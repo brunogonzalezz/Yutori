@@ -4,7 +4,9 @@ struct BowlPickerView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var store = StudySessionStore.shared
     @State private var selection = 0
-    private let availableBowls = ["Katsu Ramen", "Teriyaki Bowl", "Tofu Curry"]
+    private var availableBowls: [BowlCatalogEntry] {
+        Array(BowlCatalog.entries.prefix(store.unlockedBowlCount))
+    }
     var dismissOnSelection = true
     let onSelect: () -> Void
 
@@ -18,9 +20,9 @@ struct BowlPickerView: View {
                                 Spacer(minLength: 0)
                                 DishArtworkView(level: 0, availableWidth: geometry.size.width,
                                                 preferredWidth: min(210, geometry.size.height * 0.70),
-                                                kind: index == 1 ? .teriyaki : .katsuRamen)
+                                                kind: availableBowls[index].kind ?? .katsuRamen)
                                     .overlay {
-                                        if index > 1 {
+                                        if availableBowls[index].kind == nil {
                                             AppTheme.muted
                                                 .mask {
                                                     DishArtworkView(level: 0, availableWidth: geometry.size.width,
@@ -28,9 +30,9 @@ struct BowlPickerView: View {
                                                 }
                                         }
                                     }
-                                    .saturation(index < 2 ? 1 : 0)
-                                    .opacity(index < 2 ? 1 : 0.35)
-                                    .accessibilityLabel(index < 2 ? availableBowls[index] : "Upcoming bowl")
+                                    .saturation(availableBowls[index].kind != nil ? 1 : 0)
+                                    .opacity(availableBowls[index].kind != nil ? 1 : 0.35)
+                                    .accessibilityLabel(availableBowls[index].kind != nil ? availableBowls[index].name : "Upcoming bowl")
                                     .frame(maxWidth: .infinity)
                                     .overlay {
                                         HStack {
@@ -41,7 +43,7 @@ struct BowlPickerView: View {
                                         .buttonStyle(.plain)
                                         .padding(.horizontal, 16)
                                     }
-                                Text(availableBowls[index])
+                                Text(availableBowls[index].name)
                                     .font(.system(size: 24, weight: .bold, design: .rounded))
                                 Spacer(minLength: 0)
                             }
@@ -59,20 +61,20 @@ struct BowlPickerView: View {
                 }
 
                 Button {
-                    if selection < 2, store.selectNextBowl(selection == 1 ? .teriyaki : .katsuRamen) {
+                    if let kind = availableBowls[selection].kind, store.selectNextBowl(kind) {
                         onSelect()
                         if dismissOnSelection { dismiss() }
                     }
                 } label: {
-                    Text(selection < 2 ? "Select bowl" : "Coming soon")
-                        .font(.system(size: 16, weight: .semibold))
+                    Text(availableBowls[selection].kind != nil ? "Select bowl" : "Coming soon")
+                        .font(.system(size: 16, weight: .semibold, design: .rounded))
                         .foregroundStyle(.white)
                         .frame(maxWidth: .infinity, minHeight: 50)
-                        .background(selection < 2 ? AppTheme.ink : AppTheme.muted, in: Capsule())
+                        .background(availableBowls[selection].kind != nil ? AppTheme.ink : AppTheme.muted, in: Capsule())
                         .contentShape(Capsule())
                 }
                 .buttonStyle(.plain)
-                .disabled(selection > 1 || store.hasActiveBowl || store.collectionLoadFailed)
+                .disabled(availableBowls[selection].kind == nil || store.hasActiveBowl || store.collectionLoadFailed)
                 .padding(.horizontal, 40)
                 .padding(.bottom, 24)
             }
@@ -96,7 +98,7 @@ struct BowlPickerView: View {
             withAnimation(.easeInOut(duration: 0.25)) { selection = next }
         } label: {
             Image(systemName: symbol)
-                .font(.system(size: 14, weight: .semibold))
+                .font(.system(size: 14, weight: .semibold, design: .rounded))
                 .frame(width: 44, height: 44)
                 .contentShape(Rectangle())
                 .opacity(available ? 1 : 0.15)

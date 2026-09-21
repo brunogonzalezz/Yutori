@@ -19,7 +19,6 @@ struct SessionSummaryView: View {
     @State private var showsTimeEditor = false
     @State private var confirmDelete = false
     @State private var deleteFailed = false
-    @State private var timeTick: Int? = 0
     @State private var initializedDraft = false
     @State private var blockDescription = ""
     @State private var saveFailed = false
@@ -140,7 +139,6 @@ struct SessionSummaryView: View {
                     if savedSession != nil {
                         Button("Edit", systemImage: "slider.horizontal.3") {
                             descriptionFocused = false
-                            timeTick = adjustmentMinutes
                             showsTimeEditor = true
                         }
                     }
@@ -223,22 +221,16 @@ struct SessionSummaryView: View {
             Button("OK", role: .cancel) { }
         }
         .sheet(isPresented: $showsTimeEditor) {
-            Group {
             timeEditor
+                .modifier(AppSheetStyle())
                 .presentationDetents([.height(340)])
                 .presentationDragIndicator(.visible)
-                .presentationCornerRadius(28)
-
-            }.modifier(FloatingSheet())
         }
         .sheet(isPresented: $showsCoursePicker) {
-            Group {
             coursePickerSheet
+                .modifier(AppSheetStyle())
                 .presentationDetents([.height(340)])
                 .presentationDragIndicator(.visible)
-                .presentationCornerRadius(28)
-
-            }.modifier(FloatingSheet())
         }
     }
 
@@ -248,13 +240,13 @@ struct SessionSummaryView: View {
         let maximum = Int(floor((min(3_599_999, original + 10 * 3600) - measuredDuration) / 60))
         return VStack(spacing: 16) {
             Text("Adjust recorded time").font(.headline)
-            Text(recordedTimeText).font(.system(size: 32, weight: .bold)).monospacedDigit()
+                .padding(.top, -6)
+            Text(recordedTimeText).font(.system(size: 42, weight: .bold, design: .rounded)).monospacedDigit()
             HStack(spacing: 8) {
                 ForEach([-15, -5, 5, 15], id: \.self) { change in
                     Button(change > 0 ? "+\(change) min" : "\(change) min") {
                         let next = min(maximum, max(minimum, adjustmentMinutes + change))
                         adjustmentMinutes = next
-                        timeTick = next
                     }
                     .font(.caption.weight(.semibold))
                     .padding(.horizontal, 10)
@@ -263,43 +255,24 @@ struct SessionSummaryView: View {
                     .disabled(change < 0 ? adjustmentMinutes <= minimum : adjustmentMinutes >= maximum)
                 }
             }
-            GeometryReader { geometry in
-                ScrollView(.horizontal, showsIndicators: false) {
-                    LazyHStack(alignment: .center, spacing: 0) {
-                        ForEach(minimum...maximum, id: \.self) { tick in
-                            let distance = abs(tick - adjustmentMinutes)
-                            Capsule()
-                                .fill(AppTheme.ink.opacity(distance == 0 ? 1 : (distance <= 2 ? 0.5 : 0.22)))
-                                .frame(width: distance == 0 ? 5 : (distance <= 2 ? 4 : 2.5),
-                                       height: distance == 0 ? 44 : (distance <= 2 ? 36 : 26))
-                                .frame(width: 12, height: 56)
-                            .id(tick)
-                        }
-                    }
-                    .scrollTargetLayout()
-                }
-                .contentMargins(.horizontal, max(0, (geometry.size.width - 12) / 2), for: .scrollContent)
-                .scrollTargetBehavior(.viewAligned(limitBehavior: .alwaysByOne))
-                .scrollPosition(id: $timeTick, anchor: .center)
-                .onChange(of: timeTick) { _, value in
-                    if let value { adjustmentMinutes = min(maximum, max(minimum, value)) }
-                }
-                .sensoryFeedback(.selection, trigger: adjustmentMinutes) { old, new in
-                    old != new
-                }
-            }
-            .frame(height: 56)
-            Button("Done") {
+            SessionTimeRuler(value: $adjustmentMinutes, limits: minimum...maximum)
+                .frame(height: 56)
+            Button {
                 if needsTimeConfirmation { confirmsLargeAdjustment = true }
                 else { showsTimeEditor = false }
+            } label: {
+                Text("Done")
+                    .font(.headline)
+                    .foregroundStyle(AppTheme.paper)
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                    .background(AppTheme.ink, in: Capsule())
+                    .contentShape(Capsule())
             }
-                .font(.headline).foregroundStyle(AppTheme.paper)
-                .frame(maxWidth: .infinity, minHeight: 44)
-                .background(AppTheme.ink, in: Capsule())
-                .padding(.horizontal, 32)
+            .buttonStyle(.plain)
+            .padding(.horizontal, 32)
         }
         .foregroundStyle(AppTheme.ink)
-        .padding(.top, 24)
+        .padding(.top, 14)
         .padding(.bottom, 12)
         .alert("Confirm time adjustment", isPresented: $confirmsLargeAdjustment) {
             Button("Confirm") {
@@ -367,7 +340,7 @@ struct SessionSummaryView: View {
                 HStack(alignment: .top, spacing: 4) {
                     overviewBowl(level: initial.level, width: columnWidth)
                     Image(systemName: "arrow.right")
-                        .font(.system(size: 34, weight: .medium))
+                        .font(.system(size: 34, weight: .medium, design: .rounded))
                         .foregroundStyle(AppTheme.ink)
                         .frame(width: 40, height: 140)
                     overviewBowl(level: final.level, width: columnWidth)
@@ -394,7 +367,7 @@ struct SessionSummaryView: View {
             .padding(.vertical, 18)
             .background {
                 ZStack {
-                    AppTheme.ink
+                    AppTheme.darkSurface
                     TimelineView(.animation(minimumInterval: 1.0 / 30,
                                             paused: reduceMotion || scenePhase != .active)) { timeline in
                         Canvas { context, size in
@@ -442,7 +415,7 @@ struct SessionSummaryView: View {
             GeometryReader { geometry in
                 if savedSession != nil && savedSession?.startingDishSeconds == nil {
                     Image(systemName: "questionmark.circle")
-                        .font(.system(size: 44)).foregroundStyle(AppTheme.secondaryInk)
+                        .font(.system(size: 44, design: .rounded)).foregroundStyle(AppTheme.secondaryInk)
                         .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
                 } else {
                 DishArtworkView(level: index, availableWidth: width + 48,
@@ -453,7 +426,7 @@ struct SessionSummaryView: View {
             }
             .frame(width: width, height: 140)
             Text(savedSession != nil && savedSession?.startingDishSeconds == nil ? "Not recorded" : "Level \(level)")
-                .font(.system(size: 19, weight: .semibold))
+                .font(.system(size: 19, weight: .semibold, design: .rounded))
                 .foregroundStyle(AppTheme.ink)
         }
         .frame(width: width)
@@ -461,10 +434,10 @@ struct SessionSummaryView: View {
 
     private func overviewMetric(_ value: String, label: String) -> some View {
         VStack(spacing: 5) {
-            Text(value).font(.system(size: 34, weight: .bold)).monospacedDigit()
+            Text(value).font(.system(size: 34, weight: .bold, design: .rounded)).monospacedDigit()
                 .foregroundStyle(AppTheme.paper)
                 .lineLimit(1).minimumScaleFactor(0.65)
-            Text(label).font(.system(size: 13, weight: .medium))
+            Text(label).font(.system(size: 13, weight: .medium, design: .rounded))
                 .foregroundStyle(AppTheme.paper.opacity(0.72))
                 .lineLimit(1).minimumScaleFactor(0.8)
         }

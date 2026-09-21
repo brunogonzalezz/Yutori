@@ -24,7 +24,7 @@ struct StatsView: View {
                     .padding(.bottom, 16)
 
                 Text("Your study journey")
-                    .font(.system(size: 30, weight: .bold))
+                    .font(.system(size: 30, weight: .bold, design: .rounded))
                     .foregroundStyle(AppTheme.ink)
                     .padding(.horizontal, 8)
                     .padding(.bottom, 24)
@@ -43,7 +43,7 @@ struct StatsView: View {
                 }
 
                 Text("Study activity")
-                    .font(.system(size: 24, weight: .bold))
+                    .font(.system(size: 24, weight: .bold, design: .rounded))
                     .lineLimit(1)
                     .minimumScaleFactor(0.9)
                     .padding(.leading, 8)
@@ -70,7 +70,7 @@ struct StatsView: View {
             Group {
             SettingsView()
 
-            }.modifier(FloatingSheet())
+            }.presentationBackground(AppTheme.paper)
         }
     }
 
@@ -167,13 +167,13 @@ private struct MetricView: View {
 
     var body: some View {
         VStack(spacing: 1) {
-            Text("\(Text(value).font(.system(size: numberSize, weight: .bold)))\(Text(suffix).font(.system(size: numberSize * 0.80, weight: .bold)))")
+            Text("\(Text(value).font(.system(size: numberSize, weight: .bold, design: .rounded)))\(Text(suffix).font(.system(size: numberSize * 0.80, weight: .bold, design: .rounded)))")
                 .foregroundStyle(AppTheme.ink)
                 .monospacedDigit()
                 .lineLimit(1)
                 .minimumScaleFactor(0.55)
             Text(label)
-                .font(.system(size: labelSize, weight: .semibold))
+                .font(.system(size: labelSize, weight: .semibold, design: .rounded))
                 .foregroundStyle(Color(red: 161 / 255, green: 154 / 255, blue: 138 / 255))
                 .lineLimit(1)
                 .minimumScaleFactor(0.75)
@@ -281,7 +281,7 @@ private struct WeeklySummaryChart: View {
     private func dayLabel(_ value: AxisValue) -> some View {
         if let key = value.as(String.self), let position = Int(key), days.indices.contains(position) {
             Text(days[position], format: .dateTime.weekday(.abbreviated))
-                .font(.system(size: 11, weight: .medium))
+                .font(.system(size: 11, weight: .medium, design: .rounded))
                 .foregroundStyle(AppTheme.secondaryInk)
                 .textCase(.uppercase)
                 .padding(.top, 6)
@@ -299,7 +299,7 @@ private struct WeeklySummaryChart: View {
     private func durationLabel(_ value: AxisValue) -> some View {
         if let amount = value.as(Double.self) {
             Text(amount.formatted(.number.precision(.fractionLength(0))))
-                .font(.system(size: 11))
+                .font(.system(size: 11, design: .rounded))
                 .foregroundStyle(AppTheme.secondaryInk.opacity(0.65))
                 .padding(.trailing, 6)
         }

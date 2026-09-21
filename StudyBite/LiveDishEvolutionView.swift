@@ -85,7 +85,7 @@ struct LiveDishEvolutionView: View {
             ForEach(0..<12) { index in
                 let angle = Double(index) * .pi / 6
                 Image(systemName: "sparkle")
-                    .font(.system(size: index.isMultiple(of: 2) ? 15 : 10, weight: .medium))
+                    .font(.system(size: index.isMultiple(of: 2) ? 15 : 10, weight: .medium, design: .rounded))
                     .foregroundStyle(Color.orange.opacity(0.7))
                     .rotationEffect(.degrees(-orbit))
                     .offset(x: cos(angle) * radius * (particlesExpanded ? 1.04 : 0.65),

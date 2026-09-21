@@ -32,18 +32,18 @@ struct StudyCalendarView: View {
         VStack(alignment: .leading, spacing: 18) {
             HStack(alignment: .firstTextBaseline) {
                 Text("Calendar")
-                    .font(.system(size: 24, weight: .bold))
+                    .font(.system(size: 24, weight: .bold, design: .rounded))
                     .foregroundStyle(AppTheme.ink)
                 Spacer()
                 Text(now, format: .dateTime.month(.wide).year())
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.system(size: 13, weight: .medium, design: .rounded))
                     .foregroundStyle(AppTheme.secondaryInk)
             }
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 7), spacing: 7) {
                 ForEach(0..<7, id: \.self) { index in
                     let symbol = calendar.veryShortStandaloneWeekdaySymbols[(index + 1) % 7]
                     Text(symbol)
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
                         .foregroundStyle(AppTheme.secondaryInk)
                         .frame(maxWidth: .infinity)
                         .padding(.bottom, 3)
@@ -99,7 +99,7 @@ private struct CalendarDayView: View {
                 }
                 if bowls.isEmpty {
                     Text("\(number)")
-                        .font(.system(size: 18, weight: .semibold))
+                        .font(.system(size: 18, weight: .semibold, design: .rounded))
                         .foregroundStyle(AppTheme.ink)
                 } else {
                     // Fit the whole stack, with room inside the coloured border.

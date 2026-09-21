@@ -153,9 +153,9 @@ struct TabBarView: View {
             }
             .presentationDetents([.height(520)])
             .presentationDragIndicator(.hidden)
-            .presentationCornerRadius(32)
 
-            }.modifier(FloatingSheet())
+
+            }.modifier(AppSheetStyle())
         }
         }
     }

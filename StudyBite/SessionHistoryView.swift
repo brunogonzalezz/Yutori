@@ -22,12 +22,12 @@ struct SessionHistoryView: View {
                                 CourseBadge(course: session.course)
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text(session.course.name).font(.headline)
-                                    Text(session.endedAt, format: .dateTime.day().month(.abbreviated).year().hour().minute())
-                                        .font(.caption).foregroundStyle(AppTheme.secondaryInk)
                                     if !session.blockDescription.isEmpty {
                                         Text(session.blockDescription).font(.subheadline)
                                             .foregroundStyle(AppTheme.secondaryInk).lineLimit(2)
                                     }
+                                    Text(session.endedAt, format: .dateTime.day().month(.abbreviated).year().hour().minute())
+                                        .font(.caption).foregroundStyle(AppTheme.secondaryInk)
                                 }
                                 Spacer(minLength: 4)
                                 Text(session.formattedDuration)
@@ -62,7 +62,7 @@ struct SessionHistoryView: View {
                                    endedAt: session.endedAt, onDiscard: {}, onSave: { _ in },
                                    savedSession: session)
 
-            }.modifier(FloatingSheet())
+            }.presentationBackground(AppTheme.paper)
         }
         }
         .tint(AppTheme.ink)

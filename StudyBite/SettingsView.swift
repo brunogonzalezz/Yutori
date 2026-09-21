@@ -56,7 +56,7 @@ struct SettingsView: View {
                     TextField("Your name", text: $draftName)
                         .textFieldStyle(.plain)
                         .tint(AppTheme.ink)
-                        .font(.system(size: 26, weight: .bold))
+                        .font(.system(size: 26, weight: .bold, design: .rounded))
                         .multilineTextAlignment(.center)
                         .textContentType(.name)
                         .textInputAutocapitalization(.words)
@@ -175,7 +175,7 @@ struct SettingsView: View {
                                         }
                                     }
                                 Text(option.name)
-                                    .font(.system(size: 12, weight: .medium))
+                                    .font(.system(size: 12, weight: .medium, design: .rounded))
                                     .foregroundStyle(AppTheme.ink)
                                     .multilineTextAlignment(.center)
                                     .lineLimit(2)
@@ -193,7 +193,7 @@ struct SettingsView: View {
             }
             .presentationDetents([.medium])
 
-            }.modifier(FloatingSheet())
+            }.modifier(AppSheetStyle())
         }
         .sheet(isPresented: $showAppIcons) {
             Group {
@@ -220,7 +220,7 @@ struct SettingsView: View {
             .presentationDetents([.medium])
             .presentationDragIndicator(.visible)
 
-            }.modifier(FloatingSheet())
+            }.modifier(AppSheetStyle())
         }
         .alert("Couldn't open email", isPresented: $feedbackError) {
             Button("Copy email address") {
@@ -242,13 +242,13 @@ struct SettingsView: View {
     private var settingsContent: some View {
         VStack(spacing: 0) {
             Text("Pro Ad")
-                .font(.system(size: 17))
+                .font(.system(size: 17, design: .rounded))
                 .frame(maxWidth: .infinity)
                 .frame(height: 164)
                 .background(cardColor, in: RoundedRectangle(cornerRadius: 38))
 
             Text("Restore Purchase")
-                .font(.system(size: 12))
+                .font(.system(size: 12, design: .rounded))
                 .foregroundStyle(AppTheme.secondaryInk)
                 .padding(.top, 10)
                 .padding(.bottom, 28)
@@ -355,24 +355,24 @@ struct SettingsView: View {
                 .padding(.top, 12)
 
             Text("Version \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—")")
-                .font(.system(size: 13))
+                .font(.system(size: 13, design: .rounded))
                 .foregroundStyle(AppTheme.secondaryInk)
                 .padding(.top, 12)
 
             VStack(spacing: 2) {
                 Text("Made with love by")
-                    .font(.system(size: 11))
+                    .font(.system(size: 11, design: .rounded))
                     .foregroundStyle(AppTheme.secondaryInk)
                 Link(destination: URL(string: "https://x.com/brunogonzalez__")!) {
                     HStack(spacing: 6) {
-                        Text("Bruno Gonzalez")
-                            .font(.system(size: 19, weight: .semibold))
                         Text("𝕏")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(AppTheme.ink)
+                            .font(.system(size: 15, weight: .medium, design: .rounded))
+                            .foregroundStyle(AppTheme.paper)
                             .frame(width: 24, height: 24)
-                            .background(AppTheme.surface, in: RoundedRectangle(cornerRadius: 7))
+                            .background(AppTheme.ink, in: RoundedRectangle(cornerRadius: 7))
                             .accessibilityHidden(true)
+                        Text("Bruno Gonzalez")
+                            .font(.system(size: 19, weight: .semibold, design: .rounded))
                     }
                     .foregroundStyle(AppTheme.ink)
                     .padding(.vertical, 6)
@@ -392,7 +392,7 @@ struct SettingsView: View {
     ) -> some View {
         VStack(alignment: .leading, spacing: 7) {
             Text(title)
-                .font(.system(size: 13, weight: .medium))
+                .font(.system(size: 13, weight: .medium, design: .rounded))
                 .foregroundStyle(AppTheme.secondaryInk)
                 .padding(.leading, 4)
                 .accessibilityAddTraits(.isHeader)
@@ -406,11 +406,11 @@ struct SettingsView: View {
     private func settingsRow(_ title: String, icon: String, destructive: Bool = false, selection: String? = nil, flag: UIImage? = nil) -> some View {
         HStack(spacing: 10) {
             Image(systemName: icon)
-                .font(.system(size: 19))
+                .font(.system(size: 19, design: .rounded))
                 .frame(width: 24)
                 .accessibilityHidden(true)
             Text(title)
-                .font(.system(size: 18))
+                .font(.system(size: 18, design: .rounded))
             Spacer(minLength: 8)
             HStack(spacing: 5) {
                 if let flag {
@@ -422,7 +422,7 @@ struct SettingsView: View {
                 }
                 if let selection {
                     Text(selection)
-                        .font(.system(size: 14))
+                        .font(.system(size: 14, design: .rounded))
                         .foregroundStyle(AppTheme.ink)
                         .lineLimit(1)
                         .minimumScaleFactor(0.85)
@@ -430,7 +430,7 @@ struct SettingsView: View {
             }
             if !destructive {
                 Image(systemName: selection == nil ? "chevron.right" : "chevron.up.chevron.down")
-                    .font(.system(size: 18, weight: .medium))
+                    .font(.system(size: 18, weight: .medium, design: .rounded))
                     .foregroundStyle(AppTheme.secondaryInk)
                     .accessibilityHidden(true)
             }
@@ -558,7 +558,7 @@ private struct ResetStudySessionsButton: View {
             showConfirmation = true
         } label: {
             Label("Delete all study sessions", systemImage: "trash")
-                .font(.system(size: 18))
+                .font(.system(size: 18, design: .rounded))
                 .foregroundStyle(.red)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(16)

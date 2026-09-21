@@ -56,7 +56,7 @@ struct HomeView: View {
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(greeting)
-                        .font(.system(size: 14, weight: .medium))
+                        .font(.system(size: 14, weight: .medium, design: .rounded))
                         .foregroundStyle(AppTheme.secondaryInk)
 
                     Text(profileName)
@@ -100,7 +100,7 @@ struct HomeView: View {
                             }
                             .accessibilityLabel("Preview next dish level")
                         }
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
                         .foregroundStyle(AppTheme.secondaryInk)
                         .buttonStyle(.plain)
                         .padding(.trailing, 8)
@@ -112,7 +112,7 @@ struct HomeView: View {
                     DishProgressBar(progress: dishProgress)
 
                     Text(sessionStore.loadFailed ? "Progress unavailable" : dishProgress.isComplete ? "Dish complete!" : "\(dishProgress.remainingMinutes) min remaining")
-                        .font(.system(size: 16))
+                        .font(.system(size: 16, design: .rounded))
                         .foregroundStyle(AppTheme.secondaryInk)
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
@@ -124,7 +124,7 @@ struct HomeView: View {
                         onCollect(dishFrame)
                     } label: {
                         Text("Collect")
-                            .font(.system(size: 14, weight: .semibold))
+                            .font(.system(size: 14, weight: .semibold, design: .rounded))
                             .foregroundStyle(.white)
                             .padding(.horizontal, 22)
                             .frame(height: 36)
@@ -149,7 +149,7 @@ struct HomeView: View {
                         onSelectBowl?()
                     } label: {
                         Text("Choose a bowl")
-                            .font(.system(size: 14, weight: .semibold))
+                            .font(.system(size: 14, weight: .semibold, design: .rounded))
                             .foregroundStyle(.white)
                             .padding(.horizontal, 22)
                             .frame(height: 40)
@@ -171,9 +171,9 @@ struct HomeView: View {
                 Button { showsSessionHistory = true } label: {
                     HStack(spacing: 8) {
                         Text("Last sessions")
-                            .font(.system(size: 24, weight: .bold))
+                            .font(.system(size: 24, weight: .bold, design: .rounded))
                         Image(systemName: "chevron.right")
-                            .font(.system(size: 14, weight: .semibold))
+                            .font(.system(size: 14, weight: .semibold, design: .rounded))
                             .foregroundStyle(AppTheme.secondaryInk)
                     }
                     .foregroundStyle(AppTheme.ink)
@@ -197,17 +197,17 @@ struct HomeView: View {
                             CourseBadge(course: course)
                             VStack(alignment: .leading, spacing: 3) {
                                 Text(course.name)
-                                    .font(.system(size: 18, weight: .semibold))
+                                    .font(.system(size: 18, weight: .semibold, design: .rounded))
                                 if !session.blockDescription.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                                     Text(session.blockDescription)
-                                        .font(.system(size: 14))
+                                        .font(.system(size: 14, design: .rounded))
                                         .foregroundStyle(AppTheme.secondaryInk)
                                         .fixedSize(horizontal: false, vertical: true)
                                 }
                             }
                             Spacer(minLength: 8)
                             Text("+\(session.formattedDuration)")
-                                .font(.system(size: 17, weight: .medium))
+                                .font(.system(size: 17, weight: .medium, design: .rounded))
                                 .foregroundStyle(CourseColor.green.tint)
                                 .fixedSize()
                         }
@@ -243,7 +243,7 @@ struct HomeView: View {
             Group {
             SessionHistoryView()
 
-            }.modifier(FloatingSheet())
+            }.presentationBackground(AppTheme.paper)
         }
         .sheet(item: $selectedSession) { session in
             Group {
@@ -254,13 +254,13 @@ struct HomeView: View {
                                endedAt: session.endedAt, onDiscard: {}, onSave: { _ in },
                                savedSession: session)
 
-            }.modifier(FloatingSheet())
+            }.presentationBackground(AppTheme.paper)
         }
         .sheet(isPresented: $showSettings) {
             Group {
             SettingsView()
 
-            }.modifier(FloatingSheet())
+            }.presentationBackground(AppTheme.paper)
         }
     }
 }
@@ -424,7 +424,7 @@ struct DishLevelBadge: View {
                 .frame(width: 28, height: 28)
                 .rotationEffect(.degrees(45))
             Text("\(level)")
-                .font(.system(size: 15, weight: .bold))
+                .font(.system(size: 15, weight: .bold, design: .rounded))
                 .foregroundStyle(.white)
         }
     }

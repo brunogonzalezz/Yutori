@@ -21,7 +21,7 @@ struct StudySessionActivityWidget: Widget {
                         .frame(width: min(140, geometry.size.width * 0.42), height: 132)
                     VStack(alignment: .center, spacing: 10) {
                         clock(context.state)
-                            .font(.system(size: 48, weight: .bold))
+                            .font(.system(size: 48, weight: .bold, design: .rounded))
                             .multilineTextAlignment(.center)
                             .frame(maxWidth: .infinity)
                             .accessibilityLabel("Elapsed study time")
@@ -56,7 +56,7 @@ struct StudySessionActivityWidget: Widget {
                             .frame(width: 132, height: 100)
                         VStack(spacing: 8) {
                             clock(context.state)
-                                .font(.system(size: 38, weight: .bold))
+                                .font(.system(size: 38, weight: .bold, design: .rounded))
                                 .foregroundStyle(.white)
                                 .multilineTextAlignment(.center)
                                 .frame(maxWidth: .infinity)
@@ -76,7 +76,7 @@ struct StudySessionActivityWidget: Widget {
                     .frame(width: 28, height: 28)
             } compactTrailing: {
                 clock(context.state)
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(.system(size: 15, weight: .semibold, design: .rounded))
                     .foregroundStyle(.white)
                     .multilineTextAlignment(.trailing)
                     .frame(width: 52, height: 28, alignment: .trailing)
@@ -102,7 +102,7 @@ struct StudySessionActivityWidget: Widget {
         return HStack(spacing: spacing ?? (size == 60 ? 24 : 16)) {
             Button(intent: ToggleStudySessionIntent(sessionID: id)) {
                 Image(systemName: paused ? "play.fill" : "pause.fill")
-                    .font(.system(size: size * 0.45, weight: .bold))
+                    .font(.system(size: size * 0.45, weight: .bold, design: .rounded))
                     .frame(width: size, height: size)
                     .background(pauseColor, in: Circle())
                     .contentShape(Circle())
@@ -111,7 +111,7 @@ struct StudySessionActivityWidget: Widget {
             .accessibilityLabel(paused ? "Resume session" : "Pause session")
             Button(intent: FinishStudySessionIntent(sessionID: id)) {
                 Image(systemName: "xmark")
-                    .font(.system(size: size * 0.45, weight: .bold))
+                    .font(.system(size: size * 0.45, weight: .bold, design: .rounded))
                     .frame(width: size, height: size)
                     .background(stopColor, in: Circle())
                     .contentShape(Circle())

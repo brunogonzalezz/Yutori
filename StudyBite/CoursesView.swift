@@ -24,26 +24,33 @@ struct CoursesSettingsSection: View {
         } label: {
             HStack {
                 Text("My Courses")
-                    .font(.system(size: 17))
+                    .font(.system(size: 17, design: .rounded))
                 Spacer()
                 Text("\(store.courses.count)")
-                    .foregroundStyle(AppTheme.secondaryInk)
+                    .foregroundStyle(AppTheme.paper.opacity(0.7))
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.system(size: 14, weight: .semibold, design: .rounded))
             }
+            .foregroundStyle(AppTheme.paper)
             .padding(.horizontal, 24)
             .frame(minHeight: 96)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .background(AppTheme.surface, in: RoundedRectangle(cornerRadius: 38))
+        .background {
+            ZStack {
+                AppTheme.darkSurface
+                CourseIconsMosaic()
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 38))
+        }
         .sheet(isPresented: $showCourses) {
             Group {
             CoursesPage(store: store)
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
 
-            }.modifier(FloatingSheet())
+            }.presentationBackground(AppTheme.paper)
         }
     }
 }
@@ -133,7 +140,7 @@ struct CourseBadge: View {
 
     var body: some View {
         Image(systemName: course.icon)
-            .font(.system(size: 21, weight: .semibold))
+            .font(.system(size: 21, weight: .semibold, design: .rounded))
             .foregroundStyle(course.color.iconTint)
             .frame(width: 44, height: 44)
             .background(course.color.tint, in: Circle())
@@ -190,25 +197,7 @@ struct CourseEditorView: View {
 
 
     // Eight complete rows, grouped by subject.
-    private let icons = [
-        ("book.fill", "Book"), ("books.vertical.fill", "Literature"),
-        ("graduationcap.fill", "Education"), ("studentdesk", "Study"),
-        ("pencil", "Writing"), ("textformat.abc", "Language"),
-        ("number", "Numbers"), ("percent", "Maths"), ("sum", "Algebra"),
-        ("function", "Calculus"), ("ruler.fill", "Geometry"), ("chart.bar.fill", "Statistics"),
-        ("atom", "Science"), ("flask.fill", "Chemistry"), ("testtube.2", "Laboratory"),
-        ("bolt.fill", "Physics"), ("gearshape.fill", "Mechanics"), ("hammer.fill", "Engineering"),
-        ("leaf.fill", "Biology"), ("pawprint.fill", "Zoology"), ("drop.fill", "Water"),
-        ("sun.max.fill", "Weather"), ("moon.stars.fill", "Space"), ("sparkles", "Astronomy"),
-        ("heart.fill", "Health"), ("cross.case.fill", "Medicine"), ("stethoscope", "Nursing"),
-        ("brain.head.profile", "Psychology"), ("figure.run", "Exercise"), ("fork.knife", "Nutrition"),
-        ("globe.europe.africa.fill", "Geography"), ("map.fill", "Maps"), ("clock.fill", "History"),
-        ("building.columns.fill", "Classics"), ("character.bubble.fill", "Conversation"), ("briefcase.fill", "Business"),
-        ("paintpalette.fill", "Art"), ("music.note", "Music"), ("camera.fill", "Photography"),
-        ("film.fill", "Cinema"), ("theatermasks.fill", "Theatre"), ("scissors", "Crafts"),
-        ("desktopcomputer", "Computing"), ("curlybraces", "Programming"), ("network", "Networks"),
-        ("chart.pie.fill", "Data"), ("dollarsign.circle.fill", "Economics"), ("sportscourt.fill", "Sports")
-    ]
+    private let icons = CourseIconCatalog.icons
 
     private var validName: Bool {
         !course.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && course.name.count <= 60
@@ -225,7 +214,7 @@ struct CourseEditorView: View {
                                   prompt: Text(nameExample))
                             .focused($nameFocused)
                             .task(id: animatesNameExample) { await animateNameExamples() }
-                            .font(.system(size: 20, weight: .semibold))
+                            .font(.system(size: 20, weight: .semibold, design: .rounded))
                             .foregroundStyle(AppTheme.ink)
                             .tint(AppTheme.ink)
                             .textInputAutocapitalization(.words)
@@ -286,7 +275,7 @@ struct CourseEditorView: View {
                                 course.icon = icon
                             } label: {
                                 Image(systemName: icon)
-                                    .font(.system(size: 23))
+                                    .font(.system(size: 23, design: .rounded))
                                     .foregroundStyle(course.icon == icon ? Color.white : AppTheme.ink)
                                     .frame(maxWidth: .infinity, minHeight: 48)
                                     .background(course.icon == icon ? course.color.tint : Color.clear, in: RoundedRectangle(cornerRadius: 12))
@@ -377,7 +366,7 @@ struct CourseEditorView: View {
                 }
             } label: {
                 Text(store.courses.contains(where: { $0.id == course.id }) ? "Save changes" : "Create course")
-                    .font(.system(size: 17, weight: .semibold))
+                    .font(.system(size: 17, weight: .semibold, design: .rounded))
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity, minHeight: 50)
                     .background(AppTheme.ink, in: Capsule())

@@ -25,7 +25,7 @@ struct SessionCourseView: View {
                             HStack(spacing: 12) {
                                 CourseBadge(course: course)
                                 Text(course.name)
-                                    .font(.system(size: 16, weight: .medium))
+                                    .font(.system(size: 16, weight: .medium, design: .rounded))
                                     .multilineTextAlignment(.leading)
                                 Spacer()
                             }
@@ -62,7 +62,7 @@ struct SessionCourseView: View {
                 onStart(selectedCourse)
             } label: {
                 Text("Start session")
-                    .font(.system(size: 17, weight: .semibold))
+                    .font(.system(size: 17, weight: .semibold, design: .rounded))
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity, minHeight: 48)
                     .background(AppTheme.ink.opacity(selectedCourse == nil ? 0.3 : 1), in: Capsule())
@@ -91,7 +91,7 @@ struct SessionCourseView: View {
             }
             .presentationDetents([.large])
 
-            }.modifier(FloatingSheet())
+            }.presentationBackground(AppTheme.paper)
         }
     }
 }

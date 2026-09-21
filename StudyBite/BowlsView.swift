@@ -19,16 +19,16 @@ struct BowlsView: View {
                     VStack(alignment: .leading, spacing: 8) {
                         HStack(alignment: .firstTextBaseline) {
                             Text("My bowls")
-                                .font(.system(size: 28, weight: .bold))
+                                .font(.system(size: 28, weight: .bold, design: .rounded))
                                 .foregroundStyle(AppTheme.ink)
                             Spacer()
                             Text(store.collectionLoadFailed ? "— / 21" : "\(store.collectedKinds.count) / 21")
-                                .font(.system(size: 17, weight: .semibold))
+                                .font(.system(size: 17, weight: .semibold, design: .rounded))
                                 .monospacedDigit()
                                 .foregroundStyle(AppTheme.secondaryInk)
                         }
-                        Text("Study. Cook. Discover.")
-                            .font(.system(size: 14))
+                        Text("\(store.unlockedBowlCount) unlocked · \(store.collectedKinds.count) collected")
+                            .font(.system(size: 14, design: .rounded))
                             .foregroundStyle(AppTheme.secondaryInk)
                     }
 
@@ -36,7 +36,7 @@ struct BowlsView: View {
                         Text("Couldn't load your collection. Please reopen the app and try again.")
                             .foregroundStyle(AppTheme.secondaryInk)
                     } else {
-                        BowlCollectionView(collectedBowls: store.collectedBowls)
+                        BowlCollectionView(store: store)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -47,88 +47,117 @@ struct BowlsView: View {
             .toolbar(.hidden, for: .navigationBar)
             .sheet(isPresented: $showSettings) {
             Group { SettingsView()
-            }.modifier(FloatingSheet())
+            }.presentationBackground(AppTheme.paper)
         }
         }
     }
 }
 
 private struct BowlCollectionView: View {
-    let collectedBowls: [CollectedBowl]
-
-    private var completionCounts: [BowlKind: Int] {
-        Dictionary(grouping: collectedBowls, by: \.bowlKind).mapValues { $0.count }
-    }
-
-    // Future dishes are catalogue placeholders until their artwork is available.
-    private let dishes = [
-        "Katsu Ramen", "Teriyaki Bowl", "Tofu Curry", "Miso Ramen",
-        "Shoyu Ramen", "Spicy Ramen", "Chicken Curry", "Katsu Curry",
-        "Salmon Bowl", "Tuna Bowl", "Veggie Bowl", "Beef Bowl",
-        "Tempura Bowl", "Bibimbap", "Kimchi Rice", "Fried Rice",
-        "Udon Bowl", "Soba Bowl", "Gyoza Bowl", "Mushroom Bowl", "Unagi Bowl"
-    ]
+    let store: StudySessionStore
+    private let columns = Array(repeating: GridItem(.flexible(), spacing: 10), count: 3)
 
     var body: some View {
-        let counts = completionCounts
-        VStack(alignment: .leading, spacing: 20) {
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 3), spacing: 18) {
-                ForEach(dishes.indices, id: \.self) { index in
-                    let kind: BowlKind = index == 1 ? .teriyaki : .katsuRamen
-                    let count = index < 2 ? counts[kind, default: 0] : 0
-                    let unlocked = count > 0
-                    VStack(spacing: 7) {
-                        GeometryReader { geometry in
-                            let width = max(0, min(116, geometry.size.width - 12))
-                            ZStack {
-                                if unlocked {
-                                    DishArtworkView(level: 5, availableWidth: width + 48, preferredWidth: width, kind: kind)
-                                } else {
-                                    AppTheme.muted
-                                        .frame(width: width, height: width)
-                                        .mask {
-                                            DishArtworkView(level: 5, availableWidth: width + 48, preferredWidth: width, kind: kind)
-                                        }
-                                }
-                            }
-                            .frame(width: geometry.size.width, height: geometry.size.height)
+        let counts = Dictionary(grouping: store.collectedBowls, by: \.bowlKind).mapValues { $0.count }
+        VStack(spacing: 18) {
+            ForEach(0..<(BowlCatalog.entries.count / 3), id: \.self) { group in
+                VStack(spacing: 10) {
+                    LazyVGrid(columns: columns, spacing: 18) {
+                        ForEach(Array(BowlCatalog.entries[(group * 3)..<(group * 3 + 3)])) { entry in
+                            tile(entry, count: entry.kind.map { counts[$0, default: 0] } ?? 0)
                         }
-                        .aspectRatio(1, contentMode: .fit)
-                        .background(unlocked ? AppTheme.surface : AppTheme.surface.opacity(0.5),
-                                    in: RoundedRectangle(cornerRadius: 16))
-                        .overlay(alignment: .bottomTrailing) {
-                            if count > 1 {
-                                Text("×\(count)")
-                                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                                    .monospacedDigit()
-                                    .foregroundStyle(AppTheme.paper)
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 4)
-                                    .background(AppTheme.ink, in: Capsule())
-                                    .overlay {
-                                        Capsule().strokeBorder(AppTheme.paper, lineWidth: 1.5)
-                                    }
-                                    .padding(6)
-                            }
-                        }
-
-                        Text(String(format: "%03d", index + 1))
-                            .font(.system(size: 10, weight: .medium, design: .monospaced))
-                            .foregroundStyle(AppTheme.secondaryInk.opacity(0.75))
-                        Text(dishes[index])
-                            .font(.system(size: 11, weight: unlocked ? .semibold : .medium))
-                            .foregroundStyle(unlocked ? AppTheme.ink : AppTheme.secondaryInk)
-                            .multilineTextAlignment(.center)
-                            .lineLimit(2)
-                            .frame(height: 30, alignment: .top)
                     }
-                    .accessibilityElement(children: .ignore)
-                    .accessibilityLabel("\(dishes[index]), \(unlocked ? "collected" : "not collected")")
-                    .accessibilityValue(unlocked ? "Completed \(count) times" : "")
+                    if group * 3 == store.unlockedBowlCount, let target = store.nextBowlMilestone {
+                        milestone(target: target)
+                    }
                 }
             }
         }
+    }
 
+    private func milestone(target: Int) -> some View {
+        let progress = min(1, max(0, store.bowlUnlockSeconds / (Double(target) * 3600)))
+        return VStack(spacing: 8) {
+            HStack {
+                Label("Unlock these 3 bowls", systemImage: "lock.fill")
+                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                    .foregroundStyle(AppTheme.secondaryInk)
+                Spacer(minLength: 8)
+                Text("\(Int(store.bowlUnlockSeconds / 3600)) / \(target)h")
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundStyle(AppTheme.ink)
+            }
+            GeometryReader { geometry in
+                Capsule()
+                    .fill(AppTheme.surface)
+                    .overlay(alignment: .leading) {
+                        Capsule()
+                            .fill(AppTheme.ink)
+                            .frame(width: geometry.size.width * progress)
+                    }
+            }
+            .frame(height: 6)
+        }
+        .padding(.horizontal, 4)
+        .padding(.bottom, 4)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Next three bowls unlock progress")
+        .accessibilityValue("\(Int(store.bowlUnlockSeconds / 3600)) of \(target) hours")
+    }
+
+    private func tile(_ entry: BowlCatalogEntry, count: Int) -> some View {
+        let unlocked = store.isBowlUnlocked(entry)
+        let collected = count > 0
+        return VStack(spacing: 7) {
+            GeometryReader { geometry in
+                let width = max(0, min(116, geometry.size.width - 12))
+                ZStack {
+                    let kind = entry.kind ?? .katsuRamen
+                    if collected {
+                        DishArtworkView(level: 5, availableWidth: width + 48, preferredWidth: width, kind: kind)
+                    } else {
+                        AppTheme.muted
+                            .frame(width: width, height: width)
+                            .mask {
+                                DishArtworkView(level: 5, availableWidth: width + 48, preferredWidth: width, kind: kind)
+                            }
+                    }
+                    if !unlocked {
+                        Image(systemName: "lock.fill")
+                            .font(.system(size: 18, weight: .semibold, design: .rounded))
+                            .foregroundStyle(AppTheme.ink)
+                            .padding(8)
+                            .background(AppTheme.paper, in: Circle())
+                    }
+                }
+                .frame(width: geometry.size.width, height: geometry.size.height)
+            }
+            .aspectRatio(1, contentMode: .fit)
+            .background(collected ? AppTheme.surface : AppTheme.surface.opacity(0.5), in: RoundedRectangle(cornerRadius: 16))
+            .overlay(alignment: .bottomTrailing) {
+                if count > 1 {
+                    Text("×\(count)")
+                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                        .foregroundStyle(AppTheme.paper)
+                        .padding(.horizontal, 8).padding(.vertical, 4)
+                        .background(AppTheme.ink, in: Capsule())
+                        .overlay { Capsule().strokeBorder(AppTheme.paper, lineWidth: 1.5) }
+                        .padding(6)
+                }
+            }
+            Text(String(format: "%03d", entry.id + 1))
+                .font(.system(size: 10, weight: .medium, design: .rounded))
+                .foregroundStyle(AppTheme.secondaryInk.opacity(0.75))
+            Text(entry.name)
+                .font(.system(size: 11, weight: collected ? .semibold : .medium, design: .rounded))
+                .foregroundStyle(collected ? AppTheme.ink : AppTheme.secondaryInk)
+                .multilineTextAlignment(.center).lineLimit(2)
+                .frame(height: 30, alignment: .top)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(entry.name), \(collected ? "collected" : (unlocked ? "unlocked" : "locked"))")
+        .accessibilityValue(collected ? "Completed \(count) times" : (unlocked && entry.kind == nil ? "Coming soon" : ""))
     }
 }
 
