@@ -24,13 +24,16 @@ struct StatsView: View {
                     .padding(.bottom, 16)
 
                 Text("Your study journey")
-                    .font(.system(size: 28, weight: .bold))
+                    .font(.system(size: 30, weight: .bold))
                     .foregroundStyle(AppTheme.ink)
                     .padding(.horizontal, 8)
-                    .padding(.bottom, 18)
+                    .padding(.bottom, 24)
 
                 weeklyMetrics(stats)
-                    .padding(.bottom, 28)
+                    .padding(.bottom, 26)
+
+                sectionDivider
+                    .padding(.bottom, 24)
 
                 if sessionStore.loadFailed {
                     Text("Couldn't load your sessions. Please reopen the app and try again.")
@@ -40,7 +43,7 @@ struct StatsView: View {
                 }
 
                 Text("Study activity")
-                    .font(.system(size: 28, weight: .bold))
+                    .font(.system(size: 24, weight: .bold))
                     .lineLimit(1)
                     .minimumScaleFactor(0.9)
                     .padding(.leading, 8)
@@ -49,11 +52,14 @@ struct StatsView: View {
                 WeeklySummaryChart(courses: CourseWeeklySeries.series(from: stats), days: stats.days)
                     .frame(height: 240)
 
+                sectionDivider
+                    .padding(.top, 28)
+                    .padding(.bottom, 24)
+
                 StudyCalendarView(sessions: sessions, courses: courses,
                                   bowls: sessionStore.collectedBowls,
                                   now: testClock.date(for: .now))
                     .padding(.horizontal, 8)
-                    .padding(.top, 30)
             }
             .padding(.horizontal, 16)
             .padding(.bottom, 100)
@@ -63,6 +69,14 @@ struct StatsView: View {
         .sheet(isPresented: $showSettings) {
             SettingsView()
         }
+    }
+
+    private var sectionDivider: some View {
+        Rectangle()
+            .fill(AppTheme.ink.opacity(0.10))
+            .frame(height: 1)
+            .padding(.horizontal, 8)
+            .accessibilityHidden(true)
     }
 
     private var profileButton: some View {
@@ -145,13 +159,12 @@ private struct MetricView: View {
     let value: String
     let label: String
     var suffix: String = ""
-    @ScaledMetric(relativeTo: .largeTitle) private var numberSize = 46.0
-    @ScaledMetric(relativeTo: .subheadline) private var labelSize = 17.0
+    @ScaledMetric(relativeTo: .largeTitle) private var numberSize = 40.0
+    @ScaledMetric(relativeTo: .subheadline) private var labelSize = 16.0
 
     var body: some View {
         VStack(spacing: 1) {
-            (Text(value).font(.system(size: numberSize, weight: .bold))
-             + Text(suffix).font(.system(size: numberSize * 0.80, weight: .bold)))
+            Text("\(Text(value).font(.system(size: numberSize, weight: .bold)))\(Text(suffix).font(.system(size: numberSize * 0.80, weight: .bold)))")
                 .foregroundStyle(AppTheme.ink)
                 .monospacedDigit()
                 .lineLimit(1)

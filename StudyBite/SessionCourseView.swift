@@ -17,7 +17,7 @@ struct SessionCourseView: View {
                     Text("Couldn't load your courses. Please reopen the app.")
                         .foregroundStyle(AppTheme.secondaryInk)
                 } else if store.courses.isEmpty {
-                    Text("Create a course for your first study block.")
+                    Text("Create a course for your first study session.")
                         .foregroundStyle(AppTheme.secondaryInk)
                 } else {
                     ForEach(store.courses) { course in
@@ -28,13 +28,16 @@ struct SessionCourseView: View {
                                     .font(.system(size: 16, weight: .medium))
                                     .multilineTextAlignment(.leading)
                                 Spacer()
-                                Image(systemName: selectedID == course.id ? "checkmark.circle.fill" : "circle")
-                                    .foregroundStyle(selectedID == course.id ? AppTheme.ink : AppTheme.secondaryInk.opacity(0.4))
                             }
                             .foregroundStyle(AppTheme.ink)
                             .padding(12)
                             .frame(maxWidth: .infinity, minHeight: 66)
                             .background(AppTheme.surface, in: RoundedRectangle(cornerRadius: 18))
+                            .overlay {
+                                RoundedRectangle(cornerRadius: 18)
+                                    .strokeBorder(selectedID == course.id ? AppTheme.ink : AppTheme.ink.opacity(0.10),
+                                                  lineWidth: selectedID == course.id ? 2 : 1)
+                            }
                             .contentShape(RoundedRectangle(cornerRadius: 18))
                         }
                         .buttonStyle(.plain)
@@ -43,9 +46,10 @@ struct SessionCourseView: View {
                 }
                 if !store.loadFailed {
                     Button("Create a course", systemImage: "plus") { showCourses = true }
-                        .font(.subheadline)
+                        .font(.subheadline.weight(.semibold))
                         .tint(AppTheme.ink)
                         .padding(.vertical, 12)
+                        .frame(maxWidth: .infinity, alignment: .center)
                 }
             }
             .padding(24)
@@ -57,7 +61,7 @@ struct SessionCourseView: View {
                 starting = true
                 onStart(selectedCourse)
             } label: {
-                Text("Start block")
+                Text("Start session")
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity, minHeight: 48)
@@ -79,7 +83,13 @@ struct SessionCourseView: View {
             }
         }
         .sheet(isPresented: $showCourses) {
-            CoursesPage(store: store).presentationDetents([.large])
+            NavigationStack {
+                CourseEditorView(course: StudyCourse(name: ""), store: store, onSaved: { course in
+                    selectedID = course.id
+                }, onDeleted: {})
+            }
+            .presentationDetents([.large])
+            .presentationBackground(AppTheme.paper)
         }
     }
 }

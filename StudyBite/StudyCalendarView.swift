@@ -32,7 +32,7 @@ struct StudyCalendarView: View {
         VStack(alignment: .leading, spacing: 18) {
             HStack(alignment: .firstTextBaseline) {
                 Text("Calendar")
-                    .font(.system(size: 28, weight: .bold))
+                    .font(.system(size: 24, weight: .bold))
                     .foregroundStyle(AppTheme.ink)
                 Spacer()
                 Text(now, format: .dateTime.month(.wide).year())

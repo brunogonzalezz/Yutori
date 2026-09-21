@@ -20,7 +20,6 @@ struct SettingsView: View {
     @State private var feedbackError = false
     @State private var nameFrame: CGRect = .zero
     @State private var selectedLanguage = "English"
-    @State private var selectedAppearance = "Light"
     @State private var confirmReset = false
     @State private var isResetting = false
 
@@ -167,14 +166,19 @@ struct SettingsView: View {
                                 SettingsAvatar()
                                     .foregroundStyle(option.color)
                                     .frame(width: 84, height: 84)
-                                    .background(option.color.opacity(0.08), in: RoundedRectangle(cornerRadius: 32))
+                                    .background(option.color.opacity(0.15), in: RoundedRectangle(cornerRadius: 32))
                                     .overlay(alignment: .topTrailing) {
-                                        if avatarColor == option.name && photoData.isEmpty {
+                                        if ProfileAvatarView.updatedColorName(avatarColor) == option.name && photoData.isEmpty {
                                             Image(systemName: "checkmark.circle.fill")
                                                 .foregroundStyle(option.color)
                                         }
                                     }
-                                Text(option.name).font(.subheadline).foregroundStyle(AppTheme.ink)
+                                Text(option.name)
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundStyle(AppTheme.ink)
+                                    .multilineTextAlignment(.center)
+                                    .lineLimit(2)
+                                    .frame(height: 32)
                             }
                         }
                         .buttonStyle(.plain)
@@ -275,16 +279,6 @@ struct SettingsView: View {
                 }
                 .buttonStyle(.plain)
                 settingsDivider
-                Menu {
-                    Picker("Appearance", selection: $selectedAppearance) {
-                        Label("Light", systemImage: "sun.max").tag("Light")
-                        Label("Dark", systemImage: "moon").tag("Dark")
-                    }
-                } label: {
-                    settingsRow("Appearance", icon: "circle.lefthalf.filled", selection: selectedAppearance)
-                }
-                .buttonStyle(.plain)
-                settingsDivider
                 Button {
                     isEditingName = false
                     showAppIcons = true
@@ -364,9 +358,19 @@ struct SettingsView: View {
                     .font(.system(size: 11))
                     .foregroundStyle(AppTheme.secondaryInk)
                 Link(destination: URL(string: "https://x.com/brunogonzalez__")!) {
-                    Text("Bruno Gonzalez")
-                        .font(.system(size: 19, weight: .semibold))
-                        .foregroundStyle(AppTheme.ink)
+                    HStack(spacing: 6) {
+                        Text("Bruno Gonzalez")
+                            .font(.system(size: 19, weight: .semibold))
+                        Text("𝕏")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(AppTheme.ink)
+                            .frame(width: 24, height: 24)
+                            .background(AppTheme.surface, in: RoundedRectangle(cornerRadius: 7))
+                            .accessibilityHidden(true)
+                    }
+                    .foregroundStyle(AppTheme.ink)
+                    .padding(.vertical, 6)
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .accessibilityHint("Opens Bruno Gonzalez's profile on X")

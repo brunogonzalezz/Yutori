@@ -1,6 +1,6 @@
 import Foundation
 
-struct StudyStopwatch {
+struct StudyStopwatch: Codable {
     private(set) var accumulated: TimeInterval = 0
     private(set) var runningSince: Date?
     var isRunning: Bool { runningSince != nil }
@@ -17,6 +17,12 @@ struct StudyStopwatch {
     mutating func pause(at date: Date) {
         accumulated = elapsed(at: date)
         runningSince = nil
+    }
+
+    // Temporary session testing control; preserves running/paused state.
+    mutating func advanceForTesting(by seconds: TimeInterval) {
+        guard seconds.isFinite, seconds > 0 else { return }
+        accumulated += seconds
     }
 
     func formattedElapsed(at date: Date) -> String {

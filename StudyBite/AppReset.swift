@@ -7,6 +7,7 @@ final class AppReset {
     private(set) var revision = UUID()
 
     func reset() {
+        ActiveStudySession.shared.clear()
         // Clear this app's preferences only, including profile photos and old test data.
         if let bundleID = Bundle.main.bundleIdentifier {
             UserDefaults.standard.removePersistentDomain(forName: bundleID)

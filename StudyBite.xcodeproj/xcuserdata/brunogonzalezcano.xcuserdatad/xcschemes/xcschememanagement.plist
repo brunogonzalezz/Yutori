@@ -6,8 +6,30 @@
 	<dict>
 		<key>StudyBite.xcscheme_^#shared#^_</key>
 		<dict>
+			<key>isShown</key>
+			<true/>
 			<key>orderHint</key>
 			<integer>0</integer>
+		</dict>
+		<key>StudyBiteActivity.xcscheme_^#shared#^_</key>
+		<dict>
+			<key>isShown</key>
+			<false/>
+			<key>orderHint</key>
+			<integer>1</integer>
+		</dict>
+	</dict>
+	<key>SuppressBuildableAutocreation</key>
+	<dict>
+		<key>36EA6F223049D5FE00A3A8DC</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>C5D51329197A4D9894899F58</key>
+		<dict>
+			<key>primary</key>
+			<true/>
 		</dict>
 	</dict>
 </dict>

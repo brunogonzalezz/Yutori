@@ -140,6 +140,9 @@ struct TabBarView: View {
             }
         }
         .background(CollectionTabAnchor { tabAnchor = $0 })
+        .onAppear { restoreActiveSession() }
+        .onChange(of: ActiveStudySession.shared.id) { _, _ in restoreActiveSession() }
+
         .allowsHitTesting(!returningHome && collectingFrame == nil)
         .sheet(isPresented: $showStartStudy, onDismiss: openPendingTimer) {
             StartStudyView { course in
@@ -152,6 +155,12 @@ struct TabBarView: View {
             .presentationCornerRadius(32)
         }
         }
+    }
+
+    private func restoreActiveSession() {
+        guard !showStudyTimer, let course = ActiveStudySession.shared.course else { return }
+        sessionCourse = course
+        showStudyTimer = true
     }
 
     private func bowlsTabCenter() -> CGPoint? {

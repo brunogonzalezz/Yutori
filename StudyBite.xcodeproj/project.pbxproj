@@ -32,6 +32,9 @@
 		36EA6F1A3049D5FE00A3A8DC = {
 			isa = PBXGroup;
 			children = (
+				98AB38042B5E4A1CBF965EE6,
+				1868CDE9D0D64684A8E05BDC,
+
 				36EA6F253049D5FE00A3A8DC /* StudyBite */,
 				36EA6F243049D5FE00A3A8DC /* Products */,
 			);
@@ -40,6 +43,8 @@
 		36EA6F243049D5FE00A3A8DC /* Products */ = {
 			isa = PBXGroup;
 			children = (
+				FBA132CCB6284C59B15FBA18,
+
 				36EA6F233049D5FE00A3A8DC /* StudyBite.app */,
 			);
 			name = Products;
@@ -52,6 +57,8 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 36EA6F2E3049D5FF00A3A8DC /* Build configuration list for PBXNativeTarget "StudyBite" */;
 			buildPhases = (
+				406EF5309AC840F5849207BA,
+
 				36EA6F1F3049D5FE00A3A8DC /* Sources */,
 				36EA6F203049D5FE00A3A8DC /* Frameworks */,
 				36EA6F213049D5FE00A3A8DC /* Resources */,
@@ -59,8 +66,12 @@
 			buildRules = (
 			);
 			dependencies = (
+				82B60CD4F0894DD2B9400009,
+
 			);
 			fileSystemSynchronizedGroups = (
+				98AB38042B5E4A1CBF965EE6,
+
 				36EA6F253049D5FE00A3A8DC /* StudyBite */,
 			);
 			name = StudyBite;
@@ -99,6 +110,8 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
+				C5D51329197A4D9894899F58,
+
 				36EA6F223049D5FE00A3A8DC /* StudyBite */,
 			);
 		};
@@ -256,6 +269,7 @@
 				DEVELOPMENT_TEAM = L776JV66CV;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -288,6 +302,7 @@
 				DEVELOPMENT_TEAM = L776JV66CV;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -332,6 +347,21 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+		FBA132CCB6284C59B15FBA18 = { "isa" = "PBXFileReference"; "explicitFileType" = "wrapper.app-extension"; "includeInIndex" = "0"; "path" = "StudyBiteActivity.appex"; "sourceTree" = "BUILT_PRODUCTS_DIR"; };
+		98AB38042B5E4A1CBF965EE6 = { "isa" = "PBXFileSystemSynchronizedRootGroup"; "path" = "StudyActivityShared"; "sourceTree" = "<group>"; };
+		1868CDE9D0D64684A8E05BDC = { "isa" = "PBXFileSystemSynchronizedRootGroup"; "path" = "StudyBiteActivity"; "sourceTree" = "<group>"; "exceptions" = ("861B6C2F46A543DAA3260D6A"); };
+		861B6C2F46A543DAA3260D6A = { "isa" = "PBXFileSystemSynchronizedBuildFileExceptionSet"; "membershipExceptions" = ("Info.plist"); "target" = "C5D51329197A4D9894899F58"; };
+		C40E850605B5460B85B7466E = { "isa" = "XCConfigurationList"; "buildConfigurations" = ("655A2070234947C4A52877F1","CB98E2CBE2EA44039FBF1993"); "defaultConfigurationIsVisible" = "0"; "defaultConfigurationName" = "Release"; };
+		81A97D52D472436C8E89ADBD = { "isa" = "PBXContainerItemProxy"; "containerPortal" = "36EA6F1B3049D5FE00A3A8DC"; "proxyType" = "1"; "remoteGlobalIDString" = "C5D51329197A4D9894899F58"; "remoteInfo" = "StudyBiteActivity"; };
+		82B60CD4F0894DD2B9400009 = { "isa" = "PBXTargetDependency"; "target" = "C5D51329197A4D9894899F58"; "targetProxy" = "81A97D52D472436C8E89ADBD"; };
+		A3D340E57FBC43CC8A7CD0C2 = { "isa" = "PBXBuildFile"; "fileRef" = "FBA132CCB6284C59B15FBA18"; "settings" = { "ATTRIBUTES" = ("RemoveHeadersOnCopy"); }; };
+		406EF5309AC840F5849207BA = { "isa" = "PBXCopyFilesBuildPhase"; "buildActionMask" = "2147483647"; "dstPath" = ""; "dstSubfolderSpec" = "13"; "files" = ("A3D340E57FBC43CC8A7CD0C2"); "name" = "Embed App Extensions"; "runOnlyForDeploymentPostprocessing" = "0"; };
+		F5B056381520479AB4A7AE03 = { "isa" = "PBXSourcesBuildPhase"; "buildActionMask" = "2147483647"; "files" = (); "runOnlyForDeploymentPostprocessing" = "0"; };
+		F19EE82A0F1A4363AE79340E = { "isa" = "PBXFrameworksBuildPhase"; "buildActionMask" = "2147483647"; "files" = (); "runOnlyForDeploymentPostprocessing" = "0"; };
+		CE257F7B760240BABEA8880A = { "isa" = "PBXResourcesBuildPhase"; "buildActionMask" = "2147483647"; "files" = (); "runOnlyForDeploymentPostprocessing" = "0"; };
+		655A2070234947C4A52877F1 = { "isa" = "XCBuildConfiguration"; "name" = "Debug"; "buildSettings" = { "APPLICATION_EXTENSION_API_ONLY" = "YES"; "CODE_SIGN_STYLE" = "Automatic"; "CURRENT_PROJECT_VERSION" = "1"; "DEVELOPMENT_TEAM" = "L776JV66CV"; "GENERATE_INFOPLIST_FILE" = "YES"; "INFOPLIST_FILE" = "StudyBiteActivity/Info.plist"; "INFOPLIST_KEY_CFBundleDisplayName" = "StudyBite Session"; "IPHONEOS_DEPLOYMENT_TARGET" = "17.0"; "MARKETING_VERSION" = "1.0"; "PRODUCT_BUNDLE_IDENTIFIER" = "co.brunogonzalez.StudyBite.activity"; "PRODUCT_NAME" = "$(TARGET_NAME)"; "SDKROOT" = "iphoneos"; "SKIP_INSTALL" = "YES"; "SWIFT_VERSION" = "5.0"; "SWIFT_ACTIVE_COMPILATION_CONDITIONS" = "$(inherited) WIDGET_EXTENSION"; "TARGETED_DEVICE_FAMILY" = "1,2"; "LD_RUNPATH_SEARCH_PATHS" = ("$(inherited)","@executable_path/Frameworks","@executable_path/../../Frameworks"); }; };
+		CB98E2CBE2EA44039FBF1993 = { "isa" = "XCBuildConfiguration"; "name" = "Release"; "buildSettings" = { "APPLICATION_EXTENSION_API_ONLY" = "YES"; "CODE_SIGN_STYLE" = "Automatic"; "CURRENT_PROJECT_VERSION" = "1"; "DEVELOPMENT_TEAM" = "L776JV66CV"; "GENERATE_INFOPLIST_FILE" = "YES"; "INFOPLIST_FILE" = "StudyBiteActivity/Info.plist"; "INFOPLIST_KEY_CFBundleDisplayName" = "StudyBite Session"; "IPHONEOS_DEPLOYMENT_TARGET" = "17.0"; "MARKETING_VERSION" = "1.0"; "PRODUCT_BUNDLE_IDENTIFIER" = "co.brunogonzalez.StudyBite.activity"; "PRODUCT_NAME" = "$(TARGET_NAME)"; "SDKROOT" = "iphoneos"; "SKIP_INSTALL" = "YES"; "SWIFT_VERSION" = "5.0"; "SWIFT_ACTIVE_COMPILATION_CONDITIONS" = "$(inherited) WIDGET_EXTENSION"; "TARGETED_DEVICE_FAMILY" = "1,2"; "LD_RUNPATH_SEARCH_PATHS" = ("$(inherited)","@executable_path/Frameworks","@executable_path/../../Frameworks"); }; };
+		C5D51329197A4D9894899F58 = { "isa" = "PBXNativeTarget"; "buildConfigurationList" = "C40E850605B5460B85B7466E"; "buildPhases" = ("F5B056381520479AB4A7AE03","F19EE82A0F1A4363AE79340E","CE257F7B760240BABEA8880A"); "buildRules" = (); "dependencies" = (); "fileSystemSynchronizedGroups" = ("98AB38042B5E4A1CBF965EE6","1868CDE9D0D64684A8E05BDC"); "name" = "StudyBiteActivity"; "productName" = "StudyBiteActivity"; "productReference" = "FBA132CCB6284C59B15FBA18"; "productType" = "com.apple.product-type.app-extension"; };
 	};
 	rootObject = 36EA6F1B3049D5FE00A3A8DC /* Project object */;
 }

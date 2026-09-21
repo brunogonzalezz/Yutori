@@ -7,22 +7,26 @@ struct ProfileAvatarView: View {
     @AppStorage("profilePhoto") private var photoData = Data()
 
     static let colors: [(name: String, color: Color)] = [
-        ("Teal", .teal),
-        ("Green", .green),
-        ("Yellow", .yellow),
-        ("Orange", Color(red: 0.90, green: 0.33, blue: 0.14)),
-        ("Red", .red),
-        ("Purple", .purple)
+        ("Jade Teal", CourseColor.teal.tint),
+        ("Matcha Green", CourseColor.green.tint),
+        ("Golden Yellow", CourseColor.lemon.tint),
+        ("Persimmon Orange", CourseColor.orange.tint),
+        ("Torii Vermilion", CourseColor.red.tint),
+        ("Plum Purple", CourseColor.purple.tint)
     ]
 
     private var color: Color {
-        Self.colors.first { $0.name == Self.updatedColorName(avatarColor) }?.color ?? .teal
+        Self.colors.first { $0.name == Self.updatedColorName(avatarColor) }?.color ?? CourseColor.teal.tint
     }
 
     static func updatedColorName(_ name: String) -> String {
         switch name {
-        case "Blue": return "Yellow"
-        case "Pink": return "Red"
+        case "Teal": return "Jade Teal"
+        case "Green": return "Matcha Green"
+        case "Blue", "Yellow": return "Golden Yellow"
+        case "Orange": return "Persimmon Orange"
+        case "Pink", "Red": return "Torii Vermilion"
+        case "Purple": return "Plum Purple"
         default: return name
         }
     }
@@ -34,7 +38,7 @@ struct ProfileAvatarView: View {
             } else {
                 SettingsAvatar()
                     .foregroundStyle(color)
-                    .background(color.opacity(0.08))
+                    .background(color.opacity(0.15))
             }
         }
         .frame(width: size, height: size)

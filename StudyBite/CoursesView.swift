@@ -138,10 +138,11 @@ struct CourseBadge: View {
     }
 }
 
-private struct CourseEditorView: View {
+struct CourseEditorView: View {
     @Environment(\.dismiss) private var dismiss
     @State var course: StudyCourse
     let store: CourseStore
+    var onSaved: ((StudyCourse) -> Void)? = nil
     let onDeleted: () -> Void
     private enum EditorAlert: String, Identifiable {
         case confirmDelete, deleteFailed, saveFailed
@@ -149,6 +150,41 @@ private struct CourseEditorView: View {
     }
     @State private var activeAlert: EditorAlert?
     @State private var preparedColor = false
+    @State private var nameExample = "Maths"
+    @FocusState private var nameFocused: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.scenePhase) private var scenePhase
+
+    private var animatesNameExample: Bool {
+        course.name.isEmpty && !nameFocused && !reduceMotion && scenePhase == .active
+    }
+
+    private func animateNameExamples() async {
+        guard animatesNameExample else { return }
+        let examples = ["Maths", "Science", "History", "Biology", "Art", "Physics", "English"]
+        do {
+            while !Task.isCancelled {
+                for example in examples {
+                    nameExample = ""
+                    for letter in example {
+                        try Task.checkCancellation()
+                        nameExample.append(letter)
+                        try await Task.sleep(for: .milliseconds(110))
+                    }
+                    try await Task.sleep(for: .seconds(1.8))
+                    while !nameExample.isEmpty {
+                        try Task.checkCancellation()
+                        nameExample.removeLast()
+                        try await Task.sleep(for: .milliseconds(55))
+                    }
+                    try await Task.sleep(for: .milliseconds(250))
+                }
+            }
+        } catch {
+            nameExample = "Maths"
+        }
+    }
+
 
     // Eight complete rows, grouped by subject.
     private let icons = [
@@ -179,23 +215,27 @@ private struct CourseEditorView: View {
         Group {
             VStack(spacing: 0) {
             Form {
-                Section {
-                    HStack(spacing: 12) {
+                Section("Course name") {
+                    HStack(spacing: 14) {
                         CourseBadge(course: course)
-                        Text(course.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Your course" : course.name)
-                            .font(.headline)
+                        TextField("Course name", text: $course.name,
+                                  prompt: Text(nameExample))
+                            .focused($nameFocused)
+                            .task(id: animatesNameExample) { await animateNameExamples() }
+                            .font(.system(size: 20, weight: .semibold))
+                            .foregroundStyle(AppTheme.ink)
+                            .tint(AppTheme.ink)
+                            .textInputAutocapitalization(.words)
+                            .submitLabel(.done)
+                            .accessibilityLabel("Course name")
+                            .onChange(of: course.name) { _, value in
+                                if value.count > 60 { course.name = String(value.prefix(60)) }
+                            }
                     }
+                    .padding(.vertical, 8)
                 }
                 .listRowBackground(AppTheme.surface)
-                Section("Name") {
-                    TextField("Course name", text: $course.name)
-                        .textInputAutocapitalization(.words)
-                        .onChange(of: course.name) { _, value in
-                            if value.count > 60 { course.name = String(value.prefix(60)) }
-                        }
-                }
-                .listRowBackground(AppTheme.surface)
-                Section("Color") {
+                Section("Choose a color") {
                     LazyVGrid(columns: Array(repeating: GridItem(.flexible(minimum: 0), spacing: 4), count: 6), spacing: 12) {
                         ForEach(CourseColor.selectable, id: \.self) { color in
                             let available = store.isColorAvailable(color, for: course.id)
@@ -236,7 +276,7 @@ private struct CourseEditorView: View {
                     }
                 }
                 .listRowBackground(AppTheme.surface)
-                Section("Icon") {
+                Section("Choose an icon") {
                     LazyVGrid(columns: Array(repeating: GridItem(.flexible(minimum: 0), spacing: 4), count: 6), spacing: 12) {
                         ForEach(icons, id: \.0) { icon, name in
                             Button {
@@ -320,18 +360,32 @@ private struct CourseEditorView: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
                 }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
-                        do {
-                            try store.save(course)
-                            dismiss()
-                        } catch {
-                            activeAlert = .saveFailed
-                        }
-                    }
-                    .disabled(!validName || !store.isColorAvailable(course.color, for: course.id))
-                }
+
             }
+        }
+        .safeAreaInset(edge: .bottom) {
+            Button {
+                do {
+                    try store.save(course)
+                    onSaved?(course)
+                    dismiss()
+                } catch {
+                    activeAlert = .saveFailed
+                }
+            } label: {
+                Text(store.courses.contains(where: { $0.id == course.id }) ? "Save changes" : "Create course")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity, minHeight: 50)
+                    .background(AppTheme.ink, in: Capsule())
+                    .contentShape(Capsule())
+            }
+            .buttonStyle(.plain)
+            .disabled(!validName || !store.isColorAvailable(course.color, for: course.id))
+            .opacity(validName && store.isColorAvailable(course.color, for: course.id) ? 1 : 0.4)
+            .padding(.horizontal, 24)
+            .padding(.vertical, 12)
+            .background(AppTheme.paper)
         }
         .tint(AppTheme.ink)
     }

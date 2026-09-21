@@ -161,10 +161,12 @@ final class StudySessionStore {
 
     @discardableResult
     func selectNextBowl(_ kind: BowlKind = .katsuRamen) -> Bool {
-        guard !hasActiveBowl, !collectionLoadFailed else { return false }
+        guard !hasActiveBowl, !loadFailed, !collectionLoadFailed else { return false }
         var updated = collection
         updated.needsSelection = false
         updated.activeKind = kind
+        // A newly selected bowl only receives study time earned from this point onward.
+        updated.usedSeconds = earnedDishSeconds
         guard let data = try? JSONEncoder().encode(updated) else { return false }
         defaults.set(data, forKey: collectionKey)
         collection = updated
@@ -184,7 +186,8 @@ final class StudySessionStore {
         var updated = collection
         updated.bowls.insert(CollectedBowl(collectedAt: StudyTestClock.shared.date(for: .now), kind: activeBowlKind), at: 0)
         updated.needsSelection = true
-        updated.usedSeconds += Double(DishProgress.maximumLevel) * DishProgress.secondsPerLevel
+        // Consume the entire session balance, including time beyond the final evolution.
+        updated.usedSeconds = earnedDishSeconds
         guard let data = try? JSONEncoder().encode(updated) else { return false }
         defaults.set(data, forKey: collectionKey)
         collection = updated
@@ -243,7 +246,6 @@ final class StudySessionStore {
         session.blockDescription = session.blockDescription.trimmingCharacters(in: .whitespacesAndNewlines)
         guard session.duration.isFinite, session.duration >= 1,
               session.duration <= 3_599_999,
-              !session.blockDescription.isEmpty,
               session.blockDescription.count <= StudySession.descriptionCharacterLimit,
               StudySession.wordCount(session.blockDescription) <= StudySession.descriptionWordLimit else {
             throw SaveError.invalidSession
@@ -274,7 +276,7 @@ final class StudySessionStore {
 
     func resetAllData() {
         defaults.removeObject(forKey: key)
-        defaults.removeObject(forKey: dishBaselineKey)
+        defaults.set([String](), forKey: dishBaselineKey)
         defaults.removeObject(forKey: "bowlWallet.v1")
         collection = Collection()
         collection.needsSelection = true

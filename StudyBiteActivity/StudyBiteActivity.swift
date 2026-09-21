@@ -1,0 +1,142 @@
+import ActivityKit
+import AppIntents
+import SwiftUI
+import WidgetKit
+
+@main
+struct StudyBiteActivityBundle: WidgetBundle {
+    var body: some Widget { StudySessionActivityWidget() }
+}
+
+private let paper = Color(red: 247/255, green: 244/255, blue: 237/255)
+private let ink = Color(red: 76/255, green: 72/255, blue: 61/255)
+private let vermilion = Color(red: 198/255, green: 83/255, blue: 71/255)
+
+struct StudySessionActivityWidget: Widget {
+    var body: some WidgetConfiguration {
+        ActivityConfiguration(for: StudyActivityAttributes.self) { context in
+            GeometryReader { geometry in
+                HStack(alignment: .center, spacing: 16) {
+                    bowl(context.state, large: true)
+                        .frame(width: min(140, geometry.size.width * 0.42), height: 132)
+                    VStack(alignment: .center, spacing: 10) {
+                        clock(context.state)
+                            .font(.system(size: 48, weight: .bold))
+                            .multilineTextAlignment(.center)
+                            .frame(maxWidth: .infinity)
+                            .accessibilityLabel("Elapsed study time")
+                        controls(context.attributes.sessionID,
+                                 paused: context.state.runningSince == nil,
+                                 size: 50, spacing: 16)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+            }
+            .frame(height: 132)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 14)
+            .foregroundStyle(ink)
+            .background(Color.white)
+            .activityBackgroundTint(.white)
+            .activitySystemActionForegroundColor(ink)
+        } dynamicIsland: { context in
+            DynamicIsland {
+                DynamicIslandExpandedRegion(.bottom) {
+                    HStack(alignment: .center, spacing: 10) {
+                        controls(context.attributes.sessionID,
+                                 paused: context.state.runningSince == nil,
+                                 size: 54, spacing: 10)
+                            .fixedSize()
+                        clock(context.state)
+                            .font(.system(size: 30, weight: .heavy))
+                            .foregroundStyle(paper)
+                            .multilineTextAlignment(.center)
+                            .frame(maxWidth: .infinity, alignment: .center)
+                        bowl(context.state, large: true)
+                            .frame(width: 100, height: 100)
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 100, alignment: .center)
+                    .padding(.bottom, 2)
+                }
+            } compactLeading: {
+                bowl(context.state)
+                    .frame(width: 28, height: 28)
+            } compactTrailing: {
+                clock(context.state)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .multilineTextAlignment(.trailing)
+                    .frame(width: 52, height: 28, alignment: .trailing)
+            } minimal: {
+                bowl(context.state, compact: true).frame(width: 24, height: 24)
+            }
+            .keylineTint(ink)
+        }
+    }
+
+    private func bowl(_ state: StudyActivityAttributes.ContentState, compact: Bool = false, large: Bool = false) -> some View {
+        Image(state.imageName + (compact ? "Small" : (large ? "Large" : ""))).resizable().interpolation(.none).scaledToFit()
+            .accessibilityLabel("Bowl level \(state.level)")
+    }
+
+    private func clock(_ state: StudyActivityAttributes.ContentState) -> some View {
+        StudyActivityClock(state: state)
+    }
+
+    private func controls(_ id: String, paused: Bool, size: CGFloat = 44, spacing: CGFloat? = nil) -> some View {
+        HStack(spacing: spacing ?? (size == 60 ? 24 : 16)) {
+            Button(intent: ToggleStudySessionIntent(sessionID: id)) {
+                Image(systemName: paused ? "play.fill" : "pause.fill")
+                    .font(.system(size: size * 0.45, weight: .bold))
+                    .frame(width: size, height: size)
+                    .background(ink, in: Circle())
+                    .contentShape(Circle())
+            }
+            .tint(ink)
+            .accessibilityLabel(paused ? "Resume session" : "Pause session")
+            Button(intent: FinishStudySessionIntent(sessionID: id)) {
+                Image(systemName: "xmark")
+                    .font(.system(size: size * 0.45, weight: .bold))
+                    .frame(width: size, height: size)
+                    .background(vermilion, in: Circle())
+                    .contentShape(Circle())
+            }
+            .tint(vermilion)
+            .accessibilityLabel("Finish session")
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(paper)
+    }
+}
+
+private struct StudyActivityClock: View {
+    let state: StudyActivityAttributes.ContentState
+    @Environment(\.isLuminanceReduced) private var isLuminanceReduced
+
+    var body: some View {
+        Group {
+            if let since = state.runningSince {
+                let start = since.addingTimeInterval(-state.accumulated)
+                if isLuminanceReduced {
+                    // iOS suppresses ticking seconds on the Always-On display.
+                    // Show complete minutes explicitly instead of a misleading frozen second count.
+                    TimelineView(.periodic(from: start, by: 60)) { context in
+                        let minutes = max(0, Int(context.date.timeIntervalSince(start) / 60))
+                        Text(minutes >= 60 ? "\(minutes / 60)h \(minutes % 60)m" : "\(minutes) min")
+                    }
+                } else {
+                    Text(timerInterval: start...start.addingTimeInterval(3_600_000),
+                         countsDown: false, showsHours: true)
+                }
+            } else {
+                let seconds = max(0, Int(state.accumulated))
+                Text(seconds >= 3600
+                     ? String(format: "%d:%02d:%02d", seconds / 3600, seconds / 60 % 60, seconds % 60)
+                     : String(format: "%02d:%02d", seconds / 60, seconds % 60))
+            }
+        }
+        .monospacedDigit()
+        .lineLimit(1)
+        .minimumScaleFactor(0.6)
+    }
+}

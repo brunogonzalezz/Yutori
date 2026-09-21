@@ -68,7 +68,7 @@ struct HomeView: View {
                 Spacer()
             }
             .padding(.horizontal, 25)
-            .padding(.bottom, dishProgress.level == 1 ? 50 : 40)
+            .padding(.bottom, dishProgress.level == 1 ? 50 : (dishProgress.level == 5 ? 28 : 40))
             
             if sessionStore.hasActiveBowl {
             VStack(spacing: 20) {
@@ -177,6 +177,7 @@ struct HomeView: View {
                         .font(.subheadline)
                         .foregroundStyle(AppTheme.secondaryInk)
                 } else {
+                    VStack(spacing: 0) {
                     ForEach(recentCourseSessions) { session in
                         let course = courseStore.courses.first { $0.id == session.course.id } ?? session.course
                         HStack(spacing: 12) {
@@ -184,10 +185,12 @@ struct HomeView: View {
                             VStack(alignment: .leading, spacing: 3) {
                                 Text(course.name)
                                     .font(.system(size: 18, weight: .semibold))
-                                Text(session.blockDescription)
-                                    .font(.system(size: 14))
-                                    .foregroundStyle(AppTheme.secondaryInk)
-                                    .fixedSize(horizontal: false, vertical: true)
+                                if !session.blockDescription.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                    Text(session.blockDescription)
+                                        .font(.system(size: 14))
+                                        .foregroundStyle(AppTheme.secondaryInk)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
                             }
                             Spacer(minLength: 8)
                             Text("+\(session.formattedDuration)")
@@ -195,14 +198,24 @@ struct HomeView: View {
                                 .foregroundStyle(CourseColor.green.tint)
                                 .fixedSize()
                         }
+                        .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
+                        .padding(.vertical, 4)
                         .accessibilityElement(children: .combine)
                         if session.id != recentCourseSessions.last?.id {
-                            Divider()
+                            Rectangle()
+                                .fill(AppTheme.ink.opacity(0.18))
+                                .frame(height: 1)
+                                .padding(.horizontal, 22)
+                                .accessibilityHidden(true)
                         }
                     }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 6)
+                    .background(AppTheme.surface, in: RoundedRectangle(cornerRadius: 30))
                 }
             }
-            .padding(.horizontal, 28)
+            .padding(.horizontal, 20)
         }
         .frame(width: geometry.size.width)
         .padding(.bottom, 32)
@@ -263,8 +276,8 @@ struct DishArtworkView: View {
         (CGSize(width: 932, height: 932), CGRect(x: 225, y: 285, width: 482, height: 402)),
         (CGSize(width: 696, height: 696), CGRect(x: 14, y: 102, width: 664, height: 518)),
         (CGSize(width: 1124, height: 748), CGRect(x: 148, y: 52, width: 828, height: 646)),
-        (CGSize(width: 1032, height: 1032), CGRect(x: 36, y: 137, width: 960, height: 778)),
-        (CGSize(width: 1140, height: 1140), CGRect(x: 20, y: 18, width: 1098, height: 1058))
+        (CGSize(width: 1028, height: 1028), CGRect(x: 26, y: 128, width: 976, height: 785)),
+        (CGSize(width: 1276, height: 1276), CGRect(x: 51, y: 116, width: 1175, height: 1061))
     ]
 
     var body: some View {

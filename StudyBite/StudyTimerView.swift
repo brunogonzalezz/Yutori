@@ -6,7 +6,8 @@ struct StudyTimerView: View {
     var onEvolution: ((Int, Int, TimeInterval) -> Void)? = nil
     let onFinish: (TimeInterval) -> Void
 
-    @State private var stopwatch = StudyStopwatch()
+    @State private var activeSession = ActiveStudySession.shared
+    private var stopwatch: StudyStopwatch { activeSession.stopwatch }
     @State private var startingSeconds: TimeInterval
     @State private var highestRevealedLevel: Int
     @State private var dishFrame: CGRect = .zero
@@ -28,13 +29,12 @@ struct StudyTimerView: View {
         self.onEvolution = onEvolution
         self.onFinish = onFinish
         let store = StudySessionStore.shared
-        _startingSeconds = State(initialValue: store.earnedDishProgress.totalSeconds)
-        _highestRevealedLevel = State(initialValue: store.earnedDishProgress.level)
+        _startingSeconds = State(initialValue: ActiveStudySession.shared.id == nil ? store.earnedDishProgress.totalSeconds : ActiveStudySession.shared.startingSeconds)
+        _highestRevealedLevel = State(initialValue: ActiveStudySession.shared.id == nil ? store.earnedDishProgress.level : ActiveStudySession.shared.revealedLevel)
     }
 
     var body: some View {
         GeometryReader { geometry in
-        ScrollView(showsIndicators: false) {
         VStack(spacing: 18) {
             Spacer(minLength: 24)
             TimelineView(.periodic(from: .now, by: 1)) { context in
@@ -86,18 +86,40 @@ struct StudyTimerView: View {
                 .accessibilityLabel("Finish study session")
             }
 
+            HStack(spacing: 12) {
+                Text("Test").foregroundStyle(AppTheme.secondaryInk)
+                Button("+10 min") { activeSession.advanceForTesting(by: 600) }
+                Button("+25 min") { activeSession.advanceForTesting(by: 1500) }
+                Button("+1 h") { activeSession.advanceForTesting(by: 3600) }
+            }
+            .font(.caption.weight(.semibold))
+            .buttonStyle(.plain)
+            .foregroundStyle(AppTheme.ink)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .background(AppTheme.surface, in: Capsule())
+
             Spacer(minLength: 24)
         }
         .padding(.horizontal, 40)
         .frame(width: geometry.size.width, alignment: .center)
-        .frame(minHeight: geometry.size.height)
-        }
+        .frame(height: geometry.size.height)
         .opacity(liveEvolutionActive ? 0 : 1)
         .animation(.easeInOut(duration: 0.3), value: liveEvolutionActive)
         .allowsHitTesting(!liveEvolutionActive)
         .accessibilityHidden(liveEvolutionActive)
         }
-        .background(AppTheme.paper.ignoresSafeArea())
+        .background {
+            ZStack {
+                AppTheme.paper
+                CourseMosaicBackground(icon: course.icon,
+                                       sessionID: activeSession.id,
+                                       isAnimating: scenePhase == .active && !showSummary && !liveEvolutionActive)
+                    .opacity(liveEvolutionActive ? 0 : 1)
+                    .animation(.easeInOut(duration: 0.3), value: liveEvolutionActive)
+            }
+            .ignoresSafeArea()
+        }
         .toolbar(.hidden, for: .navigationBar)
         .overlay {
             TimelineView(.periodic(from: .now, by: 1)) { context in
@@ -110,6 +132,7 @@ struct StudyTimerView: View {
                     onActivity: { liveEvolutionActive = $0 }
                 ) { level in
                     highestRevealedLevel = max(highestRevealedLevel, level)
+                    activeSession.reveal(level)
                 }
             }
             .allowsHitTesting(false)
@@ -124,7 +147,7 @@ struct StudyTimerView: View {
             }
         }
         .sheet(isPresented: $showSummary, onDismiss: completeSavedSession) {
-            SessionSummaryView(course: course, measuredDuration: stopwatch.accumulated, endedAt: endedAt, onDiscard: {
+            SessionSummaryView(course: course, measuredDuration: stopwatch.accumulated, startingSeconds: startingSeconds, bowlKind: sessionStore.activeBowlKind, pauseCount: activeSession.pauseCount, endedAt: endedAt, onDiscard: {
                 discardedSession = true
                 showSummary = false
             }) { duration in
@@ -134,15 +157,27 @@ struct StudyTimerView: View {
         }
         .onAppear {
             startTimerIfNeeded()
+            if let date = activeSession.finishedAt { finishSession(at: date) }
+        }
+        .onChange(of: activeSession.finishedAt) { _, date in
+            if let date { finishSession(at: date) }
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active {
+                if let date = activeSession.finishedAt { finishSession(at: date) }
+                Task { await activeSession.syncActivity() }
+            }
         }
     }
 
     private func completeSavedSession() {
         if discardedSession {
+            activeSession.clear()
             onFinish(0)
             return
         }
         guard let savedDuration else { return }
+        activeSession.clear()
         if sessionStore.dishProgress.level > levelBeforeSave {
             if let onEvolution {
                 onEvolution(levelBeforeSave, sessionStore.dishProgress.level, savedDuration)
@@ -157,10 +192,11 @@ struct StudyTimerView: View {
     private func finishSession(at date: Date) {
         guard !showSummary else { return }
         endedAt = date
-        stopwatch.pause(at: date)
+        activeSession.finish(at: date)
         // Only celebrate levels not already revealed during this session.
         levelBeforeSave = max(DishProgress(totalSeconds: startingSeconds).level, highestRevealedLevel)
         guard stopwatch.accumulated >= 1 else {
+            activeSession.clear()
             onFinish(0)
             return
         }
@@ -168,12 +204,7 @@ struct StudyTimerView: View {
     }
 
     private func toggleTimer() {
-        let now = Date.now
-        if stopwatch.isRunning {
-            stopwatch.pause(at: now)
-        } else {
-            stopwatch.resume(at: now)
-        }
+        activeSession.toggle()
     }
 
     private func startTimerIfNeeded() {
@@ -182,7 +213,45 @@ struct StudyTimerView: View {
         }
 
         hasStarted = true
-        stopwatch.resume(at: .now)
+        activeSession.start(course: course)
+    }
+}
+
+private struct CourseMosaicBackground: View {
+    let icon: String
+    let sessionID: UUID?
+    let isAnimating: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        TimelineView(.animation(minimumInterval: 1.0 / 30.0,
+                                paused: reduceMotion || !isAnimating)) { timeline in
+            Canvas { context, size in
+                let cell: CGFloat = 64
+                // Repeat over two rows so the staggered pattern loops seamlessly.
+                let phase = reduceMotion ? 0 : timeline.date.timeIntervalSinceReferenceDate
+                    .truncatingRemainder(dividingBy: 44) / 44
+                let drift = CGFloat(phase) * cell * 2
+                // UUID bytes keep the random direction stable when a session is restored.
+                let seed = sessionID?.uuid.0 ?? 0
+                let directionX: CGFloat = seed & 1 == 0 ? 1 : -1
+                let directionY: CGFloat = seed & 2 == 0 ? 1 : -1
+                var symbol = context.resolve(Image(systemName: icon).renderingMode(.template))
+                symbol.shading = .color(AppTheme.ink)
+                context.opacity = 0.05
+                for row in -3...Int(size.height / cell + 3) {
+                    for column in -3...Int(size.width / cell + 3) {
+                        let stagger: CGFloat = row.isMultiple(of: 2) ? 0 : cell / 2
+                        let x = CGFloat(column) * cell + stagger + drift * directionX
+                        let y = CGFloat(row) * cell + drift * directionY
+                        context.draw(symbol, in: CGRect(x: x, y: y, width: 20, height: 20))
+                    }
+                }
+            }
+        }
+        .clipped()
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
     }
 }
 
