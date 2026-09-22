@@ -4,80 +4,84 @@ struct BowlPickerView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var store = StudySessionStore.shared
     @State private var selection = 0
+    private let columns = Array(repeating: GridItem(.flexible(), spacing: 10), count: 3)
     private var availableBowls: [BowlCatalogEntry] {
         Array(BowlCatalog.entries.prefix(store.unlockedBowlCount))
+    }
+    private var selectedBowl: BowlCatalogEntry {
+        availableBowls.first { $0.id == selection } ?? availableBowls[0]
     }
     var dismissOnSelection = true
     let onSelect: () -> Void
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 12) {
-                TabView(selection: $selection) {
-                    ForEach(availableBowls.indices, id: \.self) { index in
-                        GeometryReader { geometry in
-                            VStack(spacing: 22) {
-                                Spacer(minLength: 0)
-                                DishArtworkView(level: 0, availableWidth: geometry.size.width,
-                                                preferredWidth: min(210, geometry.size.height * 0.70),
-                                                kind: availableBowls[index].kind ?? .katsuRamen)
-                                    .overlay {
-                                        if availableBowls[index].kind == nil {
-                                            AppTheme.muted
-                                                .mask {
-                                                    DishArtworkView(level: 0, availableWidth: geometry.size.width,
-                                                                    preferredWidth: min(210, geometry.size.height * 0.70), kind: .katsuRamen)
-                                                }
-                                        }
-                                    }
-                                    .saturation(availableBowls[index].kind != nil ? 1 : 0)
-                                    .opacity(availableBowls[index].kind != nil ? 1 : 0.35)
-                                    .accessibilityLabel(availableBowls[index].kind != nil ? availableBowls[index].name : "Upcoming bowl")
-                                    .frame(maxWidth: .infinity)
-                                    .overlay {
-                                        HStack {
-                                            pageArrow("chevron.left", step: -1)
-                                            Spacer()
-                                            pageArrow("chevron.right", step: 1)
-                                        }
-                                        .buttonStyle(.plain)
-                                        .padding(.horizontal, 16)
-                                    }
-                                Text(availableBowls[index].name)
-                                    .font(.system(size: 24, weight: .bold, design: .rounded))
-                                Spacer(minLength: 0)
+            GeometryReader { geometry in
+                let previewHeight = min(200, max(100, geometry.size.height * 0.36))
+                ScrollView(.vertical) {
+                    VStack(spacing: 22) {
+                    VStack(spacing: 4) {
+                        TabView(selection: $selection) {
+                            ForEach(availableBowls) { entry in
+                                artwork(entry, width: min(220, previewHeight * 1.2))
+                                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                                    .tag(entry.id)
                             }
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
                         }
-                        .tag(index)
+                        .tabViewStyle(.page(indexDisplayMode: .never))
+                        .frame(height: previewHeight)
+                        .overlay {
+                            HStack {
+                                pageArrow(step: -1)
+                                Spacer()
+                                pageArrow(step: 1)
+                            }
+                        }
+                        Text(selectedBowl.name)
+                            .font(.system(size: 22, weight: .bold, design: .rounded))
+                            .multilineTextAlignment(.center)
+                            .lineLimit(2)
                     }
-                }
-                .tabViewStyle(.page(indexDisplayMode: .never))
+                    .padding(.horizontal, 20)
 
-                if store.collectionLoadFailed {
-                    Text("Couldn't load your bowls. Please reopen the app and try again.")
-                        .font(.footnote)
-                        .foregroundStyle(AppTheme.secondaryInk)
-                }
+                    LazyVGrid(columns: columns, spacing: 10) {
+                            ForEach(availableBowls) { entry in
+                                bowlTile(entry)
+                            }
+                        }
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 4)
 
-                Button {
-                    if let kind = availableBowls[selection].kind, store.selectNextBowl(kind) {
-                        onSelect()
-                        if dismissOnSelection { dismiss() }
+                    if store.collectionLoadFailed || store.loadFailed {
+                        Text("Couldn't load your bowls. Please reopen the app and try again.")
+                            .font(.footnote)
+                            .foregroundStyle(AppTheme.secondaryInk)
+                            .padding(.horizontal, 20)
                     }
-                } label: {
-                    Text(availableBowls[selection].kind != nil ? "Select bowl" : "Coming soon")
-                        .font(.system(size: 16, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity, minHeight: 50)
-                        .background(availableBowls[selection].kind != nil ? AppTheme.ink : AppTheme.muted, in: Capsule())
-                        .contentShape(Capsule())
+                    Button {
+                        if let kind = selectedBowl.kind, store.selectNextBowl(kind) {
+                            onSelect()
+                            if dismissOnSelection { dismiss() }
+                        }
+                    } label: {
+                        Text(selectedBowl.kind != nil ? "Select bowl" : "Coming soon")
+                            .font(.system(size: 16, weight: .semibold, design: .rounded))
+                            .foregroundStyle(AppTheme.paper)
+                            .frame(maxWidth: .infinity, minHeight: 50)
+                            .background(selectedBowl.kind != nil ? AppTheme.ink : AppTheme.muted, in: Capsule())
+                            .contentShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(selectedBowl.kind == nil || store.hasActiveBowl || store.collectionLoadFailed || store.loadFailed)
+                    .padding(.horizontal, 32)
+                    .padding(.bottom, 12)
                 }
-                .buttonStyle(.plain)
-                .disabled(availableBowls[selection].kind == nil || store.hasActiveBowl || store.collectionLoadFailed)
-                .padding(.horizontal, 40)
-                .padding(.bottom, 24)
+                    .padding(.top, 4)
+                    .padding(.bottom, 12)
+                }
+                .scrollIndicators(.visible)
             }
+            .foregroundStyle(AppTheme.ink)
             .background(AppTheme.paper)
             .navigationTitle("Choose a bowl")
             .navigationBarTitleDisplayMode(.inline)
@@ -90,20 +94,74 @@ struct BowlPickerView: View {
         }
     }
 
-    private func pageArrow(_ symbol: String, step: Int) -> some View {
-        let next = selection + step
-        let available = availableBowls.indices.contains(next)
+    private func pageArrow(step: Int) -> some View {
+        let current = availableBowls.firstIndex { $0.id == selectedBowl.id } ?? 0
+        let next = current + step
+        let enabled = availableBowls.indices.contains(next)
         return Button {
-            guard available else { return }
-            withAnimation(.easeInOut(duration: 0.25)) { selection = next }
+            guard enabled else { return }
+            withAnimation(.easeInOut(duration: 0.25)) {
+                selection = availableBowls[next].id
+            }
         } label: {
-            Image(systemName: symbol)
-                .font(.system(size: 14, weight: .semibold, design: .rounded))
+            Image(systemName: step < 0 ? "chevron.left" : "chevron.right")
+                .font(.system(size: 15, weight: .semibold, design: .rounded))
+                .foregroundStyle(AppTheme.ink)
                 .frame(width: 44, height: 44)
-                .contentShape(Rectangle())
-                .opacity(available ? 1 : 0.15)
+                .background(AppTheme.surface.opacity(0.8), in: Circle())
+                .contentShape(Circle())
         }
-        .disabled(!available)
+        .buttonStyle(.plain)
+        .disabled(!enabled)
+        .opacity(enabled ? 1 : 0.25)
         .accessibilityLabel(step < 0 ? "Previous bowl" : "Next bowl")
+    }
+
+    private func bowlTile(_ entry: BowlCatalogEntry) -> some View {
+        let isSelected = entry.id == selectedBowl.id
+        return Button {
+            withAnimation(.easeInOut(duration: 0.25)) {
+                selection = entry.id
+            }
+        } label: {
+            VStack(spacing: 4) {
+                GeometryReader { geometry in
+                    artwork(entry, width: max(0, min(78, geometry.size.width - 8)))
+                        .frame(width: geometry.size.width, height: geometry.size.height)
+                }
+                .frame(height: 60)
+                Text(entry.name)
+                    .font(.system(size: 11, weight: .semibold, design: .rounded))
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+                    .frame(height: 28)
+            }
+            .padding(8)
+            .frame(maxWidth: .infinity)
+            .background(isSelected ? AppTheme.surface : AppTheme.surface.opacity(0.4),
+                        in: RoundedRectangle(cornerRadius: 16))
+            .overlay {
+                RoundedRectangle(cornerRadius: 16)
+                    .strokeBorder(isSelected ? AppTheme.ink : .clear, lineWidth: 2)
+            }
+            .contentShape(RoundedRectangle(cornerRadius: 16))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(entry.name)
+        .accessibilityHint(entry.kind == nil ? "Coming soon" : "Preview this bowl")
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+
+    @ViewBuilder
+    private func artwork(_ entry: BowlCatalogEntry, width: CGFloat) -> some View {
+        if let kind = entry.kind {
+            DishArtworkView(level: 0, availableWidth: width + 48, preferredWidth: width, kind: kind)
+        } else {
+            AppTheme.muted
+                .frame(width: width, height: width * 0.72)
+                .mask {
+                    DishArtworkView(level: 0, availableWidth: width + 48, preferredWidth: width, kind: .katsuRamen)
+                }
+        }
     }
 }

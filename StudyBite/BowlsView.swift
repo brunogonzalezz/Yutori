@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct BowlsView: View {
     @State private var showSettings = false
@@ -59,16 +60,29 @@ private struct BowlCollectionView: View {
 
     var body: some View {
         let counts = Dictionary(grouping: store.collectedBowls, by: \.bowlKind).mapValues { $0.count }
-        VStack(spacing: 18) {
+        VStack(spacing: 10) {
             ForEach(0..<(BowlCatalog.entries.count / 3), id: \.self) { group in
-                VStack(spacing: 10) {
+                let isNextGroup = group * 3 == store.unlockedBowlCount
+                VStack(spacing: 14) {
+                    if isNextGroup, let target = store.nextBowlMilestone {
+                        milestone(target: target)
+                    }
                     LazyVGrid(columns: columns, spacing: 18) {
                         ForEach(Array(BowlCatalog.entries[(group * 3)..<(group * 3 + 3)])) { entry in
                             tile(entry, count: entry.kind.map { counts[$0, default: 0] } ?? 0)
                         }
                     }
-                    if group * 3 == store.unlockedBowlCount, let target = store.nextBowlMilestone {
-                        milestone(target: target)
+                }
+                .padding(isNextGroup ? 12 : 0)
+                .background {
+                    if isNextGroup {
+                        RoundedRectangle(cornerRadius: 22)
+                            .fill(LinearGradient(colors: [AppTheme.surface.opacity(0.85), AppTheme.surface.opacity(0.3)],
+                                                 startPoint: .topLeading, endPoint: .bottomTrailing))
+                            .overlay {
+                                RoundedRectangle(cornerRadius: 22)
+                                    .strokeBorder(AppTheme.ink.opacity(0.22), lineWidth: 1)
+                            }
                     }
                 }
             }
@@ -79,14 +93,24 @@ private struct BowlCollectionView: View {
         let progress = min(1, max(0, store.bowlUnlockSeconds / (Double(target) * 3600)))
         return VStack(spacing: 8) {
             HStack {
-                Label("Unlock these 3 bowls", systemImage: "lock.fill")
-                    .font(.system(size: 11, weight: .medium, design: .rounded))
-                    .foregroundStyle(AppTheme.secondaryInk)
+                HStack(spacing: 7) {
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .foregroundStyle(AppTheme.paper)
+                        .frame(width: 28, height: 28)
+                        .background(AppTheme.darkSurface, in: RoundedRectangle(cornerRadius: 9))
+                    Text("Next to unlock")
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        .foregroundStyle(AppTheme.ink)
+                }
                 Spacer(minLength: 8)
                 Text("\(Int(store.bowlUnlockSeconds / 3600)) / \(target)h")
                     .font(.system(size: 12, weight: .semibold, design: .rounded))
                     .monospacedDigit()
                     .foregroundStyle(AppTheme.ink)
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 5)
+                    .background(AppTheme.paper.opacity(0.8), in: Capsule())
             }
             GeometryReader { geometry in
                 Capsule()
@@ -109,6 +133,7 @@ private struct BowlCollectionView: View {
     private func tile(_ entry: BowlCatalogEntry, count: Int) -> some View {
         let unlocked = store.isBowlUnlocked(entry)
         let collected = count > 0
+        let distant = !collected && entry.id >= store.unlockedBowlCount + 3
         return VStack(spacing: 7) {
             GeometryReader { geometry in
                 let width = max(0, min(116, geometry.size.width - 12))
@@ -116,6 +141,15 @@ private struct BowlCollectionView: View {
                     let kind = entry.kind ?? .katsuRamen
                     if collected {
                         DishArtworkView(level: 5, availableWidth: width + 48, preferredWidth: width, kind: kind)
+                    } else if entry.id >= store.unlockedBowlCount + 3,
+                              let silhouette = DistantBowlSilhouette.image(for: kind) {
+                        Image(uiImage: silhouette)
+                            .renderingMode(.template)
+                            .resizable()
+                            .interpolation(.none)
+                            .scaledToFit()
+                            .foregroundStyle(AppTheme.muted)
+                            .frame(width: width, height: width)
                     } else {
                         AppTheme.muted
                             .frame(width: width, height: width)
@@ -149,18 +183,43 @@ private struct BowlCollectionView: View {
             Text(String(format: "%03d", entry.id + 1))
                 .font(.system(size: 10, weight: .medium, design: .rounded))
                 .foregroundStyle(AppTheme.secondaryInk.opacity(0.75))
-            Text(entry.name)
+            Text(distant ? "???" : entry.name)
                 .font(.system(size: 11, weight: collected ? .semibold : .medium, design: .rounded))
                 .foregroundStyle(collected ? AppTheme.ink : AppTheme.secondaryInk)
                 .multilineTextAlignment(.center).lineLimit(2)
                 .frame(height: 30, alignment: .top)
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(entry.name), \(collected ? "collected" : (unlocked ? "unlocked" : "locked"))")
+        .accessibilityLabel("\(distant ? "Mystery bowl" : entry.name), \(collected ? "collected" : (unlocked ? "unlocked" : "locked"))")
         .accessibilityValue(collected ? "Completed \(count) times" : (unlocked && entry.kind == nil ? "Coming soon" : ""))
     }
 }
 
 #Preview {
     BowlsView()
+}
+
+// Small cached rasters make only distant silhouettes coarser; source assets stay intact.
+@MainActor
+private enum DistantBowlSilhouette {
+    private static var cache: [BowlKind: UIImage] = [:]
+
+    static func image(for kind: BowlKind) -> UIImage? {
+        if let cached = cache[kind] { return cached }
+        guard let source = UIImage(named: kind.imageName(level: 5)) else { return nil }
+        let size = CGSize(width: 22, height: 22)
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        format.opaque = false
+        let image = UIGraphicsImageRenderer(size: size, format: format).image { renderer in
+            renderer.cgContext.interpolationQuality = .none
+            let scale = min(size.width / source.size.width, size.height / source.size.height)
+            let fitted = CGSize(width: source.size.width * scale, height: source.size.height * scale)
+            source.draw(in: CGRect(x: (size.width - fitted.width) / 2,
+                                   y: (size.height - fitted.height) / 2,
+                                   width: fitted.width, height: fitted.height))
+        }
+        cache[kind] = image
+        return image
+    }
 }

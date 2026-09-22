@@ -14,6 +14,7 @@ struct SettingsView: View {
     @AppStorage("profilePhoto") private var photoData = Data()
     @State private var selectedPhoto: PhotosPickerItem?
     @State private var showPhotoPicker = false
+    @State private var showPaywall = false
     @State private var showColors = false
     @State private var showAppIcons = false
     @State private var photoError = false
@@ -97,6 +98,11 @@ struct SettingsView: View {
                         .accessibilityLabel("Close settings")
                     }
                 }
+        }
+        .sheet(isPresented: $showPaywall) {
+            PaywallView()
+                .presentationBackground(AppTheme.paper)
+                .presentationDragIndicator(.visible)
         }
         .coordinateSpace(name: "settings")
         .contentShape(Rectangle())
@@ -241,11 +247,16 @@ struct SettingsView: View {
 
     private var settingsContent: some View {
         VStack(spacing: 0) {
-            Text("Pro Ad")
-                .font(.system(size: 17, design: .rounded))
-                .frame(maxWidth: .infinity)
-                .frame(height: 164)
-                .background(cardColor, in: RoundedRectangle(cornerRadius: 38))
+            Button { showPaywall = true } label: {
+                Text("Pro Ad")
+                    .font(.system(size: 17, design: .rounded))
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 164)
+                    .background(cardColor, in: RoundedRectangle(cornerRadius: 38))
+                    .contentShape(RoundedRectangle(cornerRadius: 38))
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Open Pro paywall")
 
             Text("Restore Purchase")
                 .font(.system(size: 12, design: .rounded))

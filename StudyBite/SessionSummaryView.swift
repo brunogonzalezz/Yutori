@@ -64,9 +64,9 @@ struct SessionSummaryView: View {
 
 
     private var needsTimeConfirmation: Bool {
-        guard let session = savedSession, let duration = recordedDuration,
-              adjustmentMinutes != 0, approvedDuration != duration else { return false }
-        return abs(duration - (session.originalDuration ?? measuredDuration)) >= 3 * 3600
+        guard savedSession != nil, let duration = recordedDuration,
+              adjustmentMinutes != 0 else { return false }
+        return approvedDuration != duration
     }
 
     private var recordedDuration: TimeInterval? {
@@ -139,6 +139,7 @@ struct SessionSummaryView: View {
                     if savedSession != nil {
                         Button("Edit", systemImage: "slider.horizontal.3") {
                             descriptionFocused = false
+                            approvedDuration = nil
                             showsTimeEditor = true
                         }
                     }
@@ -203,7 +204,7 @@ struct SessionSummaryView: View {
             }
             Button("Cancel", role: .cancel) { }
         } message: {
-            Text("You’re making a large change to your study time. Are you sure? This edited time will not evolve your bowl.")
+            Text("Changing this time only updates your study statistics. It will not evolve your bowl or unlock new bowls. Do you want to continue?")
         }
         .alert("Delete this session?", isPresented: $confirmDelete) {
             Button("Delete", role: .destructive) {
@@ -281,7 +282,7 @@ struct SessionSummaryView: View {
             }
             Button("Keep editing", role: .cancel) { }
         } message: {
-            Text("You’re making a large change to your study time. Are you sure? This edited time will not evolve your bowl.")
+            Text("Changing this time only updates your study statistics. It will not evolve your bowl or unlock new bowls. Do you want to continue?")
         }
     }
 

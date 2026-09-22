@@ -233,6 +233,12 @@ struct HomeView: View {
                 }
             }
             .padding(.horizontal, 20)
+
+            if !sessionStore.loadFailed {
+                StudyStreakView(sessions: sessionStore.sessions)
+                    .padding(.horizontal, 20)
+                    .padding(.top, 26)
+            }
         }
         .frame(width: geometry.size.width)
         .padding(.bottom, 32)
