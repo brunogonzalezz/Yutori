@@ -4,7 +4,7 @@ import SwiftUI
 import WidgetKit
 
 @main
-struct StudyBiteActivityBundle: WidgetBundle {
+struct YutoriActivityBundle: WidgetBundle {
     var body: some Widget { StudySessionActivityWidget() }
 }
 

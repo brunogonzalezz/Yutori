@@ -3,7 +3,7 @@ import SwiftUI
 import UIKit
 
 @main
-struct StudyBiteApp: App {
+struct YutoriApp: App {
     init() {
         let navigation = UINavigationBarAppearance()
         navigation.configureWithOpaqueBackground()

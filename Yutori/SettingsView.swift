@@ -309,7 +309,7 @@ struct SettingsView: View {
                 settingsRow("Show Onboarding", icon: "rectangle.on.rectangle")
             }
 
-            settingsSection("STUDYBITE") {
+            settingsSection("YUTORI") {
                 settingsRow("Write a Review", icon: "star.fill")
                 settingsDivider
                 Button {
@@ -321,9 +321,9 @@ struct SettingsView: View {
                 .buttonStyle(.plain)
                 settingsDivider
                 NavigationLink {
-                    AboutStudyBiteView()
+                    AboutYutoriView()
                 } label: {
-                    settingsRow("About StudyBite", icon: "figure.walk")
+                    settingsRow("About Yutori", icon: "figure.walk")
                 }
                 .buttonStyle(.plain)
             }
@@ -344,7 +344,7 @@ struct SettingsView: View {
                 .buttonStyle(.plain)
                 .background(cardColor, in: RoundedRectangle(cornerRadius: 22))
                 .padding(.top, 8)
-                .alert("Reset StudyBite?", isPresented: $confirmReset) {
+                .alert("Reset Yutori?", isPresented: $confirmReset) {
                     Button("Delete everything", role: .destructive) {
                         isResetting = true
                         selectedPhoto = nil
@@ -498,7 +498,7 @@ struct SettingsView: View {
         var components = URLComponents()
         components.scheme = "mailto"
         components.path = "brunoogonzalezcano@gmail.com"
-        components.queryItems = [URLQueryItem(name: "subject", value: "StudyBite Feedback")]
+        components.queryItems = [URLQueryItem(name: "subject", value: "Yutori Feedback")]
         guard let url = components.url else {
             feedbackError = true
             return
@@ -594,23 +594,282 @@ private struct NameFrameKey: PreferenceKey {
     }
 }
 
-private struct AboutStudyBiteView: View {
+private struct AboutYutoriView: View {
     @Environment(\.dismiss) private var dismiss
 
+    private let space = Color(red: 0.10, green: 0.075, blue: 0.16)
+    private let panel = AppTheme.surface
+    private let cream = Color(red: 1.00, green: 0.97, blue: 0.90)
+    private let orange = Color(red: 0.85, green: 0.38, blue: 0.16)
+    private let muted = Color(red: 0.78, green: 0.74, blue: 0.72)
+
     var body: some View {
-        AppTheme.paper
-            .ignoresSafeArea()
-            .navigationBarBackButtonHidden(true)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button {
-                        dismiss()
-                    } label: {
-                        Image(systemName: "chevron.left")
-                            .foregroundStyle(AppTheme.ink)
+        ZStack {
+            AppTheme.paper.ignoresSafeArea()
+
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 18) {
+                    hero
+
+                    storyCard("01 / THE BEGINNING", icon: "sparkles") {
+                        storyText("Hi, I’m Bruno. I’m 20 years old and this year I started studying Computer Engineering in Barcelona.")
+                        storyText("I’ve wanted to learn how to build apps for a long time, but for some reason I always kept putting it off. I think I was waiting for the “right moment” to start.")
+                        shipatonMoment
                     }
-                    .accessibilityLabel("Back")
+
+                    storyCard("02 / WHY YUTORI", icon: "takeoutbag.and.cup.and.straw.fill") {
+                        storyText("The idea for Yutori came from something very simple: **I know how difficult it can be to stay motivated to study.** I wanted to create something that could make the process feel a bit more enjoyable and give you a small reason to come back every day.")
+                        storyText("The idea of growing and collecting Japanese bowls felt fun to me. It turns something as simple as sitting down to study into something you can slowly build over time.")
+                    }
+
+                    storyCard("03 / THE NAME", icon: "circle.hexagongrid.fill") {
+                        HStack(alignment: .top, spacing: 18) {
+                            Text("ゆとり")
+                                .font(.system(size: 31, weight: .black, design: .rounded))
+                                .foregroundStyle(orange)
+                                .frame(minWidth: 82)
+
+                            storyText("I also really liked the meaning behind the name **Yutori (ゆとり)**. In Japanese, it can refer to having *space, room, or breathing room*, especially mentally. That idea felt very fitting for something about learning and taking time to grow.")
+                        }
+                    }
+
+                    storyCard("04 / WHAT CAME NEXT", icon: "arrow.up.right") {
+                        storyText("Building Yutori has honestly been one of the most enjoyable things I’ve done. I’ve learned more during this process than I expected, and somewhere along the way I realised that this is what I want to keep doing.")
+                    }
+
+                    VStack(alignment: .leading, spacing: 18) {
+                        Image(systemName: "star.fill")
+                            .font(.system(size: 20, weight: .black))
+                            .foregroundStyle(orange)
+
+                        Text("Yutori started as a project for Shipaton, but for me, it became the first step towards the future I want to build.")
+                            .font(.system(size: 23, weight: .black, design: .rounded))
+                            .foregroundStyle(cream)
+                            .lineSpacing(3)
+
+                        Rectangle()
+                            .fill(cream.opacity(0.18))
+                            .frame(height: 1)
+
+                        HStack {
+                            Text("Thanks for being here.")
+                            Spacer()
+                            Text("— Bruno")
+                                .fontWeight(.bold)
+                        }
+                        .font(.system(size: 16, design: .rounded))
+                        .foregroundStyle(cream.opacity(0.84))
+                    }
+                    .padding(24)
+                    .background(AppTheme.darkSurface, in: RoundedRectangle(cornerRadius: 26, style: .continuous))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 26, style: .continuous)
+                            .stroke(orange.opacity(0.45), lineWidth: 1)
+                    }
+                    .overlay(alignment: .topTrailing) {
+                        orbitMark
+                            .frame(width: 94, height: 94)
+                            .offset(x: 18, y: -22)
+                            .allowsHitTesting(false)
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 16)
+                .padding(.bottom, 44)
+            }
+        }
+        .navigationBarBackButtonHidden(true)
+        .navigationTitle("About Yutori")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(AppTheme.paper, for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
+        .toolbarColorScheme(.light, for: .navigationBar)
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button {
+                    dismiss()
+                } label: {
+                    Image(systemName: "chevron.left")
+                        .fontWeight(.bold)
+                        .foregroundStyle(AppTheme.ink)
+                }
+                .accessibilityLabel("Back")
+            }
+        }
+    }
+
+    private var hero: some View {
+        VStack(alignment: .leading, spacing: 22) {
+            HStack(spacing: 8) {
+                Circle()
+                    .fill(orange)
+                    .frame(width: 8, height: 8)
+
+                Text("BUILT FOR SHIPATON '26")
+                    .font(.system(size: 11, weight: .bold, design: .monospaced))
+                    .tracking(1.5)
+                    .foregroundStyle(cream.opacity(0.74))
+            }
+            .padding(.horizontal, 13)
+            .padding(.vertical, 9)
+            .background(panel, in: Capsule())
+            .overlay(Capsule().stroke(cream.opacity(0.14), lineWidth: 1))
+
+            HStack(alignment: .bottom, spacing: 10) {
+                VStack(alignment: .leading, spacing: -5) {
+                    Text("About")
+                        .foregroundStyle(cream)
+                    Text("Yutori.")
+                        .foregroundStyle(orange)
+                }
+                .font(.system(size: 51, weight: .black, design: .rounded))
+                .minimumScaleFactor(0.76)
+
+                Spacer(minLength: 4)
+
+                ZStack {
+                    Circle()
+                        .stroke(orange.opacity(0.45), lineWidth: 1)
+                        .frame(width: 76, height: 76)
+                    Circle()
+                        .stroke(cream.opacity(0.18), style: StrokeStyle(lineWidth: 1, dash: [3, 5]))
+                        .frame(width: 104, height: 104)
+                    Image(systemName: "takeoutbag.and.cup.and.straw.fill")
+                        .font(.system(size: 31, weight: .semibold))
+                        .foregroundStyle(cream)
+                    Circle()
+                        .fill(orange)
+                        .frame(width: 9, height: 9)
+                        .offset(x: 46, y: -24)
+                }
+                .frame(width: 105, height: 110)
+            }
+
+            Text("A little story behind the app, from the first idea to the future I want to build.")
+                .font(.system(size: 18, weight: .medium, design: .rounded))
+                .foregroundStyle(muted)
+                .lineSpacing(4)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(24)
+        .background {
+            LinearGradient(
+                colors: [space, AppTheme.darkSurface],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .overlay {
+                ShipatonStarField(accent: orange, light: cream)
+            }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 30, style: .continuous)
+                .stroke(orange.opacity(0.42), lineWidth: 1)
+        }
+    }
+
+    private var shipatonMoment: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "paperplane.fill")
+                .font(.system(size: 18, weight: .bold))
+                .foregroundStyle(space)
+                .frame(width: 40, height: 40)
+                .background(orange, in: Circle())
+
+            Text("When Shipaton 2026 came around, I decided to stop waiting and actually build something.")
+                .font(.system(size: 17, weight: .bold, design: .rounded))
+                .foregroundStyle(cream)
+                .lineSpacing(4)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(16)
+        .background(AppTheme.darkSurface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+
+    private func storyCard<Content: View>(
+        _ label: String,
+        icon: String,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 18) {
+            HStack {
+                Text(label)
+                    .font(.system(size: 11, weight: .bold, design: .monospaced))
+                    .tracking(1.2)
+                    .foregroundStyle(orange)
+
+                Spacer()
+
+                Image(systemName: icon)
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(AppTheme.secondaryInk)
+            }
+
+            content()
+        }
+        .padding(22)
+        .background(panel.opacity(0.78), in: RoundedRectangle(cornerRadius: 25, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 25, style: .continuous)
+                .stroke(AppTheme.ink.opacity(0.09), lineWidth: 1)
+        }
+    }
+
+    private var orbitMark: some View {
+        ZStack {
+            Circle().stroke(space.opacity(0.28), lineWidth: 1)
+            Circle()
+                .fill(space)
+                .frame(width: 8, height: 8)
+                .offset(x: 33, y: -23)
+            Image(systemName: "sparkle")
+                .font(.system(size: 23, weight: .black))
+                .foregroundStyle(orange.opacity(0.7))
+        }
+    }
+
+    private func storyText(_ markdown: LocalizedStringKey) -> some View {
+        Text(markdown)
+            .font(.system(size: 17, design: .rounded))
+            .foregroundStyle(AppTheme.ink)
+            .lineSpacing(6)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
+private struct ShipatonStarField: View {
+    let accent: Color
+    let light: Color
+
+    private let stars: [(CGFloat, CGFloat, CGFloat)] = [
+        (0.08, 0.04, 2), (0.24, 0.12, 1), (0.84, 0.07, 2), (0.94, 0.18, 1),
+        (0.12, 0.29, 1), (0.78, 0.34, 1), (0.91, 0.45, 2), (0.05, 0.54, 2),
+        (0.27, 0.63, 1), (0.87, 0.70, 1), (0.13, 0.81, 1), (0.72, 0.88, 2),
+        (0.96, 0.95, 1), (0.39, 0.97, 1)
+    ]
+
+    var body: some View {
+        GeometryReader { proxy in
+            ZStack {
+                Circle()
+                    .stroke(accent.opacity(0.10), lineWidth: 1)
+                    .frame(width: 330, height: 330)
+                    .offset(x: proxy.size.width * 0.40, y: -140)
+
+                Circle()
+                    .stroke(light.opacity(0.06), style: StrokeStyle(lineWidth: 1, dash: [4, 9]))
+                    .frame(width: 270, height: 270)
+                    .offset(x: -proxy.size.width * 0.47, y: proxy.size.height * 0.24)
+
+                ForEach(Array(stars.enumerated()), id: \.offset) { index, star in
+                    Circle()
+                        .fill(index.isMultiple(of: 4) ? accent.opacity(0.48) : light.opacity(0.28))
+                        .frame(width: star.2, height: star.2)
+                        .position(x: proxy.size.width * star.0, y: proxy.size.height * star.1)
                 }
             }
+        }
+        .allowsHitTesting(false)
     }
 }

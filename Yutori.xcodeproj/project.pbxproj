@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		A3D340E57FBC43CC8A7CD0C2 /* StudyBiteActivity.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = FBA132CCB6284C59B15FBA18 /* StudyBiteActivity.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		A3D340E57FBC43CC8A7CD0C2 /* YutoriActivity.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = FBA132CCB6284C59B15FBA18 /* YutoriActivity.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -16,7 +16,7 @@
 			containerPortal = 36EA6F1B3049D5FE00A3A8DC /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = C5D51329197A4D9894899F58;
-			remoteInfo = StudyBiteActivity;
+			remoteInfo = YutoriActivity;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -27,7 +27,7 @@
 			dstPath = "";
 			dstSubfolderSpec = 13;
 			files = (
-				A3D340E57FBC43CC8A7CD0C2 /* StudyBiteActivity.appex in Embed App Extensions */,
+				A3D340E57FBC43CC8A7CD0C2 /* YutoriActivity.appex in Embed App Extensions */,
 			);
 			name = "Embed App Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -35,32 +35,32 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		36EA6F233049D5FE00A3A8DC /* StudyBite.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = StudyBite.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		FBA132CCB6284C59B15FBA18 /* StudyBiteActivity.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = StudyBiteActivity.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		36EA6F233049D5FE00A3A8DC /* Yutori.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Yutori.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		FBA132CCB6284C59B15FBA18 /* YutoriActivity.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = YutoriActivity.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		861B6C2F46A543DAA3260D6A /* Exceptions for "StudyBiteActivity" folder in "StudyBiteActivity" target */ = {
+		861B6C2F46A543DAA3260D6A /* Exceptions for "YutoriActivity" folder in "YutoriActivity" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
 			);
-			target = C5D51329197A4D9894899F58 /* StudyBiteActivity */;
+			target = C5D51329197A4D9894899F58 /* YutoriActivity */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		1868CDE9D0D64684A8E05BDC /* StudyBiteActivity */ = {
+		1868CDE9D0D64684A8E05BDC /* YutoriActivity */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				861B6C2F46A543DAA3260D6A /* Exceptions for "StudyBiteActivity" folder in "StudyBiteActivity" target */,
+				861B6C2F46A543DAA3260D6A /* Exceptions for "YutoriActivity" folder in "YutoriActivity" target */,
 			);
-			path = StudyBiteActivity;
+			path = YutoriActivity;
 			sourceTree = "<group>";
 		};
-		36EA6F253049D5FE00A3A8DC /* StudyBite */ = {
+		36EA6F253049D5FE00A3A8DC /* Yutori */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = StudyBite;
+			path = Yutori;
 			sourceTree = "<group>";
 		};
 		98AB38042B5E4A1CBF965EE6 /* StudyActivityShared */ = {
@@ -92,8 +92,8 @@
 			isa = PBXGroup;
 			children = (
 				98AB38042B5E4A1CBF965EE6 /* StudyActivityShared */,
-				1868CDE9D0D64684A8E05BDC /* StudyBiteActivity */,
-				36EA6F253049D5FE00A3A8DC /* StudyBite */,
+				1868CDE9D0D64684A8E05BDC /* YutoriActivity */,
+				36EA6F253049D5FE00A3A8DC /* Yutori */,
 				36EA6F243049D5FE00A3A8DC /* Products */,
 			);
 			sourceTree = "<group>";
@@ -101,8 +101,8 @@
 		36EA6F243049D5FE00A3A8DC /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				FBA132CCB6284C59B15FBA18 /* StudyBiteActivity.appex */,
-				36EA6F233049D5FE00A3A8DC /* StudyBite.app */,
+				FBA132CCB6284C59B15FBA18 /* YutoriActivity.appex */,
+				36EA6F233049D5FE00A3A8DC /* Yutori.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -110,9 +110,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		36EA6F223049D5FE00A3A8DC /* StudyBite */ = {
+		36EA6F223049D5FE00A3A8DC /* Yutori */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 36EA6F2E3049D5FF00A3A8DC /* Build configuration list for PBXNativeTarget "StudyBite" */;
+			buildConfigurationList = 36EA6F2E3049D5FF00A3A8DC /* Build configuration list for PBXNativeTarget "Yutori" */;
 			buildPhases = (
 				406EF5309AC840F5849207BA /* Embed App Extensions */,
 				36EA6F1F3049D5FE00A3A8DC /* Sources */,
@@ -125,19 +125,19 @@
 				82B60CD4F0894DD2B9400009 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
-				36EA6F253049D5FE00A3A8DC /* StudyBite */,
+				36EA6F253049D5FE00A3A8DC /* Yutori */,
 				98AB38042B5E4A1CBF965EE6 /* StudyActivityShared */,
 			);
-			name = StudyBite;
+			name = Yutori;
 			packageProductDependencies = (
 			);
-			productName = StudyBite;
-			productReference = 36EA6F233049D5FE00A3A8DC /* StudyBite.app */;
+			productName = Yutori;
+			productReference = 36EA6F233049D5FE00A3A8DC /* Yutori.app */;
 			productType = "com.apple.product-type.application";
 		};
-		C5D51329197A4D9894899F58 /* StudyBiteActivity */ = {
+		C5D51329197A4D9894899F58 /* YutoriActivity */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = C40E850605B5460B85B7466E /* Build configuration list for PBXNativeTarget "StudyBiteActivity" */;
+			buildConfigurationList = C40E850605B5460B85B7466E /* Build configuration list for PBXNativeTarget "YutoriActivity" */;
 			buildPhases = (
 				F5B056381520479AB4A7AE03 /* Sources */,
 				F19EE82A0F1A4363AE79340E /* Frameworks */,
@@ -148,12 +148,12 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				1868CDE9D0D64684A8E05BDC /* StudyBiteActivity */,
+				1868CDE9D0D64684A8E05BDC /* YutoriActivity */,
 				98AB38042B5E4A1CBF965EE6 /* StudyActivityShared */,
 			);
-			name = StudyBiteActivity;
-			productName = StudyBiteActivity;
-			productReference = FBA132CCB6284C59B15FBA18 /* StudyBiteActivity.appex */;
+			name = YutoriActivity;
+			productName = YutoriActivity;
+			productReference = FBA132CCB6284C59B15FBA18 /* YutoriActivity.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
@@ -171,7 +171,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 36EA6F1E3049D5FE00A3A8DC /* Build configuration list for PBXProject "StudyBite" */;
+			buildConfigurationList = 36EA6F1E3049D5FE00A3A8DC /* Build configuration list for PBXProject "Yutori" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -185,8 +185,8 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				C5D51329197A4D9894899F58 /* StudyBiteActivity */,
-				36EA6F223049D5FE00A3A8DC /* StudyBite */,
+				C5D51329197A4D9894899F58 /* YutoriActivity */,
+				36EA6F223049D5FE00A3A8DC /* Yutori */,
 			);
 		};
 /* End PBXProject section */
@@ -228,7 +228,7 @@
 /* Begin PBXTargetDependency section */
 		82B60CD4F0894DD2B9400009 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = C5D51329197A4D9894899F58 /* StudyBiteActivity */;
+			target = C5D51329197A4D9894899F58 /* YutoriActivity */;
 			targetProxy = 81A97D52D472436C8E89ADBD /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
@@ -365,6 +365,7 @@
 				DEVELOPMENT_TEAM = L776JV66CV;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Yutori;
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -398,6 +399,7 @@
 				DEVELOPMENT_TEAM = L776JV66CV;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Yutori;
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -429,8 +431,8 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = L776JV66CV;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = StudyBiteActivity/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "StudyBite Session";
+				INFOPLIST_FILE = YutoriActivity/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Yutori Session";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -456,8 +458,8 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = L776JV66CV;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = StudyBiteActivity/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "StudyBite Session";
+				INFOPLIST_FILE = YutoriActivity/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Yutori Session";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -478,7 +480,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		36EA6F1E3049D5FE00A3A8DC /* Build configuration list for PBXProject "StudyBite" */ = {
+		36EA6F1E3049D5FE00A3A8DC /* Build configuration list for PBXProject "Yutori" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				36EA6F2C3049D5FF00A3A8DC /* Debug */,
@@ -487,7 +489,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		36EA6F2E3049D5FF00A3A8DC /* Build configuration list for PBXNativeTarget "StudyBite" */ = {
+		36EA6F2E3049D5FF00A3A8DC /* Build configuration list for PBXNativeTarget "Yutori" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				36EA6F2F3049D5FF00A3A8DC /* Debug */,
@@ -496,7 +498,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		C40E850605B5460B85B7466E /* Build configuration list for PBXNativeTarget "StudyBiteActivity" */ = {
+		C40E850605B5460B85B7466E /* Build configuration list for PBXNativeTarget "YutoriActivity" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				655A2070234947C4A52877F1 /* Debug */,
