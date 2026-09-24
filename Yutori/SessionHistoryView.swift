@@ -13,8 +13,8 @@ struct SessionHistoryView: View {
                         Text("Couldn't load your sessions. Please reopen the app.")
                             .foregroundStyle(AppTheme.secondaryInk)
                     } else if store.sessions.isEmpty {
-                        Text("Your completed study sessions will appear here.")
-                            .foregroundStyle(AppTheme.secondaryInk)
+                        SessionEmptyStateCard()
+                        .padding(.top, 36)
                     }
                     ForEach(store.sessions) { session in
                         Button { selectedSession = session } label: {
@@ -57,7 +57,7 @@ struct SessionHistoryView: View {
             Group {
                 SessionSummaryView(course: session.course, measuredDuration: session.duration,
                                    startingSeconds: session.startingDishSeconds ?? 0,
-                                   bowlKind: session.bowlKind ?? .katsuRamen,
+                                   bowlKind: session.bowlKind ?? .teriyaki,
                                    pauseCount: session.pauseCount ?? 0,
                                    endedAt: session.endedAt, onDiscard: {}, onSave: { _ in },
                                    savedSession: session)

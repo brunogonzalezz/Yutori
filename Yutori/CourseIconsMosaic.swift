@@ -23,16 +23,19 @@ enum CourseIconCatalog {
 }
 
 struct CourseIconsMosaic: View {
+    var animated = true
+    var iconColor = AppTheme.paper
+    var iconOpacity = 0.065
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         TimelineView(.animation(minimumInterval: 1.0 / 30,
-                                paused: reduceMotion || scenePhase != .active)) { timeline in
+                                paused: !animated || reduceMotion || scenePhase != .active)) { timeline in
             Canvas { context, size in
-                let time = reduceMotion ? 0 : timeline.date.timeIntervalSinceReferenceDate
+                let time = animated && !reduceMotion ? timeline.date.timeIntervalSinceReferenceDate : 0
                 let symbols = CourseIconCatalog.icons
-                context.opacity = 0.065
+                context.opacity = iconOpacity
                 let spacing = 38.0
                 let travel = time * 3.0 / spacing
                 let wholeSteps = Int(floor(travel))
@@ -43,7 +46,7 @@ struct CourseIconsMosaic: View {
                         let cell = (row - wholeSteps) * 17 + (column - wholeSteps) * 31
                         let index = ((cell % symbols.count) + symbols.count) % symbols.count
                         var symbol = context.resolve(Image(systemName: symbols[index].0).renderingMode(.template))
-                        symbol.shading = .color(AppTheme.paper)
+                        symbol.shading = .color(iconColor)
                         context.draw(symbol, in: CGRect(x: Double(column) * spacing + offset,
                                                        y: Double(row) * spacing + offset,
                                                        width: 17, height: 17))
@@ -53,5 +56,69 @@ struct CourseIconsMosaic: View {
         }
         .allowsHitTesting(false)
         .accessibilityHidden(true)
+    }
+}
+
+struct SessionEmptyStateCard: View {
+    private let badges: [(CourseColor, String)] = [
+        (.teal, "function"),
+        (.orange, "book.fill"),
+        (.blue, "atom"),
+        (.pink, "character.bubble.fill"),
+        (.lemon, "globe.europe.africa.fill")
+    ]
+
+    var body: some View {
+        ZStack {
+            AppTheme.surface.opacity(0.66)
+
+            CourseIconsMosaic(animated: false, iconColor: AppTheme.ink, iconOpacity: 0.052)
+
+            VStack(spacing: 10) {
+                HStack(spacing: -9) {
+                    ForEach(Array(badges.enumerated()), id: \.offset) { index, badge in
+                        Image(systemName: badge.1)
+                            .font(.system(size: 16, weight: .semibold, design: .rounded))
+                            .foregroundStyle(.white)
+                            .frame(width: 44, height: 44)
+                            .background(badge.0.tint, in: Circle())
+                            .overlay { Circle().strokeBorder(badge.0.deepTint.opacity(0.55), lineWidth: 1.25) }
+                            .zIndex(Double(3 - abs(index - 2)))
+                    }
+                }
+                .offset(y: -5)
+
+                VStack(spacing: 5) {
+                    Text("Your study story starts here")
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .foregroundStyle(AppTheme.ink)
+
+                    Text("Complete a session and it will appear in your history.")
+                        .font(.system(size: 12, design: .rounded))
+                        .foregroundStyle(AppTheme.secondaryInk)
+                        .multilineTextAlignment(.center)
+                        .lineSpacing(2)
+                }
+            }
+            .padding(.horizontal, 20)
+        }
+        .frame(maxWidth: .infinity, minHeight: 174)
+        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .strokeBorder(AppTheme.ink.opacity(0.28), lineWidth: 1)
+        }
+        .accessibilityElement(children: .combine)
+    }
+}
+
+extension CourseColor {
+    var deepTint: Color {
+        let factor = 0.62
+        return Color(
+            red: Double((rgbHex >> 16) & 0xff) / 255 * factor,
+            green: Double((rgbHex >> 8) & 0xff) / 255 * factor,
+            blue: Double(rgbHex & 0xff) / 255 * factor
+        )
     }
 }

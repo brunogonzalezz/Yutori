@@ -160,7 +160,7 @@ struct BowlPickerView: View {
             AppTheme.muted
                 .frame(width: width, height: width * 0.72)
                 .mask {
-                    DishArtworkView(level: 0, availableWidth: width + 48, preferredWidth: width, kind: .katsuRamen)
+                    DishArtworkView(level: 0, availableWidth: width + 48, preferredWidth: width, kind: .teriyaki)
                 }
         }
     }

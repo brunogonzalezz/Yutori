@@ -216,7 +216,7 @@ struct SessionSummaryView: View {
             }
             Button("Cancel", role: .cancel) { }
         } message: {
-            Text("This session and its study time will be removed from your history.")
+            Text("This session will be removed and your bowl progress and collection will be recalculated.")
         }
         .alert("Couldn't delete session", isPresented: $deleteFailed) {
             Button("OK", role: .cancel) { }

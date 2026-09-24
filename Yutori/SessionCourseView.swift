@@ -3,8 +3,10 @@ import SwiftUI
 struct SessionCourseView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var store = CourseStore.shared
+    @State private var purchaseManager = PurchaseManager.shared
     @State private var selectedID: UUID?
     @State private var showCourses = false
+    @State private var showPaywall = false
     @State private var starting = false
     let onStart: (StudyCourse) -> Void
 
@@ -17,8 +19,12 @@ struct SessionCourseView: View {
                     Text("Couldn't load your courses. Please reopen the app.")
                         .foregroundStyle(AppTheme.secondaryInk)
                 } else if store.courses.isEmpty {
-                    Text("Create a course for your first study session.")
-                        .foregroundStyle(AppTheme.secondaryInk)
+                    AppEmptyStateCard(
+                        icon: "book.closed.fill",
+                        title: "Create your first course",
+                        message: "Add a course before starting your first study session.",
+                        showsBackground: false
+                    )
                 } else {
                     ForEach(store.courses) { course in
                         Button { selectedID = course.id } label: {
@@ -45,11 +51,27 @@ struct SessionCourseView: View {
                     }
                 }
                 if !store.loadFailed {
-                    Button("Create a course", systemImage: "plus") { showCourses = true }
-                        .font(.subheadline.weight(.semibold))
-                        .tint(AppTheme.ink)
-                        .padding(.vertical, 12)
-                        .frame(maxWidth: .infinity, alignment: .center)
+                    Button {
+                        if store.courses.isEmpty || purchaseManager.isPro {
+                            showCourses = true
+                        } else {
+                            showPaywall = true
+                        }
+                    } label: {
+                        Label("Create a course", systemImage: "plus")
+                            .font(.system(size: 14, weight: .semibold, design: .rounded))
+                            .foregroundStyle(store.courses.isEmpty ? AppTheme.paper : AppTheme.ink)
+                            .padding(.horizontal, 20)
+                            .frame(height: store.courses.isEmpty ? 42 : 22)
+                            .background {
+                                if store.courses.isEmpty {
+                                    Capsule().fill(AppTheme.ink)
+                                }
+                            }
+                            .frame(maxWidth: .infinity, alignment: .center)
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.vertical, 12)
                 }
             }
             .padding(24)
@@ -92,6 +114,11 @@ struct SessionCourseView: View {
             .presentationDetents([.large])
 
             }.presentationBackground(AppTheme.paper)
+        }
+        .sheet(isPresented: $showPaywall) {
+            PaywallView()
+                .presentationBackground(AppTheme.paper)
+                .presentationDragIndicator(.visible)
         }
     }
 }

@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A18D8C043101000100000001 /* RevenueCat in Frameworks */ = {isa = PBXBuildFile; productRef = C18D8C043101000100000003 /* RevenueCat */; };
 		A3D340E57FBC43CC8A7CD0C2 /* YutoriActivity.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = FBA132CCB6284C59B15FBA18 /* YutoriActivity.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
@@ -75,6 +76,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A18D8C043101000100000001 /* RevenueCat in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -130,6 +132,7 @@
 			);
 			name = Yutori;
 			packageProductDependencies = (
+				C18D8C043101000100000003 /* RevenueCat */,
 			);
 			productName = Yutori;
 			productReference = 36EA6F233049D5FE00A3A8DC /* Yutori.app */;
@@ -180,6 +183,9 @@
 			);
 			mainGroup = 36EA6F1A3049D5FE00A3A8DC;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				B18D8C043101000100000002 /* XCRemoteSwiftPackageReference "purchases-ios" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 36EA6F243049D5FE00A3A8DC /* Products */;
 			projectDirPath = "";
@@ -508,6 +514,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		B18D8C043101000100000002 /* XCRemoteSwiftPackageReference "purchases-ios" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/RevenueCat/purchases-ios.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 5.91.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		C18D8C043101000100000003 /* RevenueCat */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B18D8C043101000100000002 /* XCRemoteSwiftPackageReference "purchases-ios" */;
+			productName = RevenueCat;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 36EA6F1B3049D5FE00A3A8DC /* Project object */;
 }

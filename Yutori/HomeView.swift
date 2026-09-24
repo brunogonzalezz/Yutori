@@ -138,28 +138,15 @@ struct HomeView: View {
             }
             .padding(.bottom, 32)
             } else {
-                VStack(spacing: 12) {
-                    Text("Ready for your next bowl?")
-                        .font(.system(size: 21, weight: .semibold, design: .rounded))
-                    Text("Choose a bowl to keep growing while you study.")
-                        .font(.subheadline)
-                        .foregroundStyle(AppTheme.secondaryInk)
-                        .multilineTextAlignment(.center)
-                    Button {
-                        onSelectBowl?()
-                    } label: {
-                        Text("Choose a bowl")
-                            .font(.system(size: 14, weight: .semibold, design: .rounded))
-                            .foregroundStyle(.white)
-                            .padding(.horizontal, 22)
-                            .frame(height: 40)
-                            .background(AppTheme.ink, in: Capsule())
-                    }
-                    .buttonStyle(.plain)
-                    .padding(.top, 8)
-                }
-                .frame(maxWidth: .infinity, minHeight: 240)
-                .padding(.horizontal, 32)
+                AppEmptyStateCard(
+                    icon: "takeoutbag.and.cup.and.straw.fill",
+                    title: "Choose your next bowl",
+                    message: "Pick a bowl and let it grow with your next study session.",
+                    actionTitle: "Choose a bowl",
+                    action: { onSelectBowl?() },
+                    showsBackground: false
+                )
+                .padding(.horizontal, 20)
                 .padding(.bottom, 32)
             }
 
@@ -185,9 +172,7 @@ struct HomeView: View {
                     Text("Couldn't load your sessions. Please reopen the app and try again.")
                         .foregroundStyle(AppTheme.secondaryInk)
                 } else if sessionStore.sessions.isEmpty {
-                    Text("Your completed study sessions will appear here.")
-                        .font(.subheadline)
-                        .foregroundStyle(AppTheme.secondaryInk)
+                    SessionEmptyStateCard()
                 } else {
                     VStack(spacing: 0) {
                     ForEach(recentCourseSessions) { session in
@@ -255,7 +240,7 @@ struct HomeView: View {
             Group {
             SessionSummaryView(course: session.course, measuredDuration: session.duration,
                                startingSeconds: session.startingDishSeconds ?? 0,
-                               bowlKind: session.bowlKind ?? .katsuRamen,
+                               bowlKind: session.bowlKind ?? .teriyaki,
                                pauseCount: session.pauseCount ?? 0,
                                endedAt: session.endedAt, onDiscard: {}, onSave: { _ in },
                                savedSession: session)

@@ -15,6 +15,10 @@ struct SettingsView: View {
     @State private var selectedPhoto: PhotosPickerItem?
     @State private var showPhotoPicker = false
     @State private var showPaywall = false
+    @State private var showOnboarding = false
+    @State private var purchaseManager = PurchaseManager.shared
+    @State private var isRestoringPurchases = false
+    @State private var restorePurchasesMessage: String?
     @State private var showColors = false
     @State private var showAppIcons = false
     @State private var photoError = false
@@ -23,12 +27,14 @@ struct SettingsView: View {
     @State private var selectedLanguage = "English"
     @State private var confirmReset = false
     @State private var isResetting = false
+    @State private var showDeleteChallenge = false
+    @State private var deletionBowl: BowlKind = .teriyaki
 
     private let colors = ProfileAvatarView.colors
 
     var body: some View {
         NavigationStack {
-            ScrollView {
+            ScrollView(showsIndicators: false) {
                 VStack(spacing: 0) {
                 VStack(spacing: 18) {
                     Menu {
@@ -54,26 +60,36 @@ struct SettingsView: View {
                         isEditingName = false
                     })
 
-                    TextField("Your name", text: $draftName)
-                        .textFieldStyle(.plain)
-                        .tint(AppTheme.ink)
-                        .font(.system(size: 26, weight: .bold, design: .rounded))
-                        .multilineTextAlignment(.center)
-                        .textContentType(.name)
-                        .textInputAutocapitalization(.words)
-                        .autocorrectionDisabled()
-                        .submitLabel(.done)
-                        .focused($isEditingName)
-                        .accessibilityLabel("Your name")
-                        .background {
-                            GeometryReader { geometry in
-                                Color.clear.preference(key: NameFrameKey.self, value: geometry.frame(in: .named("settings")))
+                    VStack(spacing: 0) {
+                        TextField("Your name", text: $draftName)
+                            .textFieldStyle(.plain)
+                            .tint(AppTheme.ink)
+                            .font(.system(size: 26, weight: .bold, design: .rounded))
+                            .multilineTextAlignment(.center)
+                            .textContentType(.name)
+                            .textInputAutocapitalization(.words)
+                            .autocorrectionDisabled()
+                            .submitLabel(.done)
+                            .focused($isEditingName)
+                            .accessibilityLabel("Your name")
+                            .accessibilityHint("Tap to edit your name")
+                            .overlay(alignment: .bottom) {
+                                Capsule()
+                                    .fill(AppTheme.secondaryInk.opacity(isEditingName ? 0.72 : 0.42))
+                                    .frame(width: min(230, max(56, CGFloat(max(1, draftName.count)) * 13)), height: 1.5)
+                                    .offset(y: 1)
                             }
-                        }
-                        .onSubmit {
-                            saveName()
-                            isEditingName = false
-                        }
+                            .background {
+                                GeometryReader { geometry in
+                                    Color.clear.preference(key: NameFrameKey.self, value: geometry.frame(in: .named("settings")))
+                                }
+                            }
+                            .onSubmit {
+                                saveName()
+                                isEditingName = false
+                            }
+
+                    }
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.horizontal, 24)
@@ -103,6 +119,21 @@ struct SettingsView: View {
             PaywallView()
                 .presentationBackground(AppTheme.paper)
                 .presentationDragIndicator(.visible)
+        }
+        .fullScreenCover(isPresented: $showDeleteChallenge) {
+            AccountDeletionChallengeView(kind: deletionBowl) {
+                showDeleteChallenge = false
+            } onDestroyed: {
+                isResetting = true
+                selectedPhoto = nil
+                isEditingName = false
+                AppReset.shared.reset()
+            }
+        }
+        .fullScreenCover(isPresented: $showOnboarding) {
+            OnboardingView(allowsDismiss: true) {
+                showOnboarding = false
+            }
         }
         .coordinateSpace(name: "settings")
         .contentShape(Rectangle())
@@ -241,6 +272,17 @@ struct SettingsView: View {
         } message: {
             Text("Please try selecting another photo.")
         }
+        .alert(
+            "Restore Purchases",
+            isPresented: Binding(
+                get: { restorePurchasesMessage != nil },
+                set: { if !$0 { restorePurchasesMessage = nil } }
+            )
+        ) {
+            Button("OK", role: .cancel) { restorePurchasesMessage = nil }
+        } message: {
+            Text(restorePurchasesMessage ?? "")
+        }
     }
 
     private let cardColor = AppTheme.surface
@@ -248,21 +290,93 @@ struct SettingsView: View {
     private var settingsContent: some View {
         VStack(spacing: 0) {
             Button { showPaywall = true } label: {
-                Text("Pro Ad")
-                    .font(.system(size: 17, design: .rounded))
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 164)
-                    .background(cardColor, in: RoundedRectangle(cornerRadius: 38))
-                    .contentShape(RoundedRectangle(cornerRadius: 38))
+                ZStack(alignment: .leading) {
+                    cardColor
+
+                    Circle()
+                        .fill(Color(red: 215 / 255, green: 127 / 255, blue: 154 / 255).opacity(0.30))
+                        .frame(width: 132, height: 132)
+                        .offset(x: 235, y: -45)
+
+                    Circle()
+                        .fill(Color(red: 113 / 255, green: 138 / 255, blue: 82 / 255).opacity(0.27))
+                        .frame(width: 82, height: 82)
+                        .offset(x: 292, y: 66)
+
+                    Circle()
+                        .fill(Color(red: 197 / 255, green: 160 / 255, blue: 68 / 255).opacity(0.28))
+                        .frame(width: 58, height: 58)
+                        .offset(x: 205, y: 72)
+
+                    Circle()
+                        .fill(Color(red: 217 / 255, green: 132 / 255, blue: 75 / 255).opacity(0.26))
+                        .frame(width: 42, height: 42)
+                        .offset(x: 178, y: -57)
+
+                    HStack(spacing: 14) {
+                        VStack(alignment: .leading, spacing: 7) {
+                            HStack(spacing: 5) {
+                                Image(systemName: "sparkles")
+                                    .font(.system(size: 11, weight: .bold))
+
+                                Text("YUTORI PRO")
+                            }
+                                .font(.system(size: 11, weight: .heavy, design: .rounded))
+                                .tracking(1.1)
+                                .foregroundStyle(Color(red: 173 / 255, green: 82 / 255, blue: 117 / 255))
+
+                            Text("Upgrade to Pro")
+                                .font(.system(size: 27, weight: .bold, design: .rounded))
+                                .foregroundStyle(AppTheme.ink)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.82)
+
+                            Text("Create unlimited courses")
+                                .font(.system(size: 13, weight: .medium, design: .rounded))
+                                .foregroundStyle(AppTheme.secondaryInk)
+                                .lineLimit(1)
+                        }
+
+                        Spacer(minLength: 0)
+
+                        Image("TeriyakiLevel5")
+                            .resizable()
+                            .interpolation(.none)
+                            .scaledToFit()
+                            .frame(width: 112, height: 112)
+                            .offset(y: 4)
+                    }
+                    .padding(.leading, 24)
+                    .padding(.trailing, 14)
+                }
+                .frame(maxWidth: .infinity)
+                .frame(height: 164)
+                .clipShape(RoundedRectangle(cornerRadius: 38, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 38, style: .continuous)
+                        .strokeBorder(AppTheme.ink.opacity(0.10), lineWidth: 1)
+                }
+                .contentShape(RoundedRectangle(cornerRadius: 38, style: .continuous))
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("Open Pro paywall")
+            .accessibilityLabel("Upgrade to Yutori Pro")
 
-            Text("Restore Purchase")
-                .font(.system(size: 12, design: .rounded))
-                .foregroundStyle(AppTheme.secondaryInk)
-                .padding(.top, 10)
-                .padding(.bottom, 28)
+            Button {
+                restorePurchases()
+            } label: {
+                if isRestoringPurchases {
+                    ProgressView()
+                        .controlSize(.small)
+                } else {
+                    Text("Restore Purchases")
+                        .font(.system(size: 12, design: .rounded))
+                }
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(AppTheme.secondaryInk)
+            .disabled(isRestoringPurchases || purchaseManager.isBusy)
+            .padding(.top, 10)
+            .padding(.bottom, 28)
 
             CoursesSettingsSection()
                 .padding(.bottom, 24)
@@ -282,13 +396,6 @@ struct SettingsView: View {
                             Image(uiImage: Self.spanishFlag)
                                 .renderingMode(.original)
                         }.tag("Español")
-                        Label {
-                            Text("Català")
-                        } icon: {
-                            Image(uiImage: Self.circularCatalanFlag)
-                                .renderingMode(.original)
-                        }
-                        .tag("Català")
                     }
                 } label: {
                     settingsRow("Language", icon: "character.bubble", selection: selectedLanguage, flag: selectedLanguageFlag)
@@ -306,7 +413,13 @@ struct SettingsView: View {
             }
 
             settingsSection("ONBOARDING") {
-                settingsRow("Show Onboarding", icon: "rectangle.on.rectangle")
+                Button {
+                    isEditingName = false
+                    showOnboarding = true
+                } label: {
+                    settingsRow("Show Onboarding", icon: "rectangle.on.rectangle")
+                }
+                .buttonStyle(.plain)
             }
 
             settingsSection("YUTORI") {
@@ -321,9 +434,9 @@ struct SettingsView: View {
                 .buttonStyle(.plain)
                 settingsDivider
                 NavigationLink {
-                    AboutYutoriView()
+                    Shipaton2026View()
                 } label: {
-                    settingsRow("About Yutori", icon: "figure.walk")
+                    settingsRow("Shipaton 2026", icon: "sparkles")
                 }
                 .buttonStyle(.plain)
             }
@@ -345,11 +458,9 @@ struct SettingsView: View {
                 .background(cardColor, in: RoundedRectangle(cornerRadius: 22))
                 .padding(.top, 8)
                 .alert("Reset Yutori?", isPresented: $confirmReset) {
-                    Button("Delete everything", role: .destructive) {
-                        isResetting = true
-                        selectedPhoto = nil
-                        isEditingName = false
-                        AppReset.shared.reset()
+                    Button("Continue", role: .destructive) {
+                        deletionBowl = BowlKind.allCases.randomElement() ?? .teriyaki
+                        showDeleteChallenge = true
                     }
                     Button("Cancel", role: .cancel) {}
                 } message: {
@@ -364,6 +475,22 @@ struct SettingsView: View {
                 .padding(16)
                 .background(cardColor, in: RoundedRectangle(cornerRadius: 22))
                 .padding(.top, 12)
+
+#if DEBUG
+            Button {
+                purchaseManager.setDebugPro(!purchaseManager.isPro)
+            } label: {
+                settingsRow(
+                    "Yutori Pro testing",
+                    icon: "hammer.fill",
+                    selection: purchaseManager.isPro ? "Premium" : "Free"
+                )
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .background(cardColor, in: RoundedRectangle(cornerRadius: 22))
+            .padding(.top, 12)
+#endif
 
             Text("Version \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—")")
                 .font(.system(size: 13, design: .rounded))
@@ -469,10 +596,25 @@ struct SettingsView: View {
         }
     }
 
+    private func restorePurchases() {
+        guard !isRestoringPurchases, !purchaseManager.isBusy else { return }
+        isRestoringPurchases = true
+        Task {
+            defer { isRestoringPurchases = false }
+            do {
+                let restored = try await purchaseManager.restorePurchases()
+                restorePurchasesMessage = restored
+                    ? "Yutori Pro has been restored."
+                    : "No active Yutori Pro purchase was found."
+            } catch {
+                restorePurchasesMessage = error.localizedDescription
+            }
+        }
+    }
+
     private var selectedLanguageFlag: UIImage {
         switch selectedLanguage {
         case "Español": return Self.spanishFlag
-        case "Català": return Self.circularCatalanFlag
         default: return Self.englishFlag
         }
     }
@@ -480,19 +622,6 @@ struct SettingsView: View {
     // Reuse the same images when scrolling updates the name field's geometry.
     private static let englishFlag = circularFlag(UIImage(named: "Flag-gb") ?? UIImage())
     private static let spanishFlag = circularFlag(UIImage(named: "Flag-es") ?? UIImage())
-    private static let circularCatalanFlag = circularFlag(catalanFlag)
-
-    // Render the Senyera with the same image treatment as the other flags.
-    private static let catalanFlag: UIImage = UIGraphicsImageRenderer(
-        size: CGSize(width: 27, height: 18)
-    ).image { context in
-        UIColor.systemYellow.setFill()
-        context.fill(CGRect(x: 0, y: 0, width: 27, height: 18))
-        UIColor.systemRed.setFill()
-        for stripe in 0..<4 {
-            context.fill(CGRect(x: 0, y: 2 + stripe * 4, width: 27, height: 2))
-        }
-    }
 
     private func sendFeedback() {
         var components = URLComponents()
@@ -561,6 +690,198 @@ private struct StudyTestDateSettings: View {
     }
 }
 
+private struct AccountDeletionChallengeView: View {
+    let kind: BowlKind
+    let onCancel: () -> Void
+    let onDestroyed: () -> Void
+
+    private let requiredHits = 10
+    @State private var hitCount = 0
+    @State private var bowlScale: CGFloat = 1
+    @State private var bowlRotation = 0.0
+    @State private var bowlOpacity = 1.0
+    @State private var fragmentsVisible = false
+    @State private var fragmentsExpanded = false
+
+    var body: some View {
+        ZStack {
+            AppTheme.paper.ignoresSafeArea()
+
+            VStack(spacing: 18) {
+                HStack {
+                    Button(action: onCancel) {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundStyle(AppTheme.ink)
+                            .frame(width: 44, height: 44)
+                            .background(AppTheme.surface, in: Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Cancel account deletion")
+                    Spacer()
+                }
+
+                Spacer(minLength: 8)
+
+                VStack(spacing: 8) {
+                    Text("Break the bowl to continue")
+                        .font(.system(size: 27, weight: .bold, design: .rounded))
+                    Text("Tap the bowl until it breaks. Your Yutori data will then be deleted permanently.")
+                        .font(.system(size: 14, design: .rounded))
+                        .foregroundStyle(AppTheme.secondaryInk)
+                        .multilineTextAlignment(.center)
+                        .lineSpacing(2)
+                        .frame(maxWidth: 310)
+                }
+
+                Spacer(minLength: 0)
+
+                Button(action: strikeBowl) {
+                    ZStack {
+                        if fragmentsVisible {
+                            BrokenBowlPieces(kind: kind, expanded: fragmentsExpanded)
+
+                            ForEach(0..<12, id: \.self) { index in
+                                let angle = Double(index) * .pi / 6
+                                RoundedRectangle(cornerRadius: 2)
+                                    .fill(kind.evolutionColors[index % kind.evolutionColors.count])
+                                    .frame(width: CGFloat(8 + index % 3 * 4), height: CGFloat(7 + index % 2 * 5))
+                                    .rotationEffect(.degrees(Double(index * 29)))
+                                    .offset(
+                                        x: cos(angle) * (fragmentsExpanded ? 155 : 52),
+                                        y: sin(angle) * (fragmentsExpanded ? 135 : 42)
+                                    )
+                                    .opacity(fragmentsExpanded ? 0 : 1)
+                            }
+                        }
+
+                        DishArtworkView(level: 5, availableWidth: 320, preferredWidth: 258, kind: kind)
+                            .scaleEffect(bowlScale)
+                            .rotationEffect(.degrees(bowlRotation))
+                            .opacity(fragmentsVisible ? 0 : bowlOpacity)
+                            .overlay {
+                                DeletionCracks(progress: Double(hitCount) / Double(requiredHits))
+                                    .stroke(AppTheme.paper.opacity(0.92),
+                                            style: StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round))
+                                    .frame(width: 180, height: 135)
+                                    .opacity(hitCount == 0 ? 0 : 1)
+                            }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 290)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .disabled(fragmentsVisible)
+                .accessibilityLabel("Break (kind.name)")
+                .accessibilityValue("\(hitCount) of \(requiredHits) hits")
+
+                Text(hitCount == 0 ? "Tap to begin" : "\(requiredHits - hitCount) taps remaining")
+                    .font(.system(size: 15, weight: .semibold, design: .rounded))
+                    .foregroundStyle(AppTheme.secondaryInk)
+                    .monospacedDigit()
+
+                Spacer()
+            }
+            .padding(24)
+        }
+        .foregroundStyle(AppTheme.ink)
+        .interactiveDismissDisabled()
+        .sensoryFeedback(.impact(weight: .heavy), trigger: hitCount)
+    }
+
+    private func strikeBowl() {
+        guard hitCount < requiredHits else { return }
+        hitCount += 1
+
+        if hitCount == requiredHits {
+            fragmentsVisible = true
+            Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(30))
+                withAnimation(.easeOut(duration: 0.62)) {
+                    bowlScale = 0.05
+                    bowlRotation = 16
+                    bowlOpacity = 0
+                    fragmentsExpanded = true
+                }
+                try? await Task.sleep(for: .milliseconds(720))
+                onDestroyed()
+            }
+        } else {
+            let direction = hitCount.isMultiple(of: 2) ? -1.0 : 1.0
+            withAnimation(.spring(duration: 0.18, bounce: 0.65)) {
+                bowlScale = 0.95
+                bowlRotation = direction * 3.5
+            }
+            Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(130))
+                withAnimation(.spring(duration: 0.22, bounce: 0.45)) {
+                    bowlScale = 1
+                    bowlRotation = 0
+                }
+            }
+        }
+    }
+}
+
+private struct BrokenBowlPieces: View {
+    let kind: BowlKind
+    let expanded: Bool
+
+    var body: some View {
+        ZStack {
+            ForEach(0..<4, id: \.self) { index in
+                DishArtworkView(level: 5, availableWidth: 320, preferredWidth: 258, kind: kind)
+                    .frame(width: 280, height: 250)
+                    .mask {
+                        GeometryReader { geometry in
+                            Rectangle()
+                                .frame(width: geometry.size.width / 2 + 4,
+                                       height: geometry.size.height / 2 + 4)
+                                .position(
+                                    x: index.isMultiple(of: 2) ? geometry.size.width / 4 : geometry.size.width * 3 / 4,
+                                    y: index < 2 ? geometry.size.height / 4 : geometry.size.height * 3 / 4
+                                )
+                        }
+                    }
+                    .offset(x: expanded ? (index.isMultiple(of: 2) ? -96 : 96) : 0,
+                            y: expanded ? (index < 2 ? -72 : 96) : 0)
+                    .rotationEffect(.degrees(expanded ? [-18, 16, -12, 20][index] : 0))
+                    .opacity(expanded ? 0.08 : 1)
+            }
+        }
+        .frame(width: 280, height: 250)
+        .accessibilityHidden(true)
+    }
+}
+
+private struct DeletionCracks: Shape {
+    let progress: Double
+
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        if progress > 0.15 {
+            path.move(to: CGPoint(x: rect.midX, y: rect.minY + 10))
+            path.addLine(to: CGPoint(x: rect.midX - 13, y: rect.midY - 12))
+            path.addLine(to: CGPoint(x: rect.midX + 5, y: rect.midY + 5))
+            path.addLine(to: CGPoint(x: rect.midX - 10, y: rect.maxY - 12))
+        }
+        if progress > 0.45 {
+            path.move(to: CGPoint(x: rect.midX - 13, y: rect.midY - 12))
+            path.addLine(to: CGPoint(x: rect.minX + 24, y: rect.midY - 28))
+            path.move(to: CGPoint(x: rect.midX + 5, y: rect.midY + 5))
+            path.addLine(to: CGPoint(x: rect.maxX - 24, y: rect.midY - 5))
+        }
+        if progress > 0.72 {
+            path.move(to: CGPoint(x: rect.midX - 10, y: rect.maxY - 12))
+            path.addLine(to: CGPoint(x: rect.minX + 34, y: rect.maxY - 28))
+            path.move(to: CGPoint(x: rect.midX + 5, y: rect.midY + 5))
+            path.addLine(to: CGPoint(x: rect.midX + 32, y: rect.maxY - 20))
+        }
+        return path
+    }
+}
+
 private struct ResetStudySessionsButton: View {
     @State private var showConfirmation = false
 
@@ -582,7 +903,7 @@ private struct ResetStudySessionsButton: View {
             }
             Button("Cancel", role: .cancel) { }
         } message: {
-            Text("This cannot be undone. Your dish will return to level 0. Your courses and profile will be kept.")
+            Text("This cannot be undone. Bowl progress, collected bowls and unlock progress earned from these sessions will be removed. Your courses and profile will be kept.")
         }
     }
 }
@@ -594,96 +915,92 @@ private struct NameFrameKey: PreferenceKey {
     }
 }
 
-private struct AboutYutoriView: View {
+private struct Shipaton2026View: View {
     @Environment(\.dismiss) private var dismiss
 
-    private let space = Color(red: 0.10, green: 0.075, blue: 0.16)
-    private let panel = AppTheme.surface
+    private let night = Color(red: 0.29, green: 0.20, blue: 0.39)
+    private let dusk = Color(red: 0.48, green: 0.34, blue: 0.55)
+    private let lavenderMist = Color(red: 0.73, green: 0.63, blue: 0.72)
     private let cream = Color(red: 1.00, green: 0.97, blue: 0.90)
-    private let orange = Color(red: 0.85, green: 0.38, blue: 0.16)
-    private let muted = Color(red: 0.78, green: 0.74, blue: 0.72)
+    private let orange = Color(red: 217 / 255, green: 132 / 255, blue: 75 / 255)
 
     var body: some View {
         ZStack {
             AppTheme.paper.ignoresSafeArea()
 
             ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 18) {
-                    hero
+                ZStack(alignment: .top) {
+                    LinearGradient(
+                        stops: [
+                            .init(color: night, location: 0),
+                            .init(color: night, location: 0.10),
+                            .init(color: dusk, location: 0.36),
+                            .init(color: lavenderMist, location: 0.65),
+                            .init(color: AppTheme.paper, location: 0.94),
+                            .init(color: AppTheme.paper, location: 1)
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                    .frame(height: 450)
 
-                    storyCard("01 / THE BEGINNING", icon: "sparkles") {
-                        storyText("Hi, I’m Bruno. I’m 20 years old and this year I started studying Computer Engineering in Barcelona.")
-                        storyText("I’ve wanted to learn how to build apps for a long time, but for some reason I always kept putting it off. I think I was waiting for the “right moment” to start.")
-                        shipatonMoment
-                    }
+                    AboutYutoriStarField(accent: orange, light: cream)
+                        .frame(height: 300)
 
-                    storyCard("02 / WHY YUTORI", icon: "takeoutbag.and.cup.and.straw.fill") {
-                        storyText("The idea for Yutori came from something very simple: **I know how difficult it can be to stay motivated to study.** I wanted to create something that could make the process feel a bit more enjoyable and give you a small reason to come back every day.")
-                        storyText("The idea of growing and collecting Japanese bowls felt fun to me. It turns something as simple as sitting down to study into something you can slowly build over time.")
-                    }
+                    VStack(alignment: .leading, spacing: 0) {
+                        hero
 
-                    storyCard("03 / THE NAME", icon: "circle.hexagongrid.fill") {
-                        HStack(alignment: .top, spacing: 18) {
-                            Text("ゆとり")
-                                .font(.system(size: 31, weight: .black, design: .rounded))
-                                .foregroundStyle(orange)
-                                .frame(minWidth: 82)
+                        VStack(alignment: .leading, spacing: 18) {
+                            storyText("Hi, I’m Bruno. I’m 20 years old, and this year I started studying Computer Engineering in Barcelona.")
+                            storyText("I joined Shipaton with a pretty simple goal: **finally build something.**")
+                            storyText("I had wanted to learn how to make apps for a long time, but I kept putting it off. I was always waiting for the right moment, or until I felt ready enough to start.")
+                            storyText("Shipaton gave me the push I needed to stop waiting.")
+                            storyText("I wanted to make something that was actually mine, learn as much as possible along the way, and see what I could build in a limited amount of time. That’s how Yutori started.")
+                            storyText("The idea came from something very familiar to me: studying. I wanted to experiment with making the process feel a little more rewarding and give people a reason to come back every day. The idea of growing and collecting Japanese bowls felt simple, but fun enough to turn studying into something you could actually look forward to.")
+                            storyText("The name came from the Japanese word **Yutori (ゆとり)**, which can mean *space, room, or breathing room*, especially mentally. I liked the idea of connecting that feeling with learning, growth, and taking the time to improve.")
+                            storyText("But more than the app itself, what I’ll take away from Shipaton is the process of building it. There were plenty of things I didn’t know how to do, and a lot of moments where I wasn’t sure I would manage to finish. Figuring things out one by one and watching Yutori slowly become real has been one of the most rewarding things I’ve done.")
 
-                            storyText("I also really liked the meaning behind the name **Yutori (ゆとり)**. In Japanese, it can refer to having *space, room, or breathing room*, especially mentally. That idea felt very fitting for something about learning and taking time to grow.")
+                            Text("Shipaton made me realise that building apps is something I genuinely want to keep doing.")
+                                .font(.system(size: 19, weight: .bold, design: .rounded))
+                                .foregroundStyle(AppTheme.ink)
+                                .lineSpacing(6)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .padding(.leading, 16)
+                                .overlay(alignment: .leading) {
+                                    Capsule()
+                                        .fill(orange)
+                                        .frame(width: 4)
+                                }
+                                .padding(.vertical, 4)
+
+                            storyText("So wherever Yutori goes from here, it will always be the app that made me start.")
+
+                            Rectangle()
+                                .fill(AppTheme.ink.opacity(0.13))
+                                .frame(height: 1)
+                                .padding(.top, 4)
+
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text("Thanks for being here.")
+                                Text("— Bruno")
+                                    .fontWeight(.bold)
+                                    .foregroundStyle(orange)
+                            }
+                            .font(.system(size: 17, design: .rounded))
+                            .foregroundStyle(AppTheme.ink)
                         }
+                        .padding(.top, 2)
                     }
-
-                    storyCard("04 / WHAT CAME NEXT", icon: "arrow.up.right") {
-                        storyText("Building Yutori has honestly been one of the most enjoyable things I’ve done. I’ve learned more during this process than I expected, and somewhere along the way I realised that this is what I want to keep doing.")
-                    }
-
-                    VStack(alignment: .leading, spacing: 18) {
-                        Image(systemName: "star.fill")
-                            .font(.system(size: 20, weight: .black))
-                            .foregroundStyle(orange)
-
-                        Text("Yutori started as a project for Shipaton, but for me, it became the first step towards the future I want to build.")
-                            .font(.system(size: 23, weight: .black, design: .rounded))
-                            .foregroundStyle(cream)
-                            .lineSpacing(3)
-
-                        Rectangle()
-                            .fill(cream.opacity(0.18))
-                            .frame(height: 1)
-
-                        HStack {
-                            Text("Thanks for being here.")
-                            Spacer()
-                            Text("— Bruno")
-                                .fontWeight(.bold)
-                        }
-                        .font(.system(size: 16, design: .rounded))
-                        .foregroundStyle(cream.opacity(0.84))
-                    }
-                    .padding(24)
-                    .background(AppTheme.darkSurface, in: RoundedRectangle(cornerRadius: 26, style: .continuous))
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 26, style: .continuous)
-                            .stroke(orange.opacity(0.45), lineWidth: 1)
-                    }
-                    .overlay(alignment: .topTrailing) {
-                        orbitMark
-                            .frame(width: 94, height: 94)
-                            .offset(x: 18, y: -22)
-                            .allowsHitTesting(false)
-                    }
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 48)
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, 16)
-                .padding(.bottom, 44)
+                .frame(maxWidth: .infinity, alignment: .top)
             }
+            .ignoresSafeArea(edges: .top)
         }
         .navigationBarBackButtonHidden(true)
-        .navigationTitle("About Yutori")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(AppTheme.paper, for: .navigationBar)
-        .toolbarBackground(.visible, for: .navigationBar)
-        .toolbarColorScheme(.light, for: .navigationBar)
+        .toolbarBackground(.hidden, for: .navigationBar)
+        .toolbarColorScheme(.dark, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
                 Button {
@@ -691,7 +1008,7 @@ private struct AboutYutoriView: View {
                 } label: {
                     Image(systemName: "chevron.left")
                         .fontWeight(.bold)
-                        .foregroundStyle(AppTheme.ink)
+                        .foregroundStyle(cream)
                 }
                 .accessibilityLabel("Back")
             }
@@ -699,134 +1016,35 @@ private struct AboutYutoriView: View {
     }
 
     private var hero: some View {
-        VStack(alignment: .leading, spacing: 22) {
+        VStack(alignment: .leading, spacing: 16) {
             HStack(spacing: 8) {
                 Circle()
                     .fill(orange)
                     .frame(width: 8, height: 8)
 
-                Text("BUILT FOR SHIPATON '26")
+                Text("THE STORY OF SHIPATON '26")
                     .font(.system(size: 11, weight: .bold, design: .monospaced))
                     .tracking(1.5)
                     .foregroundStyle(cream.opacity(0.74))
             }
-            .padding(.horizontal, 13)
-            .padding(.vertical, 9)
-            .background(panel, in: Capsule())
-            .overlay(Capsule().stroke(cream.opacity(0.14), lineWidth: 1))
 
-            HStack(alignment: .bottom, spacing: 10) {
-                VStack(alignment: .leading, spacing: -5) {
-                    Text("About")
-                        .foregroundStyle(cream)
-                    Text("Yutori.")
-                        .foregroundStyle(orange)
-                }
-                .font(.system(size: 51, weight: .black, design: .rounded))
-                .minimumScaleFactor(0.76)
-
-                Spacer(minLength: 4)
-
-                ZStack {
-                    Circle()
-                        .stroke(orange.opacity(0.45), lineWidth: 1)
-                        .frame(width: 76, height: 76)
-                    Circle()
-                        .stroke(cream.opacity(0.18), style: StrokeStyle(lineWidth: 1, dash: [3, 5]))
-                        .frame(width: 104, height: 104)
-                    Image(systemName: "takeoutbag.and.cup.and.straw.fill")
-                        .font(.system(size: 31, weight: .semibold))
-                        .foregroundStyle(cream)
-                    Circle()
-                        .fill(orange)
-                        .frame(width: 9, height: 9)
-                        .offset(x: 46, y: -24)
-                }
-                .frame(width: 105, height: 110)
-            }
-
-            Text("A little story behind the app, from the first idea to the future I want to build.")
-                .font(.system(size: 18, weight: .medium, design: .rounded))
-                .foregroundStyle(muted)
-                .lineSpacing(4)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .padding(24)
-        .background {
-            LinearGradient(
-                colors: [space, AppTheme.darkSurface],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .overlay {
-                ShipatonStarField(accent: orange, light: cream)
-            }
-        }
-        .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 30, style: .continuous)
-                .stroke(orange.opacity(0.42), lineWidth: 1)
-        }
-    }
-
-    private var shipatonMoment: some View {
-        HStack(spacing: 12) {
-            Image(systemName: "paperplane.fill")
-                .font(.system(size: 18, weight: .bold))
-                .foregroundStyle(space)
-                .frame(width: 40, height: 40)
-                .background(orange, in: Circle())
-
-            Text("When Shipaton 2026 came around, I decided to stop waiting and actually build something.")
-                .font(.system(size: 17, weight: .bold, design: .rounded))
-                .foregroundStyle(cream)
-                .lineSpacing(4)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .padding(16)
-        .background(AppTheme.darkSurface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-    }
-
-    private func storyCard<Content: View>(
-        _ label: String,
-        icon: String,
-        @ViewBuilder content: () -> Content
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 18) {
-            HStack {
-                Text(label)
-                    .font(.system(size: 11, weight: .bold, design: .monospaced))
-                    .tracking(1.2)
+            VStack(alignment: .leading, spacing: -5) {
+                Text("Shipaton")
+                    .foregroundStyle(cream)
+                Text("2026.")
                     .foregroundStyle(orange)
-
-                Spacer()
-
-                Image(systemName: icon)
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(AppTheme.secondaryInk)
             }
+            .font(.system(size: 50, weight: .black, design: .rounded))
+            .minimumScaleFactor(0.8)
 
-            content()
+            Text("The challenge that turned Yutori from an idea into a real app.")
+                .font(.system(size: 18, weight: .medium, design: .rounded))
+                .foregroundStyle(cream.opacity(0.72))
+                .lineSpacing(4)
+                .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(22)
-        .background(panel.opacity(0.78), in: RoundedRectangle(cornerRadius: 25, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 25, style: .continuous)
-                .stroke(AppTheme.ink.opacity(0.09), lineWidth: 1)
-        }
-    }
-
-    private var orbitMark: some View {
-        ZStack {
-            Circle().stroke(space.opacity(0.28), lineWidth: 1)
-            Circle()
-                .fill(space)
-                .frame(width: 8, height: 8)
-                .offset(x: 33, y: -23)
-            Image(systemName: "sparkle")
-                .font(.system(size: 23, weight: .black))
-                .foregroundStyle(orange.opacity(0.7))
-        }
+        .padding(.top, 86)
+        .padding(.bottom, 70)
     }
 
     private func storyText(_ markdown: LocalizedStringKey) -> some View {
@@ -838,36 +1056,29 @@ private struct AboutYutoriView: View {
     }
 }
 
-private struct ShipatonStarField: View {
+private struct AboutYutoriStarField: View {
     let accent: Color
     let light: Color
 
     private let stars: [(CGFloat, CGFloat, CGFloat)] = [
-        (0.08, 0.04, 2), (0.24, 0.12, 1), (0.84, 0.07, 2), (0.94, 0.18, 1),
-        (0.12, 0.29, 1), (0.78, 0.34, 1), (0.91, 0.45, 2), (0.05, 0.54, 2),
-        (0.27, 0.63, 1), (0.87, 0.70, 1), (0.13, 0.81, 1), (0.72, 0.88, 2),
-        (0.96, 0.95, 1), (0.39, 0.97, 1)
+        (0.05, 0.04, 1), (0.16, 0.10, 2), (0.29, 0.04, 1), (0.43, 0.13, 3),
+        (0.58, 0.06, 1.5), (0.72, 0.15, 2), (0.86, 0.05, 3.5), (0.96, 0.18, 1),
+        (0.10, 0.25, 3), (0.23, 0.34, 1), (0.36, 0.23, 2), (0.51, 0.31, 1.5),
+        (0.65, 0.25, 2.5), (0.80, 0.36, 1), (0.93, 0.29, 3), (0.03, 0.46, 1.5),
+        (0.15, 0.56, 2), (0.31, 0.45, 3.5), (0.47, 0.58, 1), (0.61, 0.48, 2),
+        (0.75, 0.57, 3), (0.89, 0.47, 1.5), (0.98, 0.61, 2), (0.08, 0.71, 1),
+        (0.25, 0.78, 2.5), (0.40, 0.69, 1.5), (0.55, 0.82, 3), (0.70, 0.72, 1),
+        (0.84, 0.84, 2), (0.95, 0.75, 3.5), (0.14, 0.92, 2), (0.35, 0.90, 1),
+        (0.62, 0.95, 2.5), (0.78, 0.91, 1.5), (0.92, 0.97, 2)
     ]
 
     var body: some View {
         GeometryReader { proxy in
-            ZStack {
+            ForEach(Array(stars.enumerated()), id: \.offset) { index, star in
                 Circle()
-                    .stroke(accent.opacity(0.10), lineWidth: 1)
-                    .frame(width: 330, height: 330)
-                    .offset(x: proxy.size.width * 0.40, y: -140)
-
-                Circle()
-                    .stroke(light.opacity(0.06), style: StrokeStyle(lineWidth: 1, dash: [4, 9]))
-                    .frame(width: 270, height: 270)
-                    .offset(x: -proxy.size.width * 0.47, y: proxy.size.height * 0.24)
-
-                ForEach(Array(stars.enumerated()), id: \.offset) { index, star in
-                    Circle()
-                        .fill(index.isMultiple(of: 4) ? accent.opacity(0.48) : light.opacity(0.28))
-                        .frame(width: star.2, height: star.2)
-                        .position(x: proxy.size.width * star.0, y: proxy.size.height * star.1)
-                }
+                    .fill(index.isMultiple(of: 4) ? accent.opacity(0.52) : light.opacity(0.36))
+                    .frame(width: star.2, height: star.2)
+                    .position(x: proxy.size.width * star.0, y: proxy.size.height * star.1)
             }
         }
         .allowsHitTesting(false)

@@ -58,7 +58,9 @@ struct CoursesSettingsSection: View {
 struct CoursesPage: View {
     @Environment(\.dismiss) private var dismiss
     let store: CourseStore
+    @State private var purchaseManager = PurchaseManager.shared
     @State private var editingCourse: StudyCourse?
+    @State private var showPaywall = false
 
     var body: some View {
         NavigationStack {
@@ -99,7 +101,11 @@ struct CoursesPage: View {
             .safeAreaInset(edge: .bottom) {
                 if !store.loadFailed {
                     Button {
-                        editingCourse = StudyCourse(name: "")
+                        if store.courses.isEmpty || purchaseManager.isPro {
+                            editingCourse = StudyCourse(name: "")
+                        } else {
+                            showPaywall = true
+                        }
                     } label: {
                         Label("Create course", systemImage: "plus")
                             .font(.headline)
@@ -132,6 +138,11 @@ struct CoursesPage: View {
             }
         }
         .tint(AppTheme.ink)
+        .sheet(isPresented: $showPaywall) {
+            PaywallView()
+                .presentationBackground(AppTheme.paper)
+                .presentationDragIndicator(.visible)
+        }
     }
 }
 

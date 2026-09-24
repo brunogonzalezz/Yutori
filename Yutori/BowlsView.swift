@@ -1,5 +1,4 @@
 import SwiftUI
-import UIKit
 
 struct BowlsView: View {
     @State private var showSettings = false
@@ -63,6 +62,7 @@ private struct BowlCollectionView: View {
         VStack(spacing: 10) {
             ForEach(0..<(BowlCatalog.entries.count / 3), id: \.self) { group in
                 let isNextGroup = group * 3 == store.unlockedBowlCount
+                let isFirstHiddenGroup = group * 3 == store.unlockedBowlCount + 3
                 VStack(spacing: 14) {
                     if isNextGroup, let target = store.nextBowlMilestone {
                         milestone(target: target)
@@ -85,6 +85,7 @@ private struct BowlCollectionView: View {
                             }
                     }
                 }
+                .padding(.top, isFirstHiddenGroup ? 12 : 0)
             }
         }
     }
@@ -138,18 +139,9 @@ private struct BowlCollectionView: View {
             GeometryReader { geometry in
                 let width = max(0, min(116, geometry.size.width - 12))
                 ZStack {
-                    let kind = entry.kind ?? .katsuRamen
+                    let kind = entry.kind ?? .teriyaki
                     if collected {
                         DishArtworkView(level: 5, availableWidth: width + 48, preferredWidth: width, kind: kind)
-                    } else if entry.id >= store.unlockedBowlCount + 3,
-                              let silhouette = DistantBowlSilhouette.image(for: kind) {
-                        Image(uiImage: silhouette)
-                            .renderingMode(.template)
-                            .resizable()
-                            .interpolation(.none)
-                            .scaledToFit()
-                            .foregroundStyle(AppTheme.muted)
-                            .frame(width: width, height: width)
                     } else {
                         AppTheme.muted
                             .frame(width: width, height: width)
@@ -197,29 +189,4 @@ private struct BowlCollectionView: View {
 
 #Preview {
     BowlsView()
-}
-
-// Small cached rasters make only distant silhouettes coarser; source assets stay intact.
-@MainActor
-private enum DistantBowlSilhouette {
-    private static var cache: [BowlKind: UIImage] = [:]
-
-    static func image(for kind: BowlKind) -> UIImage? {
-        if let cached = cache[kind] { return cached }
-        guard let source = UIImage(named: kind.imageName(level: 5)) else { return nil }
-        let size = CGSize(width: 22, height: 22)
-        let format = UIGraphicsImageRendererFormat()
-        format.scale = 1
-        format.opaque = false
-        let image = UIGraphicsImageRenderer(size: size, format: format).image { renderer in
-            renderer.cgContext.interpolationQuality = .none
-            let scale = min(size.width / source.size.width, size.height / source.size.height)
-            let fitted = CGSize(width: source.size.width * scale, height: source.size.height * scale)
-            source.draw(in: CGRect(x: (size.width - fitted.width) / 2,
-                                   y: (size.height - fitted.height) / 2,
-                                   width: fitted.width, height: fitted.height))
-        }
-        cache[kind] = image
-        return image
-    }
 }

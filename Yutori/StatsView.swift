@@ -17,6 +17,10 @@ struct StatsView: View {
         TimelineView(.periodic(from: .now, by: 60)) { _ in
         let stats = WeeklyStudyStats(sessions: sessions, courses: courses,
                                     now: testClock.date(for: .now))
+        let weeklySeries = CourseWeeklySeries.series(from: stats)
+        let hasStudyActivity = weeklySeries.contains { series in
+            series.dailyMinutes.contains { $0.minutes > 0 }
+        }
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 0) {
                 profileButton
@@ -47,13 +51,13 @@ struct StatsView: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.9)
                     .padding(.leading, 8)
-                    .padding(.bottom, 32)
+                    .padding(.bottom, hasStudyActivity ? 32 : 18)
 
-                WeeklySummaryChart(courses: CourseWeeklySeries.series(from: stats), days: stats.days)
-                    .frame(height: 240)
+                WeeklySummaryChart(courses: weeklySeries, days: stats.days)
+                    .frame(height: hasStudyActivity ? 240 : 174)
 
                 sectionDivider
-                    .padding(.top, 28)
+                    .padding(.top, hasStudyActivity ? 28 : 18)
                     .padding(.bottom, 24)
 
                 StudyCalendarView(sessions: sessions, courses: courses,
@@ -101,12 +105,7 @@ struct StatsView: View {
         let studyTimeLabel = showsDays ? "days studied" : "hours studied"
         let average = stats.sessions.isEmpty ? 0 : totalSeconds / Double(stats.sessions.count)
         let averageText = average > 0 && average < 60 ? "<1" : "\(Int((average / 60).rounded()))"
-        let now = testClock.date(for: .now)
-        let collected = sessionStore.collectedBowls.filter { bowl in
-            bowl.collectedAt <= now && stats.days.contains {
-                Calendar.autoupdatingCurrent.isDate(bowl.collectedAt, inSameDayAs: $0)
-            }
-        }.count
+        let collected = sessionStore.collectedBowls.count
 
         return VStack(spacing: 16) {
             MetricRowLayout(weights: [0.29, 0, 0.42, 0, 0.29]) {
@@ -231,9 +230,21 @@ private struct WeeklySummaryChart: View {
     }
 
     var body: some View {
-        activityChart()
-            .padding(.trailing, 24)
-            .frame(maxWidth: .infinity)
+        Group {
+            if bars.isEmpty {
+                AppEmptyStateCard(
+                    icon: "chart.bar.fill",
+                    title: "A fresh week",
+                    message: "Complete a study session and your activity will grow here.",
+                    compact: true
+                )
+                .padding(.horizontal, 8)
+            } else {
+                activityChart()
+                    .padding(.trailing, 24)
+            }
+        }
+        .frame(maxWidth: .infinity)
     }
 
     private func activityChart() -> some View {
@@ -250,7 +261,6 @@ private struct WeeklySummaryChart: View {
         .chartXAxis { dayAxis }
         .chartYAxis { durationAxis }
         .animation(animation, value: heights)
-        .overlay { emptyState }
     }
 
     private func activityMark(_ bar: ActivityBar) -> some ChartContent {
@@ -305,16 +315,6 @@ private struct WeeklySummaryChart: View {
         }
     }
 
-    @ViewBuilder
-    private var emptyState: some View {
-        if bars.isEmpty {
-            Text("Your study activity will appear here")
-                .font(.subheadline)
-                .foregroundStyle(AppTheme.secondaryInk)
-                .multilineTextAlignment(.center)
-                .padding(24)
-        }
-    }
 }
 
 private struct DailyStudyMinutes: Identifiable {

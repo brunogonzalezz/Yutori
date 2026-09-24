@@ -9,7 +9,7 @@ final class ActiveStudySession {
     private(set) var course: StudyCourse?
     private(set) var stopwatch = StudyStopwatch()
     private(set) var startingSeconds: TimeInterval = 0
-    private(set) var kind: BowlKind = .katsuRamen
+    private(set) var kind: BowlKind = .teriyaki
     private(set) var finishedAt: Date?
     private(set) var revealedLevel = 0
     private(set) var pauseCount = 0

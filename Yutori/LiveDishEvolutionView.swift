@@ -48,6 +48,7 @@ struct LiveDishEvolutionView: View {
         let radius = min(180, max(0, availableWidth - 48) / 2)
         let naturalWidth = DishArtworkView.naturalWidth(level: displayedLevel, availableWidth: availableWidth)
         let largestWidth = DishArtworkView.naturalWidth(level: 5, availableWidth: availableWidth)
+        let palette = kind.evolutionColors
         // Use one magnification factor for every level, keeping their relative sizes.
         let enlargedWidth = naturalWidth * min(340, max(0, availableWidth - 64)) / max(1, largestWidth)
         ZStack {
@@ -55,7 +56,7 @@ struct LiveDishEvolutionView: View {
                 .ignoresSafeArea()
             ZStack {
             Circle()
-                .fill(RadialGradient(colors: [.white, Color.orange.opacity(0.32), .clear],
+                .fill(RadialGradient(colors: [.white, palette[0].opacity(0.34), .clear],
                                      center: .center, startRadius: 12, endRadius: radius))
                 .frame(width: radius * 1.55, height: radius * 1.55)
                 .blur(radius: 14)
@@ -65,7 +66,8 @@ struct LiveDishEvolutionView: View {
 
             ForEach(0..<2) { index in
                 Circle()
-                    .stroke(Color.orange.opacity(index == 0 ? 0.45 : 0.22), lineWidth: index == 0 ? 2 : 1)
+                    .stroke(palette[(index + 1) % palette.count].opacity(index == 0 ? 0.48 : 0.26),
+                            lineWidth: index == 0 ? 2 : 1)
                     .frame(width: radius * 1.6, height: radius * 1.6)
                     .scaleEffect(ringsExpanded ? (index == 0 ? 1.25 : 1.08) : 0.45)
                     .opacity(ringsVisible && !reduceMotion ? 1 : 0)
@@ -80,13 +82,13 @@ struct LiveDishEvolutionView: View {
                 .brightness(reduceMotion ? 0 : light)
                 .scaleEffect(reduceMotion ? 1 : artworkScale)
                 .offset(y: reduceMotion ? 0 : lift)
-                .shadow(color: .orange.opacity(glowing && !reduceMotion ? 0.35 : 0), radius: 22)
+                .shadow(color: palette[0].opacity(glowing && !reduceMotion ? 0.38 : 0), radius: 22)
 
             ForEach(0..<12) { index in
                 let angle = Double(index) * .pi / 6
                 Image(systemName: "sparkle")
                     .font(.system(size: index.isMultiple(of: 2) ? 15 : 10, weight: .medium, design: .rounded))
-                    .foregroundStyle(Color.orange.opacity(0.7))
+                    .foregroundStyle(palette[index % palette.count].opacity(0.82))
                     .rotationEffect(.degrees(-orbit))
                     .offset(x: cos(angle) * radius * (particlesExpanded ? 1.04 : 0.65),
                             y: sin(angle) * radius * (particlesExpanded ? 0.85 : 0.55))

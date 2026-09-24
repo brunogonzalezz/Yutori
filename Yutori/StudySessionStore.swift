@@ -116,7 +116,7 @@ struct WeeklyStudyStats {
 }
 
 enum BowlKind: String, Codable, CaseIterable {
-    case katsuRamen, teriyaki
+    case teriyaki, katsuRamen
     var name: String { self == .katsuRamen ? "Katsu Ramen" : "Teriyaki Bowl" }
     func imageName(level: Int) -> String {
         self == .katsuRamen ? "DishLevel\(level)" : "TeriyakiLevel\(level)"
@@ -127,7 +127,10 @@ struct CollectedBowl: Identifiable, Codable {
     var id = UUID()
     var collectedAt = Date.now
     var kind: BowlKind? = nil
-    var bowlKind: BowlKind { kind ?? .katsuRamen }
+    var sourceSessionIDs: [UUID]? = nil
+    var usedSecondsBeforeCollection: TimeInterval? = nil
+    var isStarterGift: Bool? = nil
+    var bowlKind: BowlKind { kind ?? .teriyaki }
 }
 
 @Observable
@@ -151,7 +154,7 @@ final class StudySessionStore {
     private let collectionKey = "collectedBowls.v1"
     private(set) var collectionLoadFailed = false
     var collectedBowls: [CollectedBowl] { collection.bowls }
-    var activeBowlKind: BowlKind { collection.activeKind ?? .katsuRamen }
+    var activeBowlKind: BowlKind { collection.activeKind ?? .teriyaki }
     var collectedKinds: Set<BowlKind> { Set(collection.bowls.map(\.bowlKind)) }
     var earnedDishProgress: DishProgress { DishProgress(totalSeconds: availableDishSeconds) }
 
@@ -165,12 +168,51 @@ final class StudySessionStore {
     func isBowlUnlocked(_ entry: BowlCatalogEntry) -> Bool { entry.id < unlockedBowlCount }
 
     private func updateBowlUnlocks() {
-        // Manual time edits never count toward bowl unlocks. Earned unlocks are permanent.
+        // Manual time edits never count: dishDuration keeps the originally recorded time.
         let studied = sessions.reduce(0.0) { total, session in
             total + (session.dishDuration.isFinite ? max(0, session.dishDuration) : 0)
         }
-        bowlUnlockSeconds = max(bowlUnlockSeconds, studied)
+        bowlUnlockSeconds = studied
         defaults.set(bowlUnlockSeconds, forKey: unlockSecondsKey)
+    }
+
+    private func reconcileCollectionWithEarnedTime(deleting sessionID: UUID? = nil) {
+        guard !collectionLoadFailed else { return }
+        let earned = earnedDishSeconds
+        let bowlCost = DishProgress.secondsPerLevel * Double(DishProgress.maximumLevel)
+        let supportedBowls = Int(earned / bowlCost)
+        var updated = collection
+        var restoredKind: BowlKind?
+
+        if let sessionID,
+           let affectedIndex = updated.bowls.firstIndex(where: { $0.sourceSessionIDs?.contains(sessionID) == true }) {
+            let affected = updated.bowls[affectedIndex]
+            restoredKind = affected.bowlKind
+            updated.bowls.removeFirst(affectedIndex + 1)
+            updated.usedSeconds = affected.usedSecondsBeforeCollection
+                ?? max(0, updated.usedSeconds - bowlCost * Double(affectedIndex + 1))
+        }
+
+        // Rewind completed bowls until the remaining study history can support them.
+        while updated.usedSeconds > earned ||
+              updated.bowls.filter({ $0.isStarterGift != true }).count > supportedBowls {
+            guard let removableIndex = updated.bowls.firstIndex(where: { $0.isStarterGift != true }) else { break }
+            let restored = updated.bowls.remove(at: removableIndex)
+            restoredKind = restored.bowlKind
+            updated.usedSeconds = max(0, updated.usedSeconds - bowlCost)
+        }
+
+        if let restoredKind {
+            updated.activeKind = restoredKind
+            updated.needsSelection = false
+            previewDishOffset = 0
+        }
+
+        updated.usedSeconds = min(updated.usedSeconds, earned)
+        if let data = try? JSONEncoder().encode(updated) {
+            defaults.set(data, forKey: collectionKey)
+            collection = updated
+        }
     }
 
 
@@ -185,7 +227,7 @@ final class StudySessionStore {
     }
 
     @discardableResult
-    func selectNextBowl(_ kind: BowlKind = .katsuRamen) -> Bool {
+    func selectNextBowl(_ kind: BowlKind = .teriyaki) -> Bool {
         guard !hasActiveBowl, !loadFailed, !collectionLoadFailed,
               let entry = BowlCatalog.entries.first(where: { $0.kind == kind }),
               isBowlUnlocked(entry) else { return false }
@@ -193,6 +235,31 @@ final class StudySessionStore {
         updated.needsSelection = false
         updated.activeKind = kind
         // A newly selected bowl only receives study time earned from this point onward.
+        updated.usedSeconds = earnedDishSeconds
+        guard let data = try? JSONEncoder().encode(updated) else { return false }
+        defaults.set(data, forKey: collectionKey)
+        collection = updated
+        previewDishOffset = 0
+        return true
+    }
+
+    @discardableResult
+    func grantStarterTeriyakiBowlIfNeeded() -> Bool {
+        guard !loadFailed, !collectionLoadFailed else { return false }
+        guard !collection.bowls.contains(where: { $0.bowlKind == .teriyaki }) else { return true }
+
+        var updated = collection
+        updated.bowls.append(
+            CollectedBowl(
+                collectedAt: StudyTestClock.shared.date(for: .now),
+                kind: .teriyaki,
+                sourceSessionIDs: [],
+                usedSecondsBeforeCollection: updated.usedSeconds,
+                isStarterGift: true
+            )
+        )
+        updated.activeKind = .katsuRamen
+        updated.needsSelection = false
         updated.usedSeconds = earnedDishSeconds
         guard let data = try? JSONEncoder().encode(updated) else { return false }
         defaults.set(data, forKey: collectionKey)
@@ -211,7 +278,24 @@ final class StudySessionStore {
     func collectBowl() -> Bool {
         guard canCollectBowl else { return false }
         var updated = collection
-        updated.bowls.insert(CollectedBowl(collectedAt: StudyTestClock.shared.date(for: .now), kind: activeBowlKind), at: 0)
+        let collectedAt = StudyTestClock.shared.date(for: .now)
+        let previousCollectionDate = updated.bowls.first?.collectedAt
+        let sourceSessionIDs = sessions.filter { session in
+            let isAfterPreviousCollection = previousCollectionDate.map { session.endedAt > $0 } ?? true
+            return !existingDishSessionIDs.contains(session.id)
+                && session.bowlKind == activeBowlKind
+                && session.endedAt <= collectedAt
+                && isAfterPreviousCollection
+        }.map(\.id)
+        updated.bowls.insert(
+            CollectedBowl(
+                collectedAt: collectedAt,
+                kind: activeBowlKind,
+                sourceSessionIDs: sourceSessionIDs,
+                usedSecondsBeforeCollection: updated.usedSeconds
+            ),
+            at: 0
+        )
         updated.needsSelection = true
         // Consume the entire session balance, including time beyond the final evolution.
         updated.usedSeconds = earnedDishSeconds
@@ -307,21 +391,21 @@ final class StudySessionStore {
         let data = try JSONEncoder().encode(updated)
         defaults.set(data, forKey: key)
         sessions = updated
+        if existingDishSessionIDs.remove(id) != nil {
+            defaults.set(existingDishSessionIDs.map(\.uuidString), forKey: dishBaselineKey)
+        }
+        updateBowlUnlocks()
+        reconcileCollectionWithEarnedTime(deleting: id)
     }
 
     func deleteAllSessions() {
-        // Reset current study progress while keeping already collected bowls.
-        if !collectionLoadFailed {
-            collection.usedSeconds = 0
-            if let data = try? JSONEncoder().encode(collection) {
-                defaults.set(data, forKey: collectionKey)
-            }
-        }
         previewDishOffset = 0
         defaults.removeObject(forKey: key)
         defaults.set([String](), forKey: dishBaselineKey)
         existingDishSessionIDs = []
         sessions = []
+        updateBowlUnlocks()
+        reconcileCollectionWithEarnedTime()
         loadFailed = false
     }
 

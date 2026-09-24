@@ -11,14 +11,14 @@ enum BowlCatalog {
     // Each milestone opens the entire next row of three.
     static let hoursPerGroup = 15
     static let entries: [BowlCatalogEntry] = [
-        "Katsu Ramen", "Teriyaki Bowl", "Tofu Curry", "Miso Ramen",
+        "Teriyaki Bowl", "Katsu Ramen", "Tofu Curry", "Miso Ramen",
         "Shoyu Ramen", "Spicy Ramen", "Chicken Curry", "Katsu Curry",
         "Salmon Bowl", "Tuna Bowl", "Veggie Bowl", "Beef Bowl",
         "Tempura Bowl", "Bibimbap", "Kimchi Rice", "Fried Rice",
         "Udon Bowl", "Soba Bowl", "Gyoza Bowl", "Mushroom Bowl", "Unagi Bowl"
     ].enumerated().map { index, name in
         BowlCatalogEntry(id: index, name: name,
-                         kind: index == 0 ? .katsuRamen : (index == 1 ? .teriyaki : nil))
+                         kind: index == 0 ? .teriyaki : (index == 1 ? .katsuRamen : nil))
     }
 
     static func unlockedCount(seconds: TimeInterval) -> Int {

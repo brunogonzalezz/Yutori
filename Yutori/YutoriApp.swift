@@ -4,7 +4,11 @@ import UIKit
 
 @main
 struct YutoriApp: App {
+    @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
+
     init() {
+        PurchaseManager.shared.configure()
+
         let navigation = UINavigationBarAppearance()
         navigation.configureWithOpaqueBackground()
         navigation.backgroundColor = AppTheme.paperBackground
@@ -22,7 +26,15 @@ struct YutoriApp: App {
 
     var body: some Scene {
         WindowGroup {
-            TabBarView()
+            Group {
+                if hasCompletedOnboarding {
+                    TabBarView()
+                } else {
+                    OnboardingView(allowsDismiss: false) {
+                        hasCompletedOnboarding = true
+                    }
+                }
+            }
                 .id(AppReset.shared.revision)
                 .fontDesign(.rounded)
                 .foregroundStyle(AppTheme.ink)

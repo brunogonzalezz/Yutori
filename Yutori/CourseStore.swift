@@ -92,6 +92,9 @@ final class CourseStore {
         if let index = updated.firstIndex(where: { $0.id == course.id }) {
             updated[index] = course
         } else {
+            guard courses.isEmpty || PurchaseManager.shared.isPro else {
+                throw SaveError.proRequired
+            }
             updated.append(course)
         }
         let data = try JSONEncoder().encode(updated)
@@ -114,6 +117,6 @@ final class CourseStore {
     }
 
     enum SaveError: Error {
-        case invalidName, unavailable, colorInUse
+        case invalidName, unavailable, colorInUse, proRequired
     }
 }

@@ -16,7 +16,7 @@ struct TabBarView: View {
     @State private var sessionCourse: StudyCourse?
     @Namespace private var dishNamespace
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var evolution: (from: Int, to: Int)?
+    @State private var evolution: (from: Int, to: Int, kind: BowlKind)?
     @State private var returningHome = false
     @State private var homeRevision = 0
     @State private var collectingFrame: CGRect?
@@ -74,7 +74,7 @@ struct TabBarView: View {
                         // Prepare Home behind the celebration, with its dish at the top.
                         selectedTab = .home
                         homeRevision += 1
-                        evolution = (from, to)
+                        evolution = (from, to, StudySessionStore.shared.activeBowlKind)
                         showStudyTimer = false
                         self.sessionCourse = nil
                     }) { _ in
@@ -95,6 +95,7 @@ struct TabBarView: View {
 
             if let evolution {
                 DishEvolutionView(fromLevel: evolution.from, toLevel: evolution.to,
+                                  kind: evolution.kind,
                                   dishNamespace: reduceMotion ? nil : dishNamespace) {
                     guard !returningHome else { return }
                     returningHome = true
@@ -140,7 +141,17 @@ struct TabBarView: View {
             }
         }
         .background(CollectionTabAnchor { tabAnchor = $0 })
-        .onAppear { restoreActiveSession() }
+        .onAppear {
+            if UserDefaults.standard.bool(forKey: "openBowlsAfterOnboarding") {
+                selectedTab = .bowls
+                UserDefaults.standard.removeObject(forKey: "openBowlsAfterOnboarding")
+            }
+            restoreActiveSession()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .openBowlsFromOnboarding)) { _ in
+            selectedTab = .bowls
+            UserDefaults.standard.removeObject(forKey: "openBowlsAfterOnboarding")
+        }
         .onChange(of: ActiveStudySession.shared.id) { _, _ in restoreActiveSession() }
 
         .allowsHitTesting(!returningHome && collectingFrame == nil)
@@ -206,6 +217,10 @@ struct TabBarView: View {
             showStudyTimer = true
         }
     }
+}
+
+private extension Notification.Name {
+    static let openBowlsFromOnboarding = Notification.Name("OpenBowlsFromOnboarding")
 }
 
 private struct CollectionTabAnchor: UIViewRepresentable {

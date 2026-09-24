@@ -139,7 +139,8 @@ struct StudyTimerView: View {
         }
         .overlay {
             if showEvolution {
-                DishEvolutionView(fromLevel: levelBeforeSave, toLevel: sessionStore.dishProgress.level) {
+                DishEvolutionView(fromLevel: levelBeforeSave, toLevel: sessionStore.dishProgress.level,
+                                  kind: sessionStore.activeBowlKind) {
                     guard let savedDuration else { return }
                     showEvolution = false
                     onFinish(savedDuration)
@@ -261,6 +262,7 @@ private struct CourseMosaicBackground: View {
 struct DishEvolutionView: View {
     let fromLevel: Int
     let toLevel: Int
+    let kind: BowlKind
     var dishNamespace: Namespace.ID? = nil
     let onContinue: () -> Void
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -285,6 +287,7 @@ struct DishEvolutionView: View {
         let message = Self.messages[messageIndex ?? 0]
         let currentLevel = displayedLevel ?? fromLevel
         let evolutionCount = max(1, toLevel - fromLevel)
+        let palette = kind.evolutionColors
         GeometryReader { geometry in
             VStack(spacing: 24) {
                 Spacer(minLength: 24)
@@ -298,7 +301,7 @@ struct DishEvolutionView: View {
                 .multilineTextAlignment(.center)
                 ZStack {
                     Circle()
-                        .fill(Color.orange.opacity(glow ? 0.3 : 0.08))
+                        .fill(palette[0].opacity(glow ? 0.32 : 0.08))
                         .frame(width: 240, height: 240)
                         .blur(radius: 24)
                         .scaleEffect(charging && !reduceMotion ? 1.2 : 0.85)
@@ -306,17 +309,17 @@ struct DishEvolutionView: View {
                         let angle = Double(index) * .pi / 6
                         Image(systemName: index.isMultiple(of: 2) ? "sparkle" : "circle.fill")
                             .font(.system(size: index.isMultiple(of: 2) ? 18 : 5, design: .rounded))
-                            .foregroundStyle(Color.orange.opacity(0.8))
+                            .foregroundStyle(palette[index % palette.count].opacity(0.86))
                             .offset(x: cos(angle) * (revealed ? 150 : 110),
                                     y: sin(angle) * (revealed ? 150 : 110))
                             .opacity(charging ? (ready ? 0.35 : 1) : 0)
                             .accessibilityHidden(true)
                     }
-                    DishArtworkView(level: currentLevel, availableWidth: geometry.size.width)
+                    DishArtworkView(level: currentLevel, availableWidth: geometry.size.width, kind: kind)
                         .modifier(DishTravelModifier(namespace: dishNamespace, isSource: true))
                         .brightness(glow ? 0.8 : 0)
                         .scaleEffect(reduceMotion ? 1 : glow ? 0.9 : 1)
-                        .shadow(color: .orange.opacity(glow ? 0.6 : 0), radius: 20)
+                        .shadow(color: palette[0].opacity(glow ? 0.62 : 0), radius: 20)
                 }
                 .frame(height: 320)
                     Text(evolutionCount > 1 ? "\(evolutionCount) levels earned, one study bite at a time." : message.footer)
