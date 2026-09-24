@@ -119,6 +119,7 @@ struct BowlPickerView: View {
 
     private func bowlTile(_ entry: BowlCatalogEntry) -> some View {
         let isSelected = entry.id == selectedBowl.id
+        let isCollected = entry.kind.map { store.collectedKinds.contains($0) } ?? false
         return Button {
             withAnimation(.easeInOut(duration: 0.25)) {
                 selection = entry.id
@@ -138,16 +139,28 @@ struct BowlPickerView: View {
             }
             .padding(8)
             .frame(maxWidth: .infinity)
-            .background(isSelected ? AppTheme.surface : AppTheme.surface.opacity(0.4),
+            .background(isCollected ? AppTheme.darkSurface.opacity(isSelected ? 0.24 : 0.16) :
+                            (isSelected ? AppTheme.surface : AppTheme.surface.opacity(0.4)),
                         in: RoundedRectangle(cornerRadius: 16))
             .overlay {
                 RoundedRectangle(cornerRadius: 16)
                     .strokeBorder(isSelected ? AppTheme.ink : .clear, lineWidth: 2)
             }
+            .overlay(alignment: .topTrailing) {
+                if isCollected {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(AppTheme.paper)
+                        .frame(width: 23, height: 23)
+                        .background(AppTheme.darkSurface, in: Circle())
+                        .overlay { Circle().strokeBorder(AppTheme.paper, lineWidth: 1.5) }
+                        .padding(6)
+                }
+            }
             .contentShape(RoundedRectangle(cornerRadius: 16))
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(entry.name)
+        .accessibilityLabel(isCollected ? "\(entry.name), collected" : entry.name)
         .accessibilityHint(entry.kind == nil ? "Coming soon" : "Preview this bowl")
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }

@@ -243,6 +243,18 @@ final class StudySessionStore {
         return true
     }
 
+    func clearActiveBowlSelection() {
+        guard !loadFailed, !collectionLoadFailed else { return }
+        var updated = collection
+        updated.activeKind = nil
+        updated.needsSelection = true
+        updated.usedSeconds = earnedDishSeconds
+        guard let data = try? JSONEncoder().encode(updated) else { return }
+        defaults.set(data, forKey: collectionKey)
+        collection = updated
+        previewDishOffset = 0
+    }
+
     @discardableResult
     func grantStarterTeriyakiBowlIfNeeded() -> Bool {
         guard !loadFailed, !collectionLoadFailed else { return false }
@@ -258,8 +270,8 @@ final class StudySessionStore {
                 isStarterGift: true
             )
         )
-        updated.activeKind = .katsuRamen
-        updated.needsSelection = false
+        updated.activeKind = nil
+        updated.needsSelection = true
         updated.usedSeconds = earnedDishSeconds
         guard let data = try? JSONEncoder().encode(updated) else { return false }
         defaults.set(data, forKey: collectionKey)

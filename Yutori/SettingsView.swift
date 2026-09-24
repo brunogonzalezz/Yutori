@@ -23,6 +23,7 @@ struct SettingsView: View {
     @State private var showAppIcons = false
     @State private var photoError = false
     @State private var feedbackError = false
+    @State private var showReviewNotice = false
     @State private var nameFrame: CGRect = .zero
     @State private var selectedLanguage = "English"
     @State private var confirmReset = false
@@ -272,6 +273,11 @@ struct SettingsView: View {
         } message: {
             Text("Please try selecting another photo.")
         }
+        .alert("Reviews are coming soon", isPresented: $showReviewNotice) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text("This option will work as soon as Yutori is available on the App Store.")
+        }
         .alert(
             "Restore Purchases",
             isPresented: Binding(
@@ -423,7 +429,13 @@ struct SettingsView: View {
             }
 
             settingsSection("YUTORI") {
-                settingsRow("Write a Review", icon: "star.fill")
+                Button {
+                    isEditingName = false
+                    showReviewNotice = true
+                } label: {
+                    settingsRow("Write a Review", icon: "star.fill")
+                }
+                .buttonStyle(.plain)
                 settingsDivider
                 Button {
                     isEditingName = false
@@ -442,9 +454,19 @@ struct SettingsView: View {
             }
 
             settingsSection("LEGAL") {
-                settingsRow("Terms of Use", icon: "list.clipboard.fill")
+                NavigationLink {
+                    LegalDocumentView(document: .terms)
+                } label: {
+                    settingsRow("Terms of Use", icon: "list.clipboard.fill")
+                }
+                .buttonStyle(.plain)
                 settingsDivider
-                settingsRow("Privacy Policy", icon: "lock.shield.fill")
+                NavigationLink {
+                    LegalDocumentView(document: .privacy)
+                } label: {
+                    settingsRow("Privacy Policy", icon: "lock.shield.fill")
+                }
+                .buttonStyle(.plain)
             }
 
             Button {
@@ -459,7 +481,10 @@ struct SettingsView: View {
                 .padding(.top, 8)
                 .alert("Reset Yutori?", isPresented: $confirmReset) {
                     Button("Continue", role: .destructive) {
-                        deletionBowl = BowlKind.allCases.randomElement() ?? .teriyaki
+                        let unlockedBowls = BowlCatalog.entries
+                            .prefix(StudySessionStore.shared.unlockedBowlCount)
+                            .compactMap(\.kind)
+                        deletionBowl = unlockedBowls.randomElement() ?? .teriyaki
                         showDeleteChallenge = true
                     }
                     Button("Cancel", role: .cancel) {}
@@ -690,6 +715,91 @@ private struct StudyTestDateSettings: View {
     }
 }
 
+private struct LegalDocumentView: View {
+    enum Document {
+        case terms
+        case privacy
+
+        var title: String {
+            switch self { case .terms: "Terms of Use"; case .privacy: "Privacy Policy" }
+        }
+        var icon: String {
+            switch self { case .terms: "list.clipboard.fill"; case .privacy: "lock.shield.fill" }
+        }
+        var introduction: String {
+            switch self {
+            case .terms: "These terms explain the simple rules for using Yutori."
+            case .privacy: "Yutori is designed to keep your study information private and under your control."
+            }
+        }
+        var sections: [(String, String)] {
+            switch self {
+            case .terms:
+                [
+                    ("Using Yutori", "Yutori is a study companion for personal use. You are responsible for how you use the app and for the study information you add."),
+                    ("Yutori Pro", "Optional Pro subscriptions are handled by RevenueCat and the store used for the purchase. Prices, renewal periods and cancellation options are shown before you confirm a purchase. You can restore eligible purchases from Settings."),
+                    ("Availability", "Yutori is provided as available. Features may change as the app improves, and uninterrupted availability cannot be guaranteed."),
+                    ("Your data", "You can edit or delete your local courses and sessions in the app. Deleting your account removes Yutori data stored locally on that device."),
+                    ("Contact", "Questions about these terms can be sent to brunoogonzalezcano@gmail.com.")
+                ]
+            case .privacy:
+                [
+                    ("Data stored on your device", "Your profile, courses, study sessions, bowl progress and preferences are stored locally on your device. Yutori does not require an account or ask you to sign in."),
+                    ("Purchases", "RevenueCat processes subscription status and anonymous purchase information needed to unlock Yutori Pro. Yutori does not receive or store your payment card details."),
+                    ("Photos", "If you choose a profile photo, Yutori only accesses the image you select and stores a smaller copy locally for your avatar."),
+                    ("Sharing", "Yutori does not sell your personal information. Study data is not sent to an advertising service."),
+                    ("Your choices", "You can remove sessions individually, clear study history or delete all local Yutori data from Settings."),
+                    ("Contact", "Privacy questions can be sent to brunoogonzalezcano@gmail.com.")
+                ]
+            }
+        }
+    }
+
+    let document: Document
+
+    var body: some View {
+        ScrollView(showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 26) {
+                VStack(alignment: .leading, spacing: 14) {
+                    Image(systemName: document.icon)
+                        .font(.system(size: 28, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .frame(width: 64, height: 64)
+                        .background(CourseColor.teal.tint, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+                    Text(document.title)
+                        .font(.system(size: 34, weight: .bold, design: .rounded))
+                    Text(document.introduction)
+                        .font(.system(size: 16, design: .rounded))
+                        .foregroundStyle(AppTheme.secondaryInk)
+                        .lineSpacing(3)
+                }
+
+                VStack(alignment: .leading, spacing: 22) {
+                    ForEach(Array(document.sections.enumerated()), id: \.offset) { _, section in
+                        VStack(alignment: .leading, spacing: 7) {
+                            Text(section.0)
+                                .font(.system(size: 18, weight: .bold, design: .rounded))
+                            Text(section.1)
+                                .font(.system(size: 15, design: .rounded))
+                                .foregroundStyle(AppTheme.secondaryInk)
+                                .lineSpacing(4)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                }
+
+                Text("Last updated: September 25, 2026")
+                    .font(.system(size: 12, design: .rounded))
+                    .foregroundStyle(AppTheme.muted)
+                    .padding(.top, 8)
+            }
+            .padding(24)
+        }
+        .background(AppTheme.paper.ignoresSafeArea())
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
 private struct AccountDeletionChallengeView: View {
     let kind: BowlKind
     let onCancel: () -> Void
@@ -699,7 +809,6 @@ private struct AccountDeletionChallengeView: View {
     @State private var hitCount = 0
     @State private var bowlScale: CGFloat = 1
     @State private var bowlRotation = 0.0
-    @State private var bowlOpacity = 1.0
     @State private var fragmentsVisible = false
     @State private var fragmentsExpanded = false
 
@@ -739,33 +848,21 @@ private struct AccountDeletionChallengeView: View {
                 Button(action: strikeBowl) {
                     ZStack {
                         if fragmentsVisible {
-                            BrokenBowlPieces(kind: kind, expanded: fragmentsExpanded)
-
-                            ForEach(0..<12, id: \.self) { index in
-                                let angle = Double(index) * .pi / 6
-                                RoundedRectangle(cornerRadius: 2)
-                                    .fill(kind.evolutionColors[index % kind.evolutionColors.count])
-                                    .frame(width: CGFloat(8 + index % 3 * 4), height: CGFloat(7 + index % 2 * 5))
-                                    .rotationEffect(.degrees(Double(index * 29)))
-                                    .offset(
-                                        x: cos(angle) * (fragmentsExpanded ? 155 : 52),
-                                        y: sin(angle) * (fragmentsExpanded ? 135 : 42)
-                                    )
-                                    .opacity(fragmentsExpanded ? 0 : 1)
-                            }
+                            DeletionBowlFragments(kind: kind, expanded: fragmentsExpanded)
                         }
 
                         DishArtworkView(level: 5, availableWidth: 320, preferredWidth: 258, kind: kind)
                             .scaleEffect(bowlScale)
                             .rotationEffect(.degrees(bowlRotation))
-                            .opacity(fragmentsVisible ? 0 : bowlOpacity)
                             .overlay {
                                 DeletionCracks(progress: Double(hitCount) / Double(requiredHits))
-                                    .stroke(AppTheme.paper.opacity(0.92),
-                                            style: StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round))
-                                    .frame(width: 180, height: 135)
+                                    .stroke(AppTheme.ink.opacity(0.88),
+                                            style: StrokeStyle(lineWidth: 2.6, lineCap: .round, lineJoin: .round))
+                                    .frame(width: 202, height: 148)
                                     .opacity(hitCount == 0 ? 0 : 1)
                             }
+                            .opacity(fragmentsVisible ? 0 : 1)
+
                     }
                     .frame(maxWidth: .infinity)
                     .frame(height: 290)
@@ -797,21 +894,18 @@ private struct AccountDeletionChallengeView: View {
         if hitCount == requiredHits {
             fragmentsVisible = true
             Task { @MainActor in
-                try? await Task.sleep(for: .milliseconds(30))
-                withAnimation(.easeOut(duration: 0.62)) {
-                    bowlScale = 0.05
-                    bowlRotation = 16
-                    bowlOpacity = 0
+                try? await Task.sleep(for: .milliseconds(55))
+                withAnimation(.timingCurve(0.20, 0.72, 0.24, 1, duration: 0.78)) {
                     fragmentsExpanded = true
                 }
-                try? await Task.sleep(for: .milliseconds(720))
+                try? await Task.sleep(for: .milliseconds(820))
                 onDestroyed()
             }
         } else {
             let direction = hitCount.isMultiple(of: 2) ? -1.0 : 1.0
             withAnimation(.spring(duration: 0.18, bounce: 0.65)) {
-                bowlScale = 0.95
-                bowlRotation = direction * 3.5
+                bowlScale = max(0.90, 0.97 - CGFloat(hitCount) * 0.006)
+                bowlRotation = direction * (3.2 + Double(hitCount) * 0.34)
             }
             Task { @MainActor in
                 try? await Task.sleep(for: .milliseconds(130))
@@ -824,34 +918,57 @@ private struct AccountDeletionChallengeView: View {
     }
 }
 
-private struct BrokenBowlPieces: View {
+private struct DeletionBowlFragments: View {
     let kind: BowlKind
     let expanded: Bool
 
+    private let offsets: [CGSize] = [
+        CGSize(width: -118, height: -92), CGSize(width: -18, height: -132),
+        CGSize(width: 116, height: -78), CGSize(width: -105, height: 108),
+        CGSize(width: 12, height: 142), CGSize(width: 122, height: 96)
+    ]
+    private let rotations = [-24.0, -8.0, 27.0, -19.0, 11.0, 25.0]
+
     var body: some View {
         ZStack {
-            ForEach(0..<4, id: \.self) { index in
+            ForEach(0..<6, id: \.self) { index in
                 DishArtworkView(level: 5, availableWidth: 320, preferredWidth: 258, kind: kind)
-                    .frame(width: 280, height: 250)
+                    .frame(width: 280, height: 240)
                     .mask {
-                        GeometryReader { geometry in
-                            Rectangle()
-                                .frame(width: geometry.size.width / 2 + 4,
-                                       height: geometry.size.height / 2 + 4)
-                                .position(
-                                    x: index.isMultiple(of: 2) ? geometry.size.width / 4 : geometry.size.width * 3 / 4,
-                                    y: index < 2 ? geometry.size.height / 4 : geometry.size.height * 3 / 4
-                                )
-                        }
+                        DeletionBowlShard(index: index)
+                            .fill(.black)
                     }
-                    .offset(x: expanded ? (index.isMultiple(of: 2) ? -96 : 96) : 0,
-                            y: expanded ? (index < 2 ? -72 : 96) : 0)
-                    .rotationEffect(.degrees(expanded ? [-18, 16, -12, 20][index] : 0))
-                    .opacity(expanded ? 0.08 : 1)
+                    .offset(expanded ? offsets[index] : .zero)
+                    .rotationEffect(.degrees(expanded ? rotations[index] : 0))
+                    .scaleEffect(expanded ? 0.90 : 1)
+                    .opacity(expanded ? 0 : 1)
             }
         }
-        .frame(width: 280, height: 250)
+        .frame(width: 280, height: 240)
         .accessibilityHidden(true)
+    }
+}
+
+private struct DeletionBowlShard: Shape {
+    let index: Int
+
+    func path(in rect: CGRect) -> Path {
+        let points: [[CGPoint]] = [
+            [.init(x: 0, y: 0), .init(x: 0.36, y: 0), .init(x: 0.31, y: 0.51), .init(x: 0, y: 0.47)],
+            [.init(x: 0.36, y: 0), .init(x: 0.69, y: 0), .init(x: 0.73, y: 0.48), .init(x: 0.31, y: 0.51)],
+            [.init(x: 0.69, y: 0), .init(x: 1, y: 0), .init(x: 1, y: 0.53), .init(x: 0.73, y: 0.48)],
+            [.init(x: 0, y: 0.47), .init(x: 0.31, y: 0.51), .init(x: 0.36, y: 1), .init(x: 0, y: 1)],
+            [.init(x: 0.31, y: 0.51), .init(x: 0.73, y: 0.48), .init(x: 0.68, y: 1), .init(x: 0.36, y: 1)],
+            [.init(x: 0.73, y: 0.48), .init(x: 1, y: 0.53), .init(x: 1, y: 1), .init(x: 0.68, y: 1)]
+        ]
+        let polygon = points[index]
+        var path = Path()
+        path.move(to: CGPoint(x: polygon[0].x * rect.width, y: polygon[0].y * rect.height))
+        for point in polygon.dropFirst() {
+            path.addLine(to: CGPoint(x: point.x * rect.width, y: point.y * rect.height))
+        }
+        path.closeSubpath()
+        return path
     }
 }
 

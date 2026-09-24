@@ -17,7 +17,7 @@ struct OnboardingView: View {
     @FocusState private var focusedField: Field?
 
     private enum Field { case name, course }
-    private let pageCount = 6
+    private let pageCount = 7
     private let icons = CourseIconCatalog.icons
 
     var body: some View {
@@ -121,7 +121,8 @@ struct OnboardingView: View {
         case 2: storyPage
         case 3: coursesExplanationPage
         case 4: coursePage
-        default: growthAndCollectionPage
+        case 5: growthPage
+        default: collectionExplanationPage
         }
     }
 
@@ -192,12 +193,12 @@ struct OnboardingView: View {
         .scrollBounceBehavior(.basedOnSize)
     }
 
-    private var growthAndCollectionPage: some View {
+    private var growthPage: some View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: 18) {
                 onboardingHeader(icon: "timer", color: CourseColor.orange.tint,
-                                 title: "Study. Grow. Collect.",
-                                 text: "Each hour of focused study adds one level. Grow this Teriyaki Bowl yourself, then add it to your collection.")
+                                 title: "Study and watch it grow",
+                                 text: "Your active bowl receives the focused time from each session. Every hour adds one level until it reaches level 5.")
 
                 if let savedCourse = courseStore.courses.first {
                     HStack(spacing: 10) {
@@ -218,11 +219,8 @@ struct OnboardingView: View {
                     .background(AppTheme.surface.opacity(0.72), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
                 }
 
-                OnboardingGrowthAndCollectionView(level: $onboardingBowlLevel,
-                                                   isCollected: $starterBowlCollected,
-                                                   onCollect: collectStarterBowl,
-                                                   onOpenCollection: finishInCollection)
-                    .frame(height: 430)
+                OnboardingGrowthAnimation(level: $onboardingBowlLevel)
+                    .frame(height: 330)
 
                 HStack(spacing: 8) {
                     Label("1 hour", systemImage: "clock.fill")
@@ -231,6 +229,30 @@ struct OnboardingView: View {
                 }
                 .font(.system(size: 14, weight: .semibold, design: .rounded))
                 .foregroundStyle(AppTheme.secondaryInk)
+            }
+            .padding(24)
+        }
+        .scrollBounceBehavior(.basedOnSize)
+    }
+
+    private var collectionExplanationPage: some View {
+        ScrollView(showsIndicators: false) {
+            VStack(spacing: 20) {
+                onboardingHeader(icon: "square.grid.2x2", color: CourseColor.pink.tint,
+                                 title: "Build your collection",
+                                 text: "When a bowl reaches level 5, it becomes collected forever. Then you choose another unlocked bowl and begin growing it in your next sessions.")
+
+                OnboardingCollectionJourneyView(isCollected: $starterBowlCollected,
+                                                 onCollect: collectStarterBowl,
+                                                 onFinished: finishInCollection)
+                    .frame(height: 470)
+
+                Text(starterBowlCollected
+                     ? "Your Teriyaki Bowl is now part of My bowls."
+                     : "Tap Collect when you are ready to add your first bowl.")
+                    .font(.system(size: 13, weight: .medium, design: .rounded))
+                    .foregroundStyle(AppTheme.secondaryInk)
+                    .multilineTextAlignment(.center)
             }
             .padding(24)
         }
@@ -320,10 +342,9 @@ struct OnboardingView: View {
     private func storyReason(icon: String, color: Color, title: String, text: String) -> some View {
         HStack(spacing: 14) {
             Image(systemName: icon)
-                .font(.system(size: 18, weight: .semibold))
-                .foregroundStyle(.white)
-                .frame(width: 44, height: 44)
-                .background(color, in: RoundedRectangle(cornerRadius: 15, style: .continuous))
+                .font(.system(size: 22, weight: .medium))
+                .foregroundStyle(color)
+                .frame(width: 34)
             VStack(alignment: .leading, spacing: 3) {
                 Text(title).font(.system(size: 16, weight: .semibold, design: .rounded))
                 Text(text)
@@ -454,18 +475,21 @@ struct OnboardingView: View {
     }
 
     private func finishInCollection() {
-        UserDefaults.standard.set(true, forKey: "openBowlsAfterOnboarding")
-        NotificationCenter.default.post(name: Notification.Name("OpenBowlsFromOnboarding"), object: nil)
+        sessionStore.clearActiveBowlSelection()
+        UserDefaults.standard.removeObject(forKey: "openBowlsAfterOnboarding")
+        NotificationCenter.default.post(name: Notification.Name("OpenHomeFromOnboarding"), object: nil)
         onComplete()
     }
 
     private func onboardingHeader(icon: String, color: Color, title: String, text: String) -> some View {
         VStack(spacing: 12) {
             Image(systemName: icon)
-                .font(.system(size: 28, weight: .semibold))
-                .foregroundStyle(.white)
-                .frame(width: 68, height: 68)
-                .background(color, in: RoundedRectangle(cornerRadius: 23, style: .continuous))
+                .font(.system(size: 34, weight: .medium))
+                .foregroundStyle(color)
+                .frame(height: 46)
+            Capsule()
+                .fill(color.opacity(0.55))
+                .frame(width: 34, height: 3)
             Text(title)
                 .font(.system(size: 30, weight: .bold, design: .rounded))
             Text(text)
@@ -667,8 +691,8 @@ private struct OnboardingCoursesExplanation: View {
         .task {
             guard !reduceMotion else { return }
             while !Task.isCancelled {
-                try? await Task.sleep(for: .milliseconds(1100))
-                withAnimation(.spring(duration: 0.48, bounce: 0.16)) {
+                try? await Task.sleep(for: .milliseconds(1750))
+                withAnimation(.spring(duration: 0.68, bounce: 0.10)) {
                     selected = (selected + 1) % examples.count
                 }
             }
@@ -696,10 +720,9 @@ private struct OnboardingAttentionStory: View {
 
             ForEach(Array(distractions.enumerated()), id: \.offset) { index, item in
                 Image(systemName: item.0)
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(.white)
+                    .font(.system(size: 25, weight: .medium))
+                    .foregroundStyle(item.1)
                     .frame(width: 48, height: 48)
-                    .background(item.1, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                     .offset(x: item.2, y: item.3)
                     .scaleEffect(focused ? 0.68 : 1)
                     .opacity(focused ? 0.24 : 0.90)
@@ -735,7 +758,6 @@ private struct OnboardingGrowthAnimation: View {
     @Binding var level: Int
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var particleBurst = false
-    @State private var isAdvancing = false
 
     var body: some View {
         VStack(spacing: 8) {
@@ -752,12 +774,12 @@ private struct OnboardingGrowthAnimation: View {
                         .offset(x: cos(Double(index) * .pi / 4) * CGFloat(particleBurst ? 126 : 92),
                                 y: sin(Double(index) * .pi / 4) * CGFloat(particleBurst ? 102 : 68))
                         .scaleEffect(particleBurst ? 1.15 : 0.45)
-                        .opacity(level == 0 ? 0.12 : (particleBurst ? 0.15 : 0.78))
+                        .opacity(level == 0 ? 0.10 : (particleBurst ? 0.82 : 0.16))
                 }
 
                 DishArtworkView(level: level, availableWidth: 300, preferredWidth: CGFloat(150 + level * 18), kind: .teriyaki)
                     .id(level)
-                    .transition(.scale(scale: 0.78).combined(with: .opacity))
+                    .transition(.scale(scale: 0.94).combined(with: .opacity))
             }
             .frame(height: 255)
 
@@ -781,37 +803,27 @@ private struct OnboardingGrowthAnimation: View {
                     }
             }
             .frame(height: 8)
-
-            Button(action: growBowl) {
-                HStack(spacing: 8) {
-                    Image(systemName: level == 5 ? "checkmark" : "timer")
-                    Text(level == 5 ? "Bowl fully grown" : "Study 1 hour")
-                }
-                .font(.system(size: 15, weight: .semibold, design: .rounded))
-                .foregroundStyle(level == 5 ? CourseColor.green.deepTint : AppTheme.paper)
-                .frame(maxWidth: .infinity, minHeight: 46)
-                .background(level == 5 ? CourseColor.green.tint.opacity(0.18) : AppTheme.ink, in: Capsule())
-                .contentShape(Capsule())
-            }
-            .buttonStyle(.plain)
-            .disabled(level == 5 || isAdvancing)
         }
-        .padding(16)
-        .background(AppTheme.surface.opacity(0.40), in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .padding(.horizontal, 8)
         .sensoryFeedback(.success, trigger: level)
-    }
-
-    private func growBowl() {
-        guard level < 5, !isAdvancing else { return }
-        isAdvancing = true
-        withAnimation(reduceMotion ? nil : .easeOut(duration: 0.22)) { particleBurst = true }
-        withAnimation(reduceMotion ? nil : .spring(duration: 0.62, bounce: 0.24)) {
-            level += 1
-        }
-        Task { @MainActor in
-            try? await Task.sleep(for: .milliseconds(360))
-            withAnimation(reduceMotion ? nil : .easeIn(duration: 0.45)) { particleBurst = false }
-            isAdvancing = false
+        .task {
+            level = 0
+            try? await Task.sleep(for: .milliseconds(900))
+            while !Task.isCancelled {
+                if level == 5 {
+                    try? await Task.sleep(for: .milliseconds(2100))
+                    withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.80)) {
+                        level = 0
+                    }
+                    try? await Task.sleep(for: .milliseconds(1300))
+                    continue
+                }
+                withAnimation(reduceMotion ? nil : .easeOut(duration: 0.48)) { particleBurst = true }
+                withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.82)) { level += 1 }
+                try? await Task.sleep(for: .milliseconds(820))
+                withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.62)) { particleBurst = false }
+                try? await Task.sleep(for: .milliseconds(980))
+            }
         }
     }
 }
@@ -1077,5 +1089,175 @@ private struct OnboardingGrowthAndCollectionView: View {
             try? await Task.sleep(for: .milliseconds(850))
             onOpenCollection()
         }
+    }
+}
+
+private struct OnboardingCollectionJourneyView: View {
+    @Binding var isCollected: Bool
+    let onCollect: () -> Bool
+    let onFinished: () -> Void
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var landed = false
+    @State private var collecting = false
+    @State private var finishing = false
+    @Namespace private var bowlFlight
+
+    var body: some View {
+        GeometryReader { geometry in
+            ZStack {
+                VStack(spacing: 10) {
+                    HStack {
+                        Text("My bowls")
+                            .font(.system(size: 18, weight: .bold, design: .rounded))
+                        Spacer()
+                        Text(landed || isCollected ? "1 / 21" : "0 / 21")
+                            .font(.system(size: 13, weight: .semibold, design: .rounded))
+                            .foregroundStyle(AppTheme.secondaryInk)
+                    }
+
+                    HStack(spacing: 10) {
+                        collectionTile(index: 0, highlighted: landed || isCollected)
+                        collectionTile(index: 1, highlighted: false)
+                        collectionTile(index: 2, highlighted: false)
+                    }
+                }
+                .padding(14)
+                .frame(width: geometry.size.width, height: 200)
+                .background(AppTheme.surface.opacity(0.72), in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+                .position(x: geometry.size.width / 2, y: geometry.size.height * 0.61)
+
+                if !landed && !isCollected {
+                    DishArtworkView(level: 5, availableWidth: 250, preferredWidth: 190, kind: .teriyaki)
+                        .matchedGeometryEffect(id: "onboardingCollectedBowl", in: bowlFlight)
+                        .position(x: geometry.size.width / 2, y: geometry.size.height * 0.16)
+                        .shadow(color: CourseColor.orange.tint.opacity(0.20), radius: 16, y: 9)
+                }
+
+                if landed || isCollected {
+                    VStack(spacing: 7) {
+                        Image(systemName: "sparkles")
+                            .font(.system(size: 20, weight: .bold))
+                            .foregroundStyle(CourseColor.orange.tint)
+                            .symbolEffect(.bounce, value: landed)
+                        Text("Your first bowl!")
+                            .font(.system(size: 27, weight: .bold, design: .rounded))
+                            .foregroundStyle(AppTheme.ink)
+                        Text("Teriyaki Bowl is now collected")
+                            .font(.system(size: 13, weight: .semibold, design: .rounded))
+                            .foregroundStyle(AppTheme.secondaryInk)
+                    }
+                    .position(x: geometry.size.width / 2, y: geometry.size.height * 0.18)
+                    .transition(.scale(scale: 0.86).combined(with: .opacity))
+                }
+
+                Button(action: primaryAction) {
+                    HStack(spacing: 8) {
+                        if collecting {
+                            ProgressView()
+                                .tint(AppTheme.paper)
+                        } else {
+                            Image(systemName: landed || isCollected ? "leaf.fill" : "sparkles")
+                        }
+                        Text(landed || isCollected ? "Start my journey" : "Collect Teriyaki Bowl")
+                    }
+                    .font(.system(size: 15, weight: .semibold, design: .rounded))
+                    .foregroundStyle(AppTheme.paper)
+                    .frame(maxWidth: .infinity, minHeight: 48)
+                    .background(AppTheme.ink, in: Capsule())
+                    .contentShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .disabled(collecting || finishing)
+                .opacity(collecting ? 0.65 : (finishing ? 0 : 1))
+                .padding(.horizontal, 12)
+                .position(x: geometry.size.width / 2, y: geometry.size.height * 0.90)
+            }
+            .scaleEffect(finishing ? 0.975 : 1)
+            .opacity(finishing ? 0 : 1)
+        }
+        .onAppear {
+            if isCollected {
+                landed = true
+            }
+        }
+        .sensoryFeedback(.success, trigger: landed)
+    }
+
+    private func primaryAction() {
+        if landed || isCollected {
+            guard !finishing else { return }
+            withAnimation(reduceMotion ? .easeOut(duration: 0.18) : .easeInOut(duration: 0.42)) {
+                finishing = true
+            }
+            Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(reduceMotion ? 160 : 390))
+                onFinished()
+            }
+            return
+        }
+        guard !collecting else { return }
+        collecting = true
+        Task { @MainActor in
+            withAnimation(reduceMotion ? .easeOut(duration: 0.20) : .timingCurve(0.32, 0.02, 0.16, 1, duration: 0.95)) {
+                landed = true
+            }
+            try? await Task.sleep(for: .milliseconds(reduceMotion ? 220 : 980))
+            guard onCollect() else {
+                withAnimation { landed = false }
+                collecting = false
+                return
+            }
+            collecting = false
+        }
+    }
+
+    private func collectionTile(index: Int, highlighted: Bool) -> some View {
+        VStack(spacing: 3) {
+            ZStack {
+                if index == 0 && (landed || isCollected) {
+                    DishArtworkView(level: 5, availableWidth: 124, preferredWidth: 76, kind: .teriyaki)
+                        .matchedGeometryEffect(id: "onboardingCollectedBowl", in: bowlFlight)
+                } else {
+                    AppTheme.muted.opacity(index == 0 ? 0.38 : 0.50)
+                        .frame(width: 80, height: 70)
+                        .mask {
+                            DishArtworkView(level: 5, availableWidth: 124, preferredWidth: 76,
+                                            kind: index == 1 ? .katsuRamen : .teriyaki)
+                        }
+                }
+
+                if index > 0 {
+                    Image(systemName: "questionmark")
+                        .font(.system(size: 15, weight: .bold, design: .rounded))
+                        .foregroundStyle(AppTheme.paper)
+                        .frame(width: 28, height: 28)
+                        .background(AppTheme.ink.opacity(0.78), in: Circle())
+                }
+            }
+            .frame(height: 82)
+            .offset(y: 4)
+            .padding(.bottom, 7)
+
+            Text(String(format: "%03d", index + 1))
+                .font(.system(size: 9, weight: .medium, design: .rounded))
+                .foregroundStyle(AppTheme.secondaryInk.opacity(0.75))
+                .monospacedDigit()
+
+            Text(index == 0 ? "Teriyaki Bowl" : "???")
+                .font(.system(size: 10, weight: highlighted ? .semibold : .medium, design: .rounded))
+                .foregroundStyle(highlighted ? AppTheme.ink : AppTheme.secondaryInk)
+                .multilineTextAlignment(.center)
+                .lineLimit(2)
+                .frame(height: 25, alignment: .top)
+        }
+        .frame(maxWidth: .infinity, minHeight: 122)
+        .background(highlighted ? CourseColor.orange.tint.opacity(0.13) : AppTheme.paper.opacity(0.72),
+                    in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .strokeBorder(highlighted ? CourseColor.orange.tint.opacity(0.50) : AppTheme.ink.opacity(0.08), lineWidth: 1)
+        }
+        .accessibilityHidden(index > 0)
     }
 }

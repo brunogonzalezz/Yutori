@@ -152,6 +152,9 @@ struct TabBarView: View {
             selectedTab = .bowls
             UserDefaults.standard.removeObject(forKey: "openBowlsAfterOnboarding")
         }
+        .onReceive(NotificationCenter.default.publisher(for: .openHomeFromOnboarding)) { _ in
+            selectedTab = .home
+        }
         .onChange(of: ActiveStudySession.shared.id) { _, _ in restoreActiveSession() }
 
         .allowsHitTesting(!returningHome && collectingFrame == nil)
@@ -221,6 +224,7 @@ struct TabBarView: View {
 
 private extension Notification.Name {
     static let openBowlsFromOnboarding = Notification.Name("OpenBowlsFromOnboarding")
+    static let openHomeFromOnboarding = Notification.Name("OpenHomeFromOnboarding")
 }
 
 private struct CollectionTabAnchor: UIViewRepresentable {

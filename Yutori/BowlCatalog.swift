@@ -9,7 +9,7 @@ struct BowlCatalogEntry: Identifiable {
 
 enum BowlCatalog {
     // Each milestone opens the entire next row of three.
-    static let hoursPerGroup = 15
+    static let hoursPerGroup = 10
     static let entries: [BowlCatalogEntry] = [
         "Teriyaki Bowl", "Katsu Ramen", "Tofu Curry", "Miso Ramen",
         "Shoyu Ramen", "Spicy Ramen", "Chicken Curry", "Katsu Curry",

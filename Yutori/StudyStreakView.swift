@@ -116,13 +116,19 @@ private struct StreakFlame: View {
         ZStack {
             Image(systemName: "flame.fill")
                 .font(.system(size: 35, weight: .bold))
-                .foregroundStyle(Color(red: 0.86, green: 0.20, blue: 0.10))
+                .foregroundStyle(CourseColor.red.tint)
 
             Image(systemName: "flame.fill")
-                .font(.system(size: 18, weight: .bold))
-                .foregroundStyle(Color(red: 1.00, green: 0.66, blue: 0.12))
-                .scaleEffect(x: 0.72, y: 0.88)
-                .offset(y: 4)
+                .font(.system(size: 23, weight: .bold))
+                .foregroundStyle(CourseColor.orange.tint)
+                .scaleEffect(x: 0.70, y: 0.87)
+                .offset(y: 3.5)
+
+            Image(systemName: "flame.fill")
+                .font(.system(size: 13, weight: .bold))
+                .foregroundStyle(CourseColor.lemon.tint)
+                .scaleEffect(x: 0.66, y: 0.82)
+                .offset(y: 6)
         }
         .scaleEffect(scale)
         .rotationEffect(.degrees(rotation))

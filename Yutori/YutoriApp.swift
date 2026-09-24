@@ -4,8 +4,6 @@ import UIKit
 
 @main
 struct YutoriApp: App {
-    @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
-
     init() {
         PurchaseManager.shared.configure()
 
@@ -26,20 +24,69 @@ struct YutoriApp: App {
 
     var body: some Scene {
         WindowGroup {
-            Group {
-                if hasCompletedOnboarding {
-                    TabBarView()
-                } else {
-                    OnboardingView(allowsDismiss: false) {
-                        hasCompletedOnboarding = true
-                    }
-                }
-            }
-                .id(AppReset.shared.revision)
+            YutoriRootView()
                 .fontDesign(.rounded)
                 .foregroundStyle(AppTheme.ink)
                 .tint(AppTheme.ink)
                 .background(AppTheme.paper.ignoresSafeArea())
+        }
+    }
+}
+
+private struct YutoriRootView: View {
+    @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
+    @State private var appReset = AppReset.shared
+
+    var body: some View {
+        Group {
+            if hasCompletedOnboarding {
+                TabBarView()
+            } else if appReset.shouldShowResetLoading {
+                YutoriLaunchView()
+                    .transition(.opacity)
+            } else {
+                OnboardingView(allowsDismiss: false) {
+                    hasCompletedOnboarding = true
+                }
+                .transition(.opacity)
+            }
+        }
+        .id(appReset.revision)
+        .task(id: appReset.revision) {
+            guard appReset.shouldShowResetLoading else { return }
+            try? await Task.sleep(for: .milliseconds(1650))
+            guard !Task.isCancelled else { return }
+            withAnimation(.easeInOut(duration: 0.32)) {
+                appReset.finishResetLoading()
+            }
+        }
+    }
+}
+
+private struct YutoriLaunchView: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var appeared = false
+
+    var body: some View {
+        ZStack {
+            AppTheme.paper.ignoresSafeArea()
+
+            VStack(spacing: 12) {
+                Image(systemName: "leaf.fill")
+                    .font(.system(size: 34, weight: .medium))
+                    .foregroundStyle(CourseColor.green.tint)
+
+                Text("Yutori")
+                    .font(.system(size: 30, weight: .bold, design: .rounded))
+                Text("Preparing your space to focus…")
+                    .font(.system(size: 14, weight: .medium, design: .rounded))
+                    .foregroundStyle(AppTheme.secondaryInk)
+            }
+            .opacity(appeared ? 1 : 0)
+            .scaleEffect(appeared ? 1 : 0.96)
+        }
+        .onAppear {
+            withAnimation(reduceMotion ? nil : .easeOut(duration: 0.4)) { appeared = true }
         }
     }
 }
