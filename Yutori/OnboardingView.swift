@@ -1223,7 +1223,7 @@ private struct OnboardingCollectionJourneyView: View {
                         .frame(width: 80, height: 70)
                         .mask {
                             DishArtworkView(level: 5, availableWidth: 124, preferredWidth: 76,
-                                            kind: index == 1 ? .katsuRamen : .teriyaki)
+                                            kind: index == 1 ? .katsuRamen : (index == 2 ? .tofuCurry : .teriyaki))
                         }
                 }
 

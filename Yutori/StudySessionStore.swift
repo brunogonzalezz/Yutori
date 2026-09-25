@@ -116,10 +116,20 @@ struct WeeklyStudyStats {
 }
 
 enum BowlKind: String, Codable, CaseIterable {
-    case teriyaki, katsuRamen
-    var name: String { self == .katsuRamen ? "Katsu Ramen" : "Teriyaki Bowl" }
+    case teriyaki, katsuRamen, tofuCurry
+    var name: String {
+        switch self {
+        case .teriyaki: "Teriyaki Bowl"
+        case .katsuRamen: "Katsu Ramen"
+        case .tofuCurry: "Tofu Curry"
+        }
+    }
     func imageName(level: Int) -> String {
-        self == .katsuRamen ? "DishLevel\(level)" : "TeriyakiLevel\(level)"
+        switch self {
+        case .teriyaki: "TeriyakiLevel\(level)"
+        case .katsuRamen: "DishLevel\(level)"
+        case .tofuCurry: "TofuCurryLevel\(level)"
+        }
     }
 }
 

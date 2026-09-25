@@ -308,10 +308,23 @@ struct DishArtworkView: View {
         (CGSize(width: 1276, height: 1276), CGRect(x: 51, y: 116, width: 1175, height: 1061))
     ]
 
+    private static let tofuCurryArtwork: [(canvas: CGSize, bounds: CGRect)] = [
+        (CGSize(width: 768, height: 768), CGRect(x: 14, y: 138, width: 741, height: 547)),
+        (CGSize(width: 944, height: 944), CGRect(x: 230, y: 290, width: 484, height: 404)),
+        (CGSize(width: 1016, height: 1016), CGRect(x: 179, y: 260, width: 658, height: 535)),
+        (CGSize(width: 964, height: 772), CGRect(x: 67, y: 81, width: 829, height: 651)),
+        (CGSize(width: 944, height: 944), CGRect(x: 24, y: 112, width: 896, height: 751)),
+        (CGSize(width: 1236, height: 1236), CGRect(x: 85, y: 189, width: 1064, height: 889))
+    ]
+
     var body: some View {
         let index = min(max(level, 0), 5)
         let bowlKind = kind ?? StudySessionStore.shared.activeBowlKind
-        let asset = bowlKind == .katsuRamen ? Self.artwork[index] : Self.teriyakiArtwork[index]
+        let asset = switch bowlKind {
+        case .teriyaki: Self.teriyakiArtwork[index]
+        case .katsuRamen: Self.artwork[index]
+        case .tofuCurry: Self.tofuCurryArtwork[index]
+        }
         let screenFactor = min(1, max(0, availableWidth - 80) / 266)
         let targetWidth = preferredWidth.map { min($0, max(0, availableWidth - 48)) }
             ?? Self.naturalWidth(level: index, availableWidth: availableWidth)

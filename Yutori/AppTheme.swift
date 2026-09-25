@@ -31,6 +31,14 @@ extension BowlKind {
                 Color(red: 0.86, green: 0.48, blue: 0.42),
                 Color(red: 0.95, green: 0.84, blue: 0.68)
             ]
+        case .tofuCurry:
+            [
+                Color(red: 0.96, green: 0.48, blue: 0.06),
+                Color(red: 0.10, green: 0.53, blue: 0.18),
+                Color(red: 0.16, green: 0.54, blue: 0.88),
+                Color(red: 0.91, green: 0.24, blue: 0.10),
+                Color(red: 0.72, green: 0.88, blue: 0.98)
+            ]
         }
     }
 }

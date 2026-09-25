@@ -163,7 +163,16 @@ private struct BowlCollectionView: View {
                         AppTheme.muted
                             .frame(width: width, height: width)
                             .mask {
-                                DishArtworkView(level: 5, availableWidth: width + 48, preferredWidth: width, kind: kind)
+                                if let previewImageName = entry.previewImageName {
+                                    Image(previewImageName)
+                                        .resizable()
+                                        .interpolation(.none)
+                                        .scaledToFit()
+                                        .frame(width: width, height: width)
+                                } else {
+                                    DishArtworkView(level: 5, availableWidth: width + 48,
+                                                    preferredWidth: width, kind: kind)
+                                }
                             }
                     }
                     if !unlocked {
@@ -222,6 +231,7 @@ private struct CollectedBowlDetailView: View {
     let sessions: [StudySession]
 
     @Environment(\.dismiss) private var dismiss
+    @State private var selectedSession: StudySession?
 
     private var bowlSessions: [StudySession] {
         guard let ids = bowl.sourceSessionIDs else { return [] }
@@ -229,16 +239,11 @@ private struct CollectedBowlDetailView: View {
         return sessions.filter { idSet.contains($0.id) }.sorted { $0.endedAt < $1.endedAt }
     }
 
-    private var totalDuration: TimeInterval {
-        bowlSessions.reduce(0) { $0 + $1.dishDuration }
-    }
-
     private var colors: [Color] { bowl.bowlKind.evolutionColors }
 
     var body: some View {
         ZStack(alignment: .topTrailing) {
-            LinearGradient(colors: [colors[4].opacity(0.34), colors[1].opacity(0.10), AppTheme.paper],
-                           startPoint: .topLeading, endPoint: .center)
+            AppTheme.paper
                 .ignoresSafeArea()
 
             ScrollView(showsIndicators: false) {
@@ -271,16 +276,39 @@ private struct CollectedBowlDetailView: View {
                 .padding(.trailing, 20)
                 .zIndex(10)
         }
+        .sheet(item: $selectedSession) { session in
+            Group {
+                SessionSummaryView(course: session.course, measuredDuration: session.duration,
+                                   startingSeconds: session.startingDishSeconds ?? 0,
+                                   bowlKind: session.bowlKind ?? .teriyaki,
+                                   pauseCount: session.pauseCount ?? 0,
+                                   endedAt: session.endedAt, onDiscard: {}, onSave: { _ in },
+                                   savedSession: session)
+            }
+            .presentationBackground(AppTheme.paper)
+        }
     }
 
     private var hero: some View {
         VStack(spacing: 12) {
             ZStack {
                 Circle()
-                    .fill(colors[4].opacity(0.34))
+                    .fill(
+                        RadialGradient(
+                            colors: [
+                                colors[4].opacity(0.58),
+                                colors[1].opacity(0.22),
+                                AppTheme.surface.opacity(0.58)
+                            ],
+                            center: .center,
+                            startRadius: 20,
+                            endRadius: 142
+                        )
+                    )
                     .frame(width: 270, height: 270)
+                    .shadow(color: colors[0].opacity(0.12), radius: 24)
                 Circle()
-                    .strokeBorder(colors[0].opacity(0.30), lineWidth: 1.5)
+                    .strokeBorder(colors[0].opacity(0.20), lineWidth: 1.5)
                     .frame(width: 230, height: 230)
                 DishArtworkView(level: 5, availableWidth: 340, preferredWidth: 268, kind: bowl.bowlKind)
                     .shadow(color: AppTheme.ink.opacity(0.12), radius: 18, y: 12)
@@ -297,8 +325,8 @@ private struct CollectedBowlDetailView: View {
                 .foregroundStyle(AppTheme.darkSurface)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 8)
-                .background(colors[1].opacity(0.20), in: Capsule())
-                .overlay { Capsule().strokeBorder(colors[1].opacity(0.32), lineWidth: 1) }
+                .background(AppTheme.surface, in: Capsule())
+                .overlay { Capsule().strokeBorder(AppTheme.ink.opacity(0.10), lineWidth: 1) }
         }
         .padding(.top, 8)
     }
@@ -323,17 +351,15 @@ private struct CollectedBowlDetailView: View {
                         .foregroundStyle(AppTheme.ink)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 8)
-                        .background(colors[index % colors.count].opacity(0.16), in: Capsule())
-                        .overlay {
-                            Capsule().strokeBorder(colors[index % colors.count].opacity(0.24), lineWidth: 1)
-                        }
+                        .background(colors[index % colors.count].opacity(0.24), in: Capsule())
                 }
             }
         }
     }
 
     private var journey: some View {
-        detailSection(title: "Study journey", icon: "clock.arrow.circlepath", accent: colors[3]) {
+        detailSection(title: "Study journey", icon: "clock.arrow.circlepath", accent: colors[3],
+                      trailing: bowlSessions.isEmpty ? nil : sessionCountText) {
             if bowl.isStarterGift == true {
                 emptyJourney(icon: "gift.fill", title: "Your starter bowl",
                              text: "This Teriyaki Bowl joined your collection when you began your Yutori journey.")
@@ -345,20 +371,23 @@ private struct CollectedBowlDetailView: View {
                              text: "The sessions connected to this bowl are no longer in your history.")
             } else {
                 VStack(spacing: 0) {
-                    HStack {
-                        statistic(value: "\(bowlSessions.count)", label: bowlSessions.count == 1 ? "session" : "sessions")
-                        Divider().frame(height: 42)
-                        statistic(value: formatted(totalDuration), label: "focused time")
-                    }
-                    .padding(.bottom, 14)
-
                     ForEach(Array(bowlSessions.enumerated()), id: \.element.id) { index, session in
                         if index > 0 { Divider().opacity(0.55) }
-                        sessionRow(session)
+                        Button {
+                            selectedSession = session
+                        } label: {
+                            sessionRow(session)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityHint("Open session summary")
                     }
                 }
             }
         }
+    }
+
+    private var sessionCountText: String {
+        "\(bowlSessions.count) \(bowlSessions.count == 1 ? "session" : "sessions")"
     }
 
     private func sessionRow(_ session: StudySession) -> some View {
@@ -382,20 +411,12 @@ private struct CollectedBowlDetailView: View {
                 .font(.system(size: 13, weight: .bold, design: .rounded))
                 .foregroundStyle(AppTheme.darkSurface)
                 .monospacedDigit()
+            Image(systemName: "chevron.right")
+                .font(.system(size: 11, weight: .bold))
+                .foregroundStyle(AppTheme.secondaryInk.opacity(0.72))
         }
         .padding(.vertical, 12)
-    }
-
-    private func statistic(value: String, label: String) -> some View {
-        VStack(spacing: 2) {
-            Text(value)
-                .font(.system(size: 20, weight: .bold, design: .rounded))
-                .monospacedDigit()
-            Text(label)
-                .font(.system(size: 11, weight: .medium, design: .rounded))
-                .foregroundStyle(AppTheme.secondaryInk)
-        }
-        .frame(maxWidth: .infinity)
+        .contentShape(Rectangle())
     }
 
     private func emptyJourney(icon: String, title: String, text: String) -> some View {
@@ -415,24 +436,32 @@ private struct CollectedBowlDetailView: View {
     }
 
     private func detailSection<Content: View>(title: String, icon: String, accent: Color,
+                                               trailing: String? = nil,
                                                @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 14) {
-            Label(title, systemImage: icon)
-                .font(.system(size: 18, weight: .bold, design: .rounded))
-                .foregroundStyle(AppTheme.ink)
-                .symbolRenderingMode(.hierarchical)
-                .tint(accent)
+            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                Label(title, systemImage: icon)
+                    .font(.system(size: 18, weight: .bold, design: .rounded))
+                    .foregroundStyle(AppTheme.ink)
+                    .symbolRenderingMode(.hierarchical)
+                    .tint(accent)
+                Spacer(minLength: 8)
+                if let trailing {
+                    Text(trailing)
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        .foregroundStyle(AppTheme.secondaryInk)
+                }
+            }
             content()
         }
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background {
             RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(LinearGradient(colors: [accent.opacity(0.15), AppTheme.surface.opacity(0.64)],
-                                     startPoint: .topLeading, endPoint: .bottomTrailing))
+                .fill(AppTheme.surface.opacity(0.68))
                 .overlay {
                     RoundedRectangle(cornerRadius: 24, style: .continuous)
-                        .strokeBorder(accent.opacity(0.22), lineWidth: 1)
+                        .strokeBorder(AppTheme.ink.opacity(0.09), lineWidth: 1)
                 }
         }
     }
@@ -453,6 +482,8 @@ private extension BowlKind {
             return "A colourful Japanese-inspired bowl built around sweet and savoury teriyaki, fresh vegetables and warm rice. Each ingredient represents the focus you brought to the sessions that grew it."
         case .katsuRamen:
             return "A comforting ramen bowl topped with crisp katsu, a soft egg and fresh greens. It grew one focused session at a time until every part of the bowl was complete."
+        case .tofuCurry:
+            return "A warming Japanese curry filled with tofu and colourful vegetables. Its bright blue bowl and rich golden curry grew fuller with every focused hour."
         }
     }
 
@@ -462,6 +493,8 @@ private extension BowlKind {
             return ["Teriyaki", "Rice", "Edamame", "Avocado", "Sweetcorn", "Pickled cabbage", "Spring onion"]
         case .katsuRamen:
             return ["Chicken katsu", "Ramen", "Egg", "Broth", "Greens", "Spring onion"]
+        case .tofuCurry:
+            return ["Tofu", "Japanese curry", "Broccoli", "Carrot", "Mushrooms", "Green onion"]
         }
     }
 }

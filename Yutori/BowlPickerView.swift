@@ -11,6 +11,9 @@ struct BowlPickerView: View {
     private var selectedBowl: BowlCatalogEntry {
         availableBowls.first { $0.id == selection } ?? availableBowls[0]
     }
+    private var selectedBowlIsCollected: Bool {
+        selectedBowl.kind.map { store.collectedKinds.contains($0) } ?? false
+    }
     var dismissOnSelection = true
     let onSelect: () -> Void
 
@@ -41,6 +44,14 @@ struct BowlPickerView: View {
                             .font(.system(size: 22, weight: .bold, design: .rounded))
                             .multilineTextAlignment(.center)
                             .lineLimit(2)
+                        if selectedBowlIsCollected {
+                            Label("Already collected", systemImage: "checkmark.seal.fill")
+                                .font(.system(size: 12, weight: .semibold, design: .rounded))
+                                .foregroundStyle(CourseColor.green.deepTint)
+                                .padding(.horizontal, 11)
+                                .padding(.vertical, 5)
+                                .background(CourseColor.green.tint.opacity(0.18), in: Capsule())
+                        }
                     }
                     .padding(.horizontal, 20)
 
@@ -64,7 +75,8 @@ struct BowlPickerView: View {
                             if dismissOnSelection { dismiss() }
                         }
                     } label: {
-                        Text(selectedBowl.kind != nil ? "Select bowl" : "Coming soon")
+                        Text(selectedBowl.kind == nil ? "Coming soon" :
+                                (selectedBowlIsCollected ? "Grow this bowl again" : "Select bowl"))
                             .font(.system(size: 16, weight: .semibold, design: .rounded))
                             .foregroundStyle(AppTheme.paper)
                             .frame(maxWidth: .infinity, minHeight: 50)
@@ -129,6 +141,7 @@ struct BowlPickerView: View {
                 GeometryReader { geometry in
                     artwork(entry, width: max(0, min(78, geometry.size.width - 8)))
                         .frame(width: geometry.size.width, height: geometry.size.height)
+                        .opacity(isCollected && !isSelected ? 0.72 : 1)
                 }
                 .frame(height: 60)
                 Text(entry.name)
@@ -136,23 +149,40 @@ struct BowlPickerView: View {
                     .multilineTextAlignment(.center)
                     .lineLimit(2)
                     .frame(height: 28)
+                Label(isCollected ? "Collected" : " ", systemImage: isCollected ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 9, weight: .bold, design: .rounded))
+                    .foregroundStyle(isCollected ? CourseColor.green.deepTint : .clear)
+                    .frame(height: 12)
             }
             .padding(8)
             .frame(maxWidth: .infinity)
-            .background(isCollected ? AppTheme.darkSurface.opacity(isSelected ? 0.24 : 0.16) :
-                            (isSelected ? AppTheme.surface : AppTheme.surface.opacity(0.4)),
+            .background(isSelected ? CourseColor.orange.tint.opacity(0.14) :
+                            (isCollected ? CourseColor.green.tint.opacity(0.11) : AppTheme.surface.opacity(0.4)),
                         in: RoundedRectangle(cornerRadius: 16))
             .overlay {
                 RoundedRectangle(cornerRadius: 16)
-                    .strokeBorder(isSelected ? AppTheme.ink : .clear, lineWidth: 2)
+                    .strokeBorder(isSelected ? CourseColor.orange.deepTint :
+                                    (isCollected ? CourseColor.green.tint.opacity(0.42) : .clear),
+                                  lineWidth: isSelected ? 2.5 : 1)
+            }
+            .overlay(alignment: .topLeading) {
+                if isSelected {
+                    Text("Selected")
+                        .font(.system(size: 8, weight: .bold, design: .rounded))
+                        .foregroundStyle(AppTheme.paper)
+                        .padding(.horizontal, 6)
+                        .frame(height: 18)
+                        .background(CourseColor.orange.deepTint, in: Capsule())
+                        .padding(6)
+                }
             }
             .overlay(alignment: .topTrailing) {
                 if isCollected {
-                    Image(systemName: "checkmark")
+                    Image(systemName: "checkmark.seal.fill")
                         .font(.system(size: 10, weight: .bold))
                         .foregroundStyle(AppTheme.paper)
                         .frame(width: 23, height: 23)
-                        .background(AppTheme.darkSurface, in: Circle())
+                        .background(CourseColor.green.deepTint, in: Circle())
                         .overlay { Circle().strokeBorder(AppTheme.paper, lineWidth: 1.5) }
                         .padding(6)
                 }
@@ -169,6 +199,13 @@ struct BowlPickerView: View {
     private func artwork(_ entry: BowlCatalogEntry, width: CGFloat) -> some View {
         if let kind = entry.kind {
             DishArtworkView(level: 0, availableWidth: width + 48, preferredWidth: width, kind: kind)
+        } else if let previewImageName = entry.previewImageName {
+            Image(previewImageName)
+                .resizable()
+                .interpolation(.none)
+                .scaledToFit()
+                .frame(width: width, height: width)
+                .accessibilityHidden(true)
         } else {
             AppTheme.muted
                 .frame(width: width, height: width * 0.72)
