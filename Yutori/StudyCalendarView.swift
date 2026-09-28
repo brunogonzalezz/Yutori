@@ -5,6 +5,8 @@ struct StudyCalendarView: View {
     let courses: [StudyCourse]
     let bowls: [CollectedBowl]
     let now: Date
+    @AppStorage("appFirstUseTimestamp") private var firstUseTimestamp = 0.0
+    @State private var monthOffset = 0
 
     private var calendar: Calendar {
         var calendar = Calendar.autoupdatingCurrent
@@ -12,15 +14,41 @@ struct StudyCalendarView: View {
         return calendar
     }
 
-    private var monthStart: Date {
+    private var currentMonthStart: Date {
         calendar.dateInterval(of: .month, for: now)!.start
+    }
+
+    private var monthStart: Date {
+        calendar.date(byAdding: .month, value: monthOffset, to: currentMonthStart) ?? currentMonthStart
+    }
+
+    private var inferredFirstUseDate: Date {
+        let activityDates = sessions.map(\.endedAt) + bowls.map(\.collectedAt)
+        return activityDates.filter { $0 <= now }.min() ?? now
+    }
+
+    private var firstUseDate: Date {
+        guard firstUseTimestamp > 0 else { return inferredFirstUseDate }
+        return min(Date(timeIntervalSince1970: firstUseTimestamp), now)
+    }
+
+    private var firstAvailableMonth: Date {
+        calendar.dateInterval(of: .month, for: firstUseDate)!.start
+    }
+
+    private var canMoveBackward: Bool {
+        monthStart > firstAvailableMonth
+    }
+
+    private var canMoveForward: Bool {
+        monthOffset < 0
     }
 
     private var leadingDays: Int {
         (calendar.component(.weekday, from: monthStart) + 5) % 7
     }
 
-    private var dayCount: Int { calendar.range(of: .day, in: .month, for: now)!.count }
+    private var dayCount: Int { calendar.range(of: .day, in: .month, for: monthStart)!.count }
 
     var body: some View {
         let sessionsByDay = Dictionary(grouping: sessions.filter { $0.duration.isFinite && $0.duration > 0 && $0.endedAt <= now }) {
@@ -30,14 +58,26 @@ struct StudyCalendarView: View {
             calendar.startOfDay(for: $0.collectedAt)
         }
         VStack(alignment: .leading, spacing: 18) {
-            HStack(alignment: .firstTextBaseline) {
+            HStack {
                 Text("Calendar")
                     .font(.system(size: 24, weight: .bold, design: .rounded))
                     .foregroundStyle(AppTheme.ink)
                 Spacer()
-                Text(now, format: .dateTime.month(.wide).year())
-                    .font(.system(size: 13, weight: .medium, design: .rounded))
-                    .foregroundStyle(AppTheme.secondaryInk)
+                HStack(spacing: 5) {
+                    monthButton(systemImage: "chevron.left", enabled: canMoveBackward) {
+                        withAnimation(.easeInOut(duration: 0.22)) { monthOffset -= 1 }
+                    }
+
+                    Text(monthStart, format: .dateTime.month(.wide).year())
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .foregroundStyle(AppTheme.secondaryInk)
+                        .frame(minWidth: 112)
+                        .contentTransition(.numericText())
+
+                    monthButton(systemImage: "chevron.right", enabled: canMoveForward) {
+                        withAnimation(.easeInOut(duration: 0.22)) { monthOffset += 1 }
+                    }
+                }
             }
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 7), spacing: 7) {
                 ForEach(0..<7, id: \.self) { index in
@@ -65,6 +105,25 @@ struct StudyCalendarView: View {
                 }
             }
         }
+        .onAppear {
+            if firstUseTimestamp == 0 {
+                firstUseTimestamp = inferredFirstUseDate.timeIntervalSince1970
+            }
+        }
+    }
+
+    private func monthButton(systemImage: String, enabled: Bool,
+                             action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: systemImage)
+                .font(.system(size: 11, weight: .bold))
+                .foregroundStyle(enabled ? AppTheme.ink : AppTheme.muted.opacity(0.45))
+                .frame(width: 30, height: 30)
+                .background(AppTheme.surface.opacity(enabled ? 0.82 : 0.36), in: Circle())
+        }
+        .buttonStyle(.plain)
+        .disabled(!enabled)
+        .accessibilityLabel(systemImage == "chevron.left" ? "Previous month" : "Next month")
     }
 
     private func dominantCourse(in sessions: [StudySession]) -> StudyCourse? {

@@ -42,24 +42,24 @@ struct PaywallView: View {
                     VStack(spacing: 8) {
                         ZStack {
                             Circle()
-                                .fill(CourseColor.orange.tint.opacity(0.17))
+                                .fill(CourseColor.orange.tint.opacity(0.10))
                                 .frame(width: 152, height: 152)
                             Circle()
-                                .fill(CourseColor.pink.tint.opacity(0.13))
-                                .frame(width: 82, height: 82)
-                                .offset(x: 70, y: -40)
+                                .fill(CourseColor.pink.tint.opacity(0.08))
+                                .frame(width: 72, height: 72)
+                                .offset(x: 82, y: -46)
                             Circle()
-                                .fill(CourseColor.teal.tint.opacity(0.18))
-                                .frame(width: 48, height: 48)
-                                .offset(x: -86, y: 40)
+                                .fill(CourseColor.teal.tint.opacity(0.10))
+                                .frame(width: 46, height: 46)
+                                .offset(x: -92, y: 48)
                             Circle()
-                                .fill(CourseColor.lemon.tint.opacity(0.20))
-                                .frame(width: 30, height: 30)
-                                .offset(x: -62, y: -64)
+                                .fill(CourseColor.lemon.tint.opacity(0.11))
+                                .frame(width: 28, height: 28)
+                                .offset(x: -68, y: -70)
                             Circle()
-                                .fill(CourseColor.green.tint.opacity(0.15))
-                                .frame(width: 38, height: 38)
-                                .offset(x: 90, y: 52)
+                                .fill(CourseColor.green.tint.opacity(0.09))
+                                .frame(width: 34, height: 34)
+                                .offset(x: 98, y: 58)
                             DishArtworkView(level: 5, availableWidth: 210, preferredWidth: 168, kind: .teriyaki)
                                 .offset(y: bowlIsFloating ? -6 : 5)
                                 .rotationEffect(.degrees(bowlIsFloating ? 1.2 : -1.2))
@@ -336,12 +336,12 @@ private struct ProCongratulationsView: View {
     @State private var appeared = false
 
     private let accents: [(Color, CGFloat, CGFloat, CGFloat)] = [
-        (CourseColor.pink.tint, 52, -142, -250),
-        (CourseColor.orange.tint, 24, 136, -218),
-        (CourseColor.teal.tint, 34, -155, -74),
-        (CourseColor.lemon.tint, 18, 154, 12),
-        (CourseColor.indigo.tint, 28, -122, 154),
-        (CourseColor.green.tint, 44, 145, 190)
+        (CourseColor.pink.tint, 46, -148, -264),
+        (CourseColor.orange.tint, 25, 145, -205),
+        (CourseColor.teal.tint, 32, -154, -58),
+        (CourseColor.lemon.tint, 20, 151, 42),
+        (CourseColor.indigo.tint, 27, -132, 176),
+        (CourseColor.green.tint, 40, 142, 230)
     ]
 
     var body: some View {
@@ -350,7 +350,7 @@ private struct ProCongratulationsView: View {
 
             ForEach(Array(accents.enumerated()), id: \.offset) { _, accent in
                 Circle()
-                    .fill(accent.0.opacity(0.20))
+                    .fill(accent.0.opacity(0.11))
                     .frame(width: accent.1, height: accent.1)
                     .offset(x: accent.2, y: accent.3)
             }

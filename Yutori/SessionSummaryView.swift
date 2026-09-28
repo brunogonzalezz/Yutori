@@ -338,12 +338,13 @@ struct SessionSummaryView: View {
         return VStack(spacing: 22) {
             GeometryReader { geometry in
                 let columnWidth = max(0, (geometry.size.width - 48) / 2)
-                HStack(alignment: .top, spacing: 4) {
+                HStack(alignment: .bottom, spacing: 4) {
                     overviewBowl(level: initial.level, width: columnWidth)
                     Image(systemName: "arrow.right")
                         .font(.system(size: 34, weight: .medium, design: .rounded))
                         .foregroundStyle(AppTheme.ink)
-                        .frame(width: 40, height: 140)
+                        .frame(width: 40, height: 140, alignment: .center)
+                        .padding(.bottom, 30)
                     overviewBowl(level: final.level, width: columnWidth)
                 }
             }
@@ -413,16 +414,16 @@ struct SessionSummaryView: View {
         let index = min(max(level, 0), scales.count - 1)
         let artworkWidth = min(140, width * 0.96) * scales[index]
         return VStack(spacing: 6) {
-            GeometryReader { geometry in
+            ZStack(alignment: .bottom) {
                 if savedSession != nil && savedSession?.startingDishSeconds == nil {
                     Image(systemName: "questionmark.circle")
-                        .font(.system(size: 44, design: .rounded)).foregroundStyle(AppTheme.secondaryInk)
-                        .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
+                        .font(.system(size: 44, design: .rounded))
+                        .foregroundStyle(AppTheme.secondaryInk)
+                        .padding(.bottom, 30)
                 } else {
-                DishArtworkView(level: index, availableWidth: width + 48,
-                                preferredWidth: artworkWidth, kind: bowlKind)
-                    .fixedSize()
-                    .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
+                    DishArtworkView(level: index, availableWidth: width + 48,
+                                    preferredWidth: artworkWidth, kind: bowlKind)
+                        .fixedSize()
                 }
             }
             .frame(width: width, height: 140)

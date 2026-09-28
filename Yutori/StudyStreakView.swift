@@ -109,29 +109,41 @@ struct StudyStreakView: View {
 private struct StreakFlame: View {
     let variation: Int
 
-    private var rotation: Double { [-3, 2, -1.5, 3, -2, 1, -0.5][variation % 7] }
-    private var scale: CGFloat { [0.96, 1.00, 0.98, 0.95, 0.99, 0.97, 1.00][variation % 7] }
+    // Stable variations make the week feel naturally scattered without moving on redraw.
+    private var rotation: Double { [-11, 7, -5, 12, -9, 4, -2][variation % 7] }
+    private var scale: CGFloat { [0.91, 0.95, 0.93, 0.90, 0.94, 0.92, 0.96][variation % 7] }
+    private var offset: CGSize {
+        let offsets: [CGSize] = [
+            .init(width: -1.5, height: 1), .init(width: 1, height: -0.5),
+            .init(width: -0.5, height: 0), .init(width: 1.5, height: 1),
+            .init(width: -1, height: -0.5), .init(width: 0.5, height: 1),
+            .init(width: 0, height: -0.5)
+        ]
+        return offsets[variation % offsets.count]
+    }
 
     var body: some View {
         ZStack {
             Image(systemName: "flame.fill")
-                .font(.system(size: 35, weight: .bold))
+                .font(.system(size: 34, weight: .bold))
                 .foregroundStyle(CourseColor.red.tint)
 
             Image(systemName: "flame.fill")
-                .font(.system(size: 23, weight: .bold))
+                .font(.system(size: 21, weight: .bold))
                 .foregroundStyle(CourseColor.orange.tint)
-                .scaleEffect(x: 0.70, y: 0.87)
-                .offset(y: 3.5)
+                .scaleEffect(x: 0.68, y: 0.84)
+                .offset(y: 4)
 
             Image(systemName: "flame.fill")
-                .font(.system(size: 13, weight: .bold))
-                .foregroundStyle(CourseColor.lemon.tint)
-                .scaleEffect(x: 0.66, y: 0.82)
-                .offset(y: 6)
+                .font(.system(size: 10, weight: .bold))
+                .foregroundStyle(AppTheme.paper.opacity(0.92))
+                .scaleEffect(x: 0.62, y: 0.76)
+                .offset(y: 7)
         }
+        .frame(width: 32, height: 34)
         .scaleEffect(scale)
         .rotationEffect(.degrees(rotation))
+        .offset(offset)
         .accessibilityHidden(true)
     }
 }

@@ -287,7 +287,8 @@ struct DishEvolutionView: View {
         let message = Self.messages[messageIndex ?? 0]
         let currentLevel = displayedLevel ?? fromLevel
         let evolutionCount = max(1, toLevel - fromLevel)
-        let palette = kind.evolutionColors
+        let incomingLevel = min(toLevel, currentLevel + 1)
+        let palette = kind.evolutionColors(level: incomingLevel)
         GeometryReader { geometry in
             VStack(spacing: 24) {
                 Spacer(minLength: 24)

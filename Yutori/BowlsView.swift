@@ -8,7 +8,7 @@ struct BowlsView: View {
     var body: some View {
         NavigationStack {
             ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 22) {
+                VStack(alignment: .leading, spacing: 26) {
                     Button {
                         showSettings = true
                     } label: {
@@ -17,7 +17,7 @@ struct BowlsView: View {
                     .buttonStyle(.plain)
                     .accessibilityLabel("Open settings")
 
-                    VStack(alignment: .leading, spacing: 8) {
+                    VStack(alignment: .leading, spacing: 9) {
                         HStack(alignment: .firstTextBaseline) {
                             Text("My bowls")
                                 .font(.system(size: 28, weight: .bold, design: .rounded))
@@ -66,99 +66,190 @@ private struct BowlCollectionView: View {
 
     var body: some View {
         let collectedByKind = Dictionary(grouping: store.collectedBowls, by: \.bowlKind)
-        VStack(spacing: 10) {
-            ForEach(0..<(BowlCatalog.entries.count / 3), id: \.self) { group in
-                let isNextGroup = group * 3 == store.unlockedBowlCount
-                let isFirstHiddenGroup = group * 3 == store.unlockedBowlCount + 3
-                VStack(spacing: 14) {
-                    if isNextGroup, let target = store.nextBowlMilestone {
-                        milestone(target: target)
-                    }
-                    LazyVGrid(columns: columns, spacing: 18) {
-                        ForEach(Array(BowlCatalog.entries[(group * 3)..<(group * 3 + 3)])) { entry in
-                            let bowls = entry.kind.flatMap { collectedByKind[$0] } ?? []
-                            tile(entry, collectedBowl: bowls.first, count: bowls.count,
-                                 isUnlocking: isNextGroup)
-                        }
-                    }
+        let unlockedEntries = Array(BowlCatalog.entries.prefix(store.unlockedBowlCount))
+        let nextEntry = BowlCatalog.entries.indices.contains(store.unlockedBowlCount)
+            ? BowlCatalog.entries[store.unlockedBowlCount] : nil
+        let futureStart = min(store.unlockedBowlCount + (nextEntry == nil ? 0 : 1), BowlCatalog.entries.count)
+        let futureEntries = Array(BowlCatalog.entries.dropFirst(futureStart))
+
+        return VStack(spacing: 20) {
+            LazyVGrid(columns: columns, spacing: 20) {
+                ForEach(unlockedEntries) { entry in
+                    let bowls = entry.kind.flatMap { collectedByKind[$0] } ?? []
+                    tile(entry, collectedBowl: bowls.first, count: bowls.count, isUnlocking: false)
                 }
-                .padding(isNextGroup ? 14 : 0)
-                .background {
-                    if isNextGroup {
-                        RoundedRectangle(cornerRadius: 24, style: .continuous)
-                            .fill(LinearGradient(colors: [CourseColor.orange.tint.opacity(0.13), AppTheme.surface.opacity(0.45)],
-                                                 startPoint: .topLeading, endPoint: .bottomTrailing))
-                            .overlay {
-                                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                                    .strokeBorder(CourseColor.orange.deepTint.opacity(0.28), lineWidth: 1.2)
-                            }
-                    }
-                }
-                .padding(.top, isFirstHiddenGroup ? 12 : 0)
             }
+
+            if let nextEntry, let target = store.nextBowlMilestone {
+                milestone(target: target, entry: nextEntry)
+            }
+
+            LazyVGrid(columns: columns, spacing: 20) {
+                ForEach(futureEntries) { entry in
+                    let bowls = entry.kind.flatMap { collectedByKind[$0] } ?? []
+                    tile(entry, collectedBowl: bowls.first, count: bowls.count, isUnlocking: false)
+                }
+            }
+        }
+        .padding(.top, 2)
+    }
+
+    private func milestone(target: Int, entry: BowlCatalogEntry) -> some View {
+        let requiredHours = BowlCatalog.hoursPerBowl
+        let milestoneStart = max(0, target - requiredHours)
+        let secondsIntoMilestone = max(0, store.bowlUnlockSeconds - Double(milestoneStart) * 3600)
+        let progress = min(1, secondsIntoMilestone / (Double(requiredHours) * 3600))
+        let percentage = min(100, max(0, Int((progress * 100).rounded(.down))))
+        let remainingSeconds = max(0, Double(requiredHours) * 3600 - secondsIntoMilestone)
+        return ZStack(alignment: .topLeading) {
+            HStack(alignment: .center, spacing: 10) {
+                milestoneInformation(percentage: percentage,
+                                     remainingText: unlockTimeRemaining(remainingSeconds),
+                                     progress: progress)
+                    .padding(.top, 35)
+                milestoneBowl(entry)
+                    .frame(maxWidth: .infinity)
+            }
+
+            HStack(spacing: 9) {
+                Image(systemName: "lock.fill")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(AppTheme.paper)
+                    .frame(width: 31, height: 31)
+                    .background(AppTheme.darkSurface, in: Circle())
+
+                Text("YOUR NEXT BOWL")
+                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                    .tracking(1.05)
+                    .foregroundStyle(AppTheme.darkSurface)
+            }
+        }
+        .padding(14)
+        .background {
+            ZStack {
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(AppTheme.surface.opacity(0.78))
+                LockMosaic()
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .strokeBorder(AppTheme.ink.opacity(0.10), lineWidth: 1)
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Next bowl unlock progress")
+        .accessibilityValue("\(percentage) percent, \(unlockTimeRemaining(remainingSeconds))")
+    }
+
+    private func milestoneBowl(_ entry: BowlCatalogEntry) -> some View {
+        VStack(spacing: 2) {
+            milestoneArtwork(entry)
+            Text(entry.name)
+                .font(.system(size: 15, weight: .bold, design: .rounded))
+                .foregroundStyle(AppTheme.ink)
+                .multilineTextAlignment(.center)
+                .lineLimit(2)
+                .frame(width: 138, height: 30, alignment: .top)
         }
     }
 
-    private func milestone(target: Int) -> some View {
-        let groupHours = BowlCatalog.hoursPerGroup
-        let groupStart = max(0, target - groupHours)
-        let secondsIntoGroup = max(0, store.bowlUnlockSeconds - Double(groupStart) * 3600)
-        let progress = min(1, secondsIntoGroup / (Double(groupHours) * 3600))
-        let studiedHours = min(groupHours, Int(secondsIntoGroup / 3600))
-        let remainingHours = max(0, groupHours - studiedHours)
-        return VStack(spacing: 11) {
-            HStack {
-                HStack(spacing: 10) {
-                    Image(systemName: "lock.fill")
-                        .font(.system(size: 12, weight: .bold, design: .rounded))
-                        .foregroundStyle(AppTheme.paper)
-                        .frame(width: 32, height: 32)
-                        .background(AppTheme.darkSurface, in: Circle())
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Your next bowls")
-                            .font(.system(size: 14, weight: .bold, design: .rounded))
-                            .foregroundStyle(AppTheme.ink)
-                        Text("\(remainingHours)h until all three unlock")
-                            .font(.system(size: 11, weight: .medium, design: .rounded))
-                            .foregroundStyle(AppTheme.secondaryInk)
+    private func milestoneInformation(percentage: Int, remainingText: String,
+                                      progress: Double) -> some View {
+        VStack(alignment: .leading, spacing: 13) {
+            HStack(alignment: .firstTextBaseline, spacing: 5) {
+                Text("\(percentage)%")
+                    .font(.system(size: 32, weight: .bold, design: .rounded))
+                    .foregroundStyle(AppTheme.ink)
+                    .monospacedDigit()
+                Text("unlocked")
+                    .font(.system(size: 11, weight: .semibold, design: .rounded))
+                    .foregroundStyle(AppTheme.secondaryInk)
+            }
+
+            GeometryReader { geometry in
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(AppTheme.paper.opacity(0.92))
+                        .overlay {
+                            Capsule()
+                                .strokeBorder(CourseColor.teal.tint.opacity(0.18), lineWidth: 1)
+                        }
+
+                    Capsule()
+                        .fill(LinearGradient(colors: [CourseColor.teal.tint,
+                                                      CourseColor.green.tint,
+                                                      CourseColor.lemon.tint],
+                                             startPoint: .leading, endPoint: .trailing))
+                        .frame(width: geometry.size.width * progress)
+                }
+            }
+            .frame(height: 13)
+
+            Label(remainingText, systemImage: "clock.fill")
+                .font(.system(size: 12, weight: .semibold, design: .rounded))
+                .foregroundStyle(AppTheme.secondaryInk)
+                .monospacedDigit()
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func unlockTimeRemaining(_ seconds: TimeInterval) -> String {
+        let totalMinutes = max(0, Int(ceil(seconds / 60)))
+        guard totalMinutes > 0 else { return "Ready to unlock" }
+        let hours = totalMinutes / 60
+        let minutes = totalMinutes % 60
+        if hours > 0 {
+            return minutes > 0 ? "\(hours)h \(minutes)m remaining" : "\(hours)h remaining"
+        }
+        return "\(minutes)m remaining"
+    }
+
+    private func milestoneArtwork(_ entry: BowlCatalogEntry) -> some View {
+        let kind = entry.kind ?? .teriyaki
+        return ZStack {
+            AppTheme.muted
+                .frame(width: 132, height: 116)
+                .mask {
+                    if let previewImageName = entry.previewImageName {
+                        Image(previewImageName)
+                            .resizable()
+                            .interpolation(.none)
+                            .scaledToFit()
+                            .frame(width: 130, height: 114)
+                    } else {
+                        DishArtworkView(level: 5, availableWidth: 176,
+                                        preferredWidth: 126, kind: kind)
                     }
                 }
-                Spacer(minLength: 8)
-                Text("\(studiedHours) / \(groupHours)h")
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .monospacedDigit()
-                    .foregroundStyle(CourseColor.orange.deepTint)
-            }
-            GeometryReader { geometry in
-                Capsule()
-                    .fill(AppTheme.paper.opacity(0.85))
-                    .overlay(alignment: .leading) {
-                        Capsule()
-                            .fill(LinearGradient(colors: [CourseColor.orange.tint, CourseColor.red.tint],
-                                                 startPoint: .leading, endPoint: .trailing))
-                            .frame(width: geometry.size.width * progress)
-                    }
-            }
-            .frame(height: 8)
+
+            Image(systemName: "lock.fill")
+                .font(.system(size: 14, weight: .bold))
+                .foregroundStyle(AppTheme.paper)
+                .frame(width: 34, height: 34)
+                .background(AppTheme.darkSurface.opacity(0.94), in: Circle())
+                .overlay {
+                    Circle().strokeBorder(AppTheme.paper.opacity(0.58), lineWidth: 1)
+                }
         }
-        .padding(.bottom, 2)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Next three bowls unlock progress")
-        .accessibilityValue("\(studiedHours) of \(groupHours) hours")
+        .frame(width: 136, height: 116)
+        .accessibilityHidden(true)
     }
 
     private func tile(_ entry: BowlCatalogEntry, collectedBowl: CollectedBowl?, count: Int,
                       isUnlocking: Bool) -> some View {
         let unlocked = store.isBowlUnlocked(entry)
         let collected = collectedBowl != nil
-        let distant = !collected && entry.id >= store.unlockedBowlCount + 3
+        let distant = !collected && entry.id > store.unlockedBowlCount
         return VStack(spacing: 7) {
             GeometryReader { geometry in
-                let width = max(0, min(116, geometry.size.width - 12))
+                let width = max(0, min(120, geometry.size.width - 4))
+                let knownBowlWidth = width * 0.94
                 ZStack {
                     let kind = entry.kind ?? .teriyaki
                     if collected {
-                        DishArtworkView(level: 5, availableWidth: width + 48, preferredWidth: width, kind: kind)
+                        DishArtworkView(level: 5, availableWidth: width + 48,
+                                        preferredWidth: knownBowlWidth, kind: kind)
                     } else {
                         AppTheme.muted
                             .frame(width: width, height: width)
@@ -171,7 +262,7 @@ private struct BowlCollectionView: View {
                                         .frame(width: width, height: width)
                                 } else {
                                     DishArtworkView(level: 5, availableWidth: width + 48,
-                                                    preferredWidth: width, kind: kind)
+                                                    preferredWidth: knownBowlWidth, kind: kind)
                                 }
                             }
                     }
@@ -186,9 +277,20 @@ private struct BowlCollectionView: View {
                 .frame(width: geometry.size.width, height: geometry.size.height)
             }
             .aspectRatio(1, contentMode: .fit)
-            .background(collected ? AppTheme.surface :
-                            (isUnlocking ? AppTheme.paper.opacity(0.78) : AppTheme.surface.opacity(0.5)),
-                        in: RoundedRectangle(cornerRadius: 16))
+            .background {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(isUnlocking ? AppTheme.paper.opacity(0.78) : AppTheme.surface.opacity(collected ? 1 : 0.5))
+                    .overlay {
+                        if collected, let kind = entry.kind {
+                            LinearGradient(colors: [bowlColor(kind).opacity(0.52),
+                                                    bowlColor(kind).opacity(0.25),
+                                                    bowlColor(kind).opacity(0.07)],
+                                           startPoint: .top,
+                                           endPoint: .bottom)
+                                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        }
+                    }
+            }
             .overlay {
                 if isUnlocking {
                     RoundedRectangle(cornerRadius: 16)
@@ -224,6 +326,44 @@ private struct BowlCollectionView: View {
             if let collectedBowl { onOpenCollectedBowl(collectedBowl) }
         }
     }
+
+    private func bowlColor(_ kind: BowlKind) -> Color {
+        switch kind {
+        case .teriyaki: CourseColor.red.tint
+        case .katsuRamen: CourseColor.lemon.tint
+        case .tofuCurry: CourseColor.sky.tint
+        case .chirashi: CourseColor.blue.tint
+        }
+    }
+}
+
+private struct LockMosaic: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.scenePhase) private var scenePhase
+
+    var body: some View {
+        TimelineView(.animation(minimumInterval: 1.0 / 30,
+                                paused: reduceMotion || scenePhase != .active)) { timeline in
+            Canvas { context, size in
+                let spacing: CGFloat = 34
+                let time = reduceMotion ? 0 : timeline.date.timeIntervalSinceReferenceDate
+                let offset = CGFloat(time * 3.2).truncatingRemainder(dividingBy: spacing)
+                context.opacity = 0.055
+                var lock = context.resolve(Image(systemName: "lock.fill").renderingMode(.template))
+                lock.shading = .color(AppTheme.ink)
+
+                for row in -2...Int(size.height / spacing + 2) {
+                    for column in -2...Int(size.width / spacing + 2) {
+                        context.draw(lock, in: CGRect(x: CGFloat(column) * spacing + offset,
+                                                     y: CGFloat(row) * spacing + offset,
+                                                     width: 13, height: 15))
+                    }
+                }
+            }
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
 }
 
 private struct CollectedBowlDetailView: View {
@@ -240,10 +380,21 @@ private struct CollectedBowlDetailView: View {
     }
 
     private var colors: [Color] { bowl.bowlKind.evolutionColors }
+    private var containerColor: Color {
+        switch bowl.bowlKind {
+        case .teriyaki: CourseColor.red.tint
+        case .katsuRamen: CourseColor.lemon.tint
+        case .tofuCurry: CourseColor.sky.tint
+        case .chirashi: CourseColor.blue.tint
+        }
+    }
 
     var body: some View {
         ZStack(alignment: .topTrailing) {
-            AppTheme.paper
+            LinearGradient(colors: [containerColor.opacity(0.31),
+                                    containerColor.opacity(0.12),
+                                    AppTheme.paper],
+                           startPoint: .top, endPoint: .bottom)
                 .ignoresSafeArea()
 
             ScrollView(showsIndicators: false) {
@@ -261,11 +412,11 @@ private struct CollectedBowlDetailView: View {
             Button(action: { dismiss() }) {
                 Image(systemName: "xmark")
                     .font(.system(size: 16, weight: .bold))
-                    .foregroundStyle(AppTheme.paper)
+                    .foregroundStyle(AppTheme.ink)
                     .frame(width: 46, height: 46)
-                    .background(AppTheme.darkSurface, in: Circle())
+                    .background(AppTheme.surface, in: Circle())
                     .overlay {
-                        Circle().strokeBorder(AppTheme.paper.opacity(0.72), lineWidth: 1.5)
+                        Circle().strokeBorder(AppTheme.ink.opacity(0.08), lineWidth: 1)
                     }
                     .contentShape(Circle())
                     .shadow(color: AppTheme.ink.opacity(0.14), radius: 8, y: 4)
@@ -293,22 +444,11 @@ private struct CollectedBowlDetailView: View {
         VStack(spacing: 12) {
             ZStack {
                 Circle()
-                    .fill(
-                        RadialGradient(
-                            colors: [
-                                colors[4].opacity(0.58),
-                                colors[1].opacity(0.22),
-                                AppTheme.surface.opacity(0.58)
-                            ],
-                            center: .center,
-                            startRadius: 20,
-                            endRadius: 142
-                        )
-                    )
+                    .fill(containerColor.opacity(0.14))
                     .frame(width: 270, height: 270)
-                    .shadow(color: colors[0].opacity(0.12), radius: 24)
+                    .shadow(color: containerColor.opacity(0.13), radius: 24)
                 Circle()
-                    .strokeBorder(colors[0].opacity(0.20), lineWidth: 1.5)
+                    .strokeBorder(containerColor.opacity(0.22), lineWidth: 1.5)
                     .frame(width: 230, height: 230)
                 DishArtworkView(level: 5, availableWidth: 340, preferredWidth: 268, kind: bowl.bowlKind)
                     .shadow(color: AppTheme.ink.opacity(0.12), radius: 18, y: 12)
@@ -322,11 +462,11 @@ private struct CollectedBowlDetailView: View {
             Label("Collected \(bowl.collectedAt.formatted(date: .abbreviated, time: .omitted))",
                   systemImage: "checkmark.seal.fill")
                 .font(.system(size: 13, weight: .semibold, design: .rounded))
-                .foregroundStyle(AppTheme.darkSurface)
+                .foregroundStyle(CourseColor.green.deepTint)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 8)
-                .background(AppTheme.surface, in: Capsule())
-                .overlay { Capsule().strokeBorder(AppTheme.ink.opacity(0.10), lineWidth: 1) }
+                .background(CourseColor.green.tint.opacity(0.18), in: Capsule())
+                .overlay { Capsule().strokeBorder(CourseColor.green.tint.opacity(0.28), lineWidth: 1) }
         }
         .padding(.top, 8)
     }
@@ -343,18 +483,38 @@ private struct CollectedBowlDetailView: View {
 
     private var ingredients: some View {
         detailSection(title: "Ingredients", icon: "carrot.fill", accent: colors[1]) {
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 98), spacing: 8)],
-                      alignment: .leading, spacing: 8) {
-                ForEach(Array(bowl.bowlKind.ingredients.enumerated()), id: \.element) { index, ingredient in
+            IngredientFlowLayout(spacing: 8) {
+                ForEach(bowl.bowlKind.ingredients, id: \.self) { ingredient in
+                    let color = ingredientColor(ingredient)
                     Text(ingredient)
                         .font(.system(size: 13, weight: .semibold, design: .rounded))
-                        .foregroundStyle(AppTheme.ink)
+                        .foregroundStyle(color.deepTint)
+                        .fixedSize(horizontal: true, vertical: false)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 8)
-                        .background(colors[index % colors.count].opacity(0.24), in: Capsule())
+                        .background(color.tint.opacity(0.34), in: Capsule())
+                        .overlay {
+                            Capsule().strokeBorder(color.tint.opacity(0.18), lineWidth: 1)
+                        }
                 }
             }
         }
+    }
+
+    private func ingredientColor(_ ingredient: String) -> CourseColor {
+        let name = ingredient.lowercased()
+        if name.contains("avocado") || name.contains("edamame") || name.contains("broccoli")
+            || name.contains("cucumber") || name.contains("greens")
+            || name.contains("onion") { return .green }
+        if name.contains("salmon") || name.contains("prawn") || name.contains("ikura")
+            || name.contains("cabbage") { return .pink }
+        if name.contains("tuna") { return .red }
+        if name.contains("egg") || name.contains("tamago") || name.contains("sweetcorn") { return .lemon }
+        if name.contains("mushroom") { return .moss }
+        if name.contains("rice") || name.contains("tofu") || name.contains("ramen") { return .sand }
+        if name.contains("curry") || name.contains("carrot") || name.contains("katsu")
+            || name.contains("teriyaki") || name.contains("broth") { return .orange }
+        return .teal
     }
 
     private var journey: some View {
@@ -475,6 +635,51 @@ private struct CollectedBowlDetailView: View {
     }
 }
 
+private struct IngredientFlowLayout: Layout {
+    let spacing: CGFloat
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews,
+                     cache: inout ()) -> CGSize {
+        let maximumWidth = proposal.width ?? .infinity
+        var x: CGFloat = 0
+        var y: CGFloat = 0
+        var rowHeight: CGFloat = 0
+
+        for subview in subviews {
+            let size = subview.sizeThatFits(.unspecified)
+            if x > 0, x + size.width > maximumWidth {
+                x = 0
+                y += rowHeight + spacing
+                rowHeight = 0
+            }
+            x += size.width + spacing
+            rowHeight = max(rowHeight, size.height)
+        }
+
+        return CGSize(width: proposal.width ?? max(0, x - spacing), height: y + rowHeight)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize,
+                       subviews: Subviews, cache: inout ()) {
+        var x = bounds.minX
+        var y = bounds.minY
+        var rowHeight: CGFloat = 0
+
+        for subview in subviews {
+            let size = subview.sizeThatFits(.unspecified)
+            if x > bounds.minX, x + size.width > bounds.maxX {
+                x = bounds.minX
+                y += rowHeight + spacing
+                rowHeight = 0
+            }
+            subview.place(at: CGPoint(x: x, y: y), anchor: .topLeading,
+                          proposal: ProposedViewSize(size))
+            x += size.width + spacing
+            rowHeight = max(rowHeight, size.height)
+        }
+    }
+}
+
 private extension BowlKind {
     var bowlDescription: String {
         switch self {
@@ -484,6 +689,8 @@ private extension BowlKind {
             return "A comforting ramen bowl topped with crisp katsu, a soft egg and fresh greens. It grew one focused session at a time until every part of the bowl was complete."
         case .tofuCurry:
             return "A warming Japanese curry filled with tofu and colourful vegetables. Its bright blue bowl and rich golden curry grew fuller with every focused hour."
+        case .chirashi:
+            return "A vibrant chirashi bowl layered with salmon, tuna, prawns, egg and fresh vegetables over rice. Every focused session adds another colourful part to the finished bowl."
         }
     }
 
@@ -495,6 +702,8 @@ private extension BowlKind {
             return ["Chicken katsu", "Ramen", "Egg", "Broth", "Greens", "Spring onion"]
         case .tofuCurry:
             return ["Tofu", "Japanese curry", "Broccoli", "Carrot", "Mushrooms", "Green onion"]
+        case .chirashi:
+            return ["Salmon", "Tuna", "Prawns", "Tamago", "Avocado", "Cucumber", "Ikura", "Rice"]
         }
     }
 }

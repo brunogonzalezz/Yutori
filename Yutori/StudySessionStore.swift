@@ -116,12 +116,13 @@ struct WeeklyStudyStats {
 }
 
 enum BowlKind: String, Codable, CaseIterable {
-    case teriyaki, katsuRamen, tofuCurry
+    case teriyaki, katsuRamen, tofuCurry, chirashi
     var name: String {
         switch self {
         case .teriyaki: "Teriyaki Bowl"
         case .katsuRamen: "Katsu Ramen"
         case .tofuCurry: "Tofu Curry"
+        case .chirashi: "Chirashi Bowl"
         }
     }
     func imageName(level: Int) -> String {
@@ -129,6 +130,7 @@ enum BowlKind: String, Codable, CaseIterable {
         case .teriyaki: "TeriyakiLevel\(level)"
         case .katsuRamen: "DishLevel\(level)"
         case .tofuCurry: "TofuCurryLevel\(level)"
+        case .chirashi: "ChirashiBowlLevel\(level)"
         }
     }
 }

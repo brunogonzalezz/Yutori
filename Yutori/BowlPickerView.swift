@@ -21,77 +21,66 @@ struct BowlPickerView: View {
         NavigationStack {
             GeometryReader { geometry in
                 let previewHeight = min(200, max(100, geometry.size.height * 0.36))
-                ScrollView(.vertical) {
-                    VStack(spacing: 22) {
-                    VStack(spacing: 4) {
-                        TabView(selection: $selection) {
-                            ForEach(availableBowls) { entry in
-                                artwork(entry, width: min(220, previewHeight * 1.2))
-                                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                                    .tag(entry.id)
+                ZStack(alignment: .bottom) {
+                    ScrollView(.vertical, showsIndicators: false) {
+                        VStack(spacing: 22) {
+                            VStack(spacing: 4) {
+                                TabView(selection: $selection) {
+                                    ForEach(availableBowls) { entry in
+                                        artwork(entry, width: min(220, previewHeight * 1.2))
+                                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                                            .tag(entry.id)
+                                    }
+                                }
+                                .tabViewStyle(.page(indexDisplayMode: .never))
+                                .frame(height: previewHeight)
+                                .overlay {
+                                    HStack {
+                                        pageArrow(step: -1)
+                                        Spacer()
+                                        pageArrow(step: 1)
+                                    }
+                                }
+                                Text(selectedBowl.name)
+                                    .font(.system(size: 22, weight: .bold, design: .rounded))
+                                    .multilineTextAlignment(.center)
+                                    .lineLimit(2)
+                                if selectedBowlIsCollected {
+                                    Label("Already collected", systemImage: "checkmark.seal.fill")
+                                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                                        .foregroundStyle(CourseColor.green.deepTint)
+                                        .padding(.horizontal, 11)
+                                        .padding(.vertical, 5)
+                                        .background(CourseColor.green.tint.opacity(0.18), in: Capsule())
+                                }
                             }
-                        }
-                        .tabViewStyle(.page(indexDisplayMode: .never))
-                        .frame(height: previewHeight)
-                        .overlay {
-                            HStack {
-                                pageArrow(step: -1)
-                                Spacer()
-                                pageArrow(step: 1)
-                            }
-                        }
-                        Text(selectedBowl.name)
-                            .font(.system(size: 22, weight: .bold, design: .rounded))
-                            .multilineTextAlignment(.center)
-                            .lineLimit(2)
-                        if selectedBowlIsCollected {
-                            Label("Already collected", systemImage: "checkmark.seal.fill")
-                                .font(.system(size: 12, weight: .semibold, design: .rounded))
-                                .foregroundStyle(CourseColor.green.deepTint)
-                                .padding(.horizontal, 11)
-                                .padding(.vertical, 5)
-                                .background(CourseColor.green.tint.opacity(0.18), in: Capsule())
-                        }
-                    }
-                    .padding(.horizontal, 20)
-
-                    LazyVGrid(columns: columns, spacing: 10) {
-                            ForEach(availableBowls) { entry in
-                                bowlTile(entry)
-                            }
-                        }
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 4)
-
-                    if store.collectionLoadFailed || store.loadFailed {
-                        Text("Couldn't load your bowls. Please reopen the app and try again.")
-                            .font(.footnote)
-                            .foregroundStyle(AppTheme.secondaryInk)
                             .padding(.horizontal, 20)
-                    }
-                    Button {
-                        if let kind = selectedBowl.kind, store.selectNextBowl(kind) {
-                            onSelect()
-                            if dismissOnSelection { dismiss() }
+
+                            LazyVGrid(columns: columns, spacing: 10) {
+                                ForEach(availableBowls) { entry in
+                                    bowlTile(entry)
+                                }
+                            }
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 4)
+
+                            if store.collectionLoadFailed || store.loadFailed {
+                                Text("Couldn't load your bowls. Please reopen the app and try again.")
+                                    .font(.footnote)
+                                    .foregroundStyle(AppTheme.secondaryInk)
+                                    .padding(.horizontal, 20)
+                            }
                         }
-                    } label: {
-                        Text(selectedBowl.kind == nil ? "Coming soon" :
-                                (selectedBowlIsCollected ? "Grow this bowl again" : "Select bowl"))
-                            .font(.system(size: 16, weight: .semibold, design: .rounded))
-                            .foregroundStyle(AppTheme.paper)
-                            .frame(maxWidth: .infinity, minHeight: 50)
-                            .background(selectedBowl.kind != nil ? AppTheme.ink : AppTheme.muted, in: Capsule())
-                            .contentShape(Capsule())
+                        .padding(.top, 4)
+                        .padding(.bottom, 92)
                     }
-                    .buttonStyle(.plain)
-                    .disabled(selectedBowl.kind == nil || store.hasActiveBowl || store.collectionLoadFailed || store.loadFailed)
-                    .padding(.horizontal, 32)
-                    .padding(.bottom, 12)
+                    .scrollIndicators(.hidden)
+
+                    chooseButton
+                        .padding(.horizontal, 32)
+                        .padding(.bottom, 12)
+                        .shadow(color: AppTheme.ink.opacity(0.18), radius: 12, y: 6)
                 }
-                    .padding(.top, 4)
-                    .padding(.bottom, 12)
-                }
-                .scrollIndicators(.visible)
             }
             .foregroundStyle(AppTheme.ink)
             .background(AppTheme.paper)
@@ -104,6 +93,26 @@ struct BowlPickerView: View {
                 }
             }
         }
+    }
+
+    private var chooseButton: some View {
+        Button {
+            if let kind = selectedBowl.kind, store.selectNextBowl(kind) {
+                onSelect()
+                if dismissOnSelection { dismiss() }
+            }
+        } label: {
+            Text(selectedBowl.kind == nil ? "Coming soon" :
+                    (selectedBowlIsCollected ? "Grow this bowl again" : "Select bowl"))
+                .font(.system(size: 16, weight: .semibold, design: .rounded))
+                .foregroundStyle(AppTheme.paper)
+                .frame(maxWidth: .infinity, minHeight: 50)
+                .background(selectedBowl.kind != nil ? AppTheme.ink : AppTheme.muted, in: Capsule())
+                .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .disabled(selectedBowl.kind == nil || store.hasActiveBowl
+                  || store.collectionLoadFailed || store.loadFailed)
     }
 
     private func pageArrow(step: Int) -> some View {
@@ -141,7 +150,6 @@ struct BowlPickerView: View {
                 GeometryReader { geometry in
                     artwork(entry, width: max(0, min(78, geometry.size.width - 8)))
                         .frame(width: geometry.size.width, height: geometry.size.height)
-                        .opacity(isCollected && !isSelected ? 0.72 : 1)
                 }
                 .frame(height: 60)
                 Text(entry.name)
@@ -149,43 +157,15 @@ struct BowlPickerView: View {
                     .multilineTextAlignment(.center)
                     .lineLimit(2)
                     .frame(height: 28)
-                Label(isCollected ? "Collected" : " ", systemImage: isCollected ? "checkmark.circle.fill" : "circle")
-                    .font(.system(size: 9, weight: .bold, design: .rounded))
-                    .foregroundStyle(isCollected ? CourseColor.green.deepTint : .clear)
-                    .frame(height: 12)
             }
             .padding(8)
             .frame(maxWidth: .infinity)
-            .background(isSelected ? CourseColor.orange.tint.opacity(0.14) :
-                            (isCollected ? CourseColor.green.tint.opacity(0.11) : AppTheme.surface.opacity(0.4)),
+            .background(isSelected ? AppTheme.surface :
+                            AppTheme.surface.opacity(0.4),
                         in: RoundedRectangle(cornerRadius: 16))
             .overlay {
                 RoundedRectangle(cornerRadius: 16)
-                    .strokeBorder(isSelected ? CourseColor.orange.deepTint :
-                                    (isCollected ? CourseColor.green.tint.opacity(0.42) : .clear),
-                                  lineWidth: isSelected ? 2.5 : 1)
-            }
-            .overlay(alignment: .topLeading) {
-                if isSelected {
-                    Text("Selected")
-                        .font(.system(size: 8, weight: .bold, design: .rounded))
-                        .foregroundStyle(AppTheme.paper)
-                        .padding(.horizontal, 6)
-                        .frame(height: 18)
-                        .background(CourseColor.orange.deepTint, in: Capsule())
-                        .padding(6)
-                }
-            }
-            .overlay(alignment: .topTrailing) {
-                if isCollected {
-                    Image(systemName: "checkmark.seal.fill")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(AppTheme.paper)
-                        .frame(width: 23, height: 23)
-                        .background(CourseColor.green.deepTint, in: Circle())
-                        .overlay { Circle().strokeBorder(AppTheme.paper, lineWidth: 1.5) }
-                        .padding(6)
-                }
+                    .strokeBorder(isSelected ? AppTheme.ink : .clear, lineWidth: 2)
             }
             .contentShape(RoundedRectangle(cornerRadius: 16))
         }

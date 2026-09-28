@@ -48,7 +48,8 @@ struct LiveDishEvolutionView: View {
         let radius = min(180, max(0, availableWidth - 48) / 2)
         let naturalWidth = DishArtworkView.naturalWidth(level: displayedLevel, availableWidth: availableWidth)
         let largestWidth = DishArtworkView.naturalWidth(level: 5, availableWidth: availableWidth)
-        let palette = kind.evolutionColors
+        let incomingLevel = min(targetLevel, displayedLevel + 1)
+        let palette = kind.evolutionColors(level: incomingLevel)
         // Use one magnification factor for every level, keeping their relative sizes.
         let enlargedWidth = naturalWidth * min(340, max(0, availableWidth - 64)) / max(1, largestWidth)
         ZStack {

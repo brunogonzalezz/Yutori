@@ -30,6 +30,7 @@ struct SettingsView: View {
     @State private var isResetting = false
     @State private var showDeleteChallenge = false
     @State private var deletionBowl: BowlKind = .teriyaki
+    @State private var proBowlIsFloating = false
 
     private let colors = ProfileAvatarView.colors
 
@@ -115,6 +116,7 @@ struct SettingsView: View {
                         .accessibilityLabel("Close settings")
                     }
                 }
+                .toolbarBackground(.hidden, for: .navigationBar)
         }
         .sheet(isPresented: $showPaywall) {
             PaywallView()
@@ -152,6 +154,9 @@ struct SettingsView: View {
             avatarColor = ProfileAvatarView.updatedColorName(avatarColor)
             draftName = String(profileName.prefix(40))
             saveName()
+            withAnimation(.easeInOut(duration: 2.2).repeatForever(autoreverses: true)) {
+                proBowlIsFloating = true
+            }
         }
         .onChange(of: draftName) { _, name in
             if name.count > 40 {
@@ -234,31 +239,10 @@ struct SettingsView: View {
             }.modifier(AppSheetStyle())
         }
         .sheet(isPresented: $showAppIcons) {
-            Group {
-            NavigationStack {
-                ScrollView {
-                    LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 3), spacing: 24) {
-                        ForEach(0..<9) { index in
-                            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                .fill(AppTheme.muted)
-                                .frame(width: 84, height: 84)
-                                .overlay {
-                                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                        .strokeBorder(AppTheme.ink.opacity(0.05), lineWidth: 1)
-                                }
-                                .accessibilityLabel("App icon placeholder \(index + 1)")
-                        }
-                    }
-                    .padding(24)
-                }
-                .background(AppTheme.paper.ignoresSafeArea())
-                .navigationTitle("App Icon")
-                .navigationBarTitleDisplayMode(.inline)
-            }
-            .presentationDetents([.medium])
-            .presentationDragIndicator(.visible)
-
-            }.modifier(AppSheetStyle())
+            AppIconPickerView()
+                .presentationDetents([.medium])
+                .presentationDragIndicator(.visible)
+                .modifier(AppSheetStyle())
         }
         .alert("Couldn't open email", isPresented: $feedbackError) {
             Button("Copy email address") {
@@ -297,27 +281,36 @@ struct SettingsView: View {
         VStack(spacing: 0) {
             Button { showPaywall = true } label: {
                 ZStack(alignment: .leading) {
-                    cardColor
+                    LinearGradient(colors: [AppTheme.surface,
+                                            CourseColor.pink.tint.opacity(0.14),
+                                            CourseColor.orange.tint.opacity(0.12)],
+                                   startPoint: .topLeading,
+                                   endPoint: .bottomTrailing)
 
                     Circle()
-                        .fill(Color(red: 215 / 255, green: 127 / 255, blue: 154 / 255).opacity(0.30))
-                        .frame(width: 132, height: 132)
-                        .offset(x: 235, y: -45)
+                        .fill(Color(red: 215 / 255, green: 127 / 255, blue: 154 / 255).opacity(0.15))
+                        .frame(width: 124, height: 124)
+                        .offset(x: 248, y: -52)
 
                     Circle()
-                        .fill(Color(red: 113 / 255, green: 138 / 255, blue: 82 / 255).opacity(0.27))
-                        .frame(width: 82, height: 82)
-                        .offset(x: 292, y: 66)
+                        .fill(Color(red: 113 / 255, green: 138 / 255, blue: 82 / 255).opacity(0.13))
+                        .frame(width: 76, height: 76)
+                        .offset(x: 302, y: 62)
 
                     Circle()
-                        .fill(Color(red: 197 / 255, green: 160 / 255, blue: 68 / 255).opacity(0.28))
-                        .frame(width: 58, height: 58)
-                        .offset(x: 205, y: 72)
+                        .fill(Color(red: 197 / 255, green: 160 / 255, blue: 68 / 255).opacity(0.14))
+                        .frame(width: 54, height: 54)
+                        .offset(x: 164, y: 70)
 
                     Circle()
-                        .fill(Color(red: 217 / 255, green: 132 / 255, blue: 75 / 255).opacity(0.26))
-                        .frame(width: 42, height: 42)
-                        .offset(x: 178, y: -57)
+                        .fill(Color(red: 217 / 255, green: 132 / 255, blue: 75 / 255).opacity(0.12))
+                        .frame(width: 40, height: 40)
+                        .offset(x: 118, y: -58)
+
+                    Circle()
+                        .fill(CourseColor.teal.tint.opacity(0.10))
+                        .frame(width: 30, height: 30)
+                        .offset(x: 208, y: 10)
 
                     HStack(spacing: 14) {
                         VStack(alignment: .leading, spacing: 7) {
@@ -345,12 +338,32 @@ struct SettingsView: View {
 
                         Spacer(minLength: 0)
 
-                        Image("TeriyakiLevel5")
-                            .resizable()
-                            .interpolation(.none)
-                            .scaledToFit()
-                            .frame(width: 112, height: 112)
-                            .offset(y: 4)
+                        ZStack {
+                            Circle()
+                                .fill(
+                                    RadialGradient(colors: [CourseColor.lemon.tint.opacity(0.28),
+                                                            CourseColor.orange.tint.opacity(0.13),
+                                                            .clear],
+                                                   center: .center,
+                                                   startRadius: 12,
+                                                   endRadius: 76)
+                                )
+                                .frame(width: 152, height: 152)
+
+                            Circle()
+                                .stroke(CourseColor.pink.tint.opacity(0.18), lineWidth: 1.5)
+                                .frame(width: 126, height: 126)
+
+                            Image("TeriyakiLevel5")
+                                .resizable()
+                                .interpolation(.none)
+                                .scaledToFit()
+                                .frame(width: 112, height: 112)
+                                .offset(y: proBowlIsFloating ? -4 : 7)
+                                .rotationEffect(.degrees(proBowlIsFloating ? 1.0 : -1.0))
+                                .shadow(color: CourseColor.orange.tint.opacity(0.22), radius: 12, y: 7)
+                        }
+                        .frame(width: 132, height: 152)
                     }
                     .padding(.leading, 24)
                     .padding(.trailing, 14)
@@ -481,11 +494,16 @@ struct SettingsView: View {
                 .padding(.top, 8)
                 .alert("Reset Yutori?", isPresented: $confirmReset) {
                     Button("Continue", role: .destructive) {
-                        let unlockedBowls = BowlCatalog.entries
-                            .prefix(StudySessionStore.shared.unlockedBowlCount)
-                            .compactMap(\.kind)
-                        deletionBowl = unlockedBowls.randomElement() ?? .teriyaki
-                        showDeleteChallenge = true
+                        let collectedBowls = StudySessionStore.shared.collectedBowls.map(\.bowlKind)
+                        if let collectedBowl = collectedBowls.randomElement() {
+                            deletionBowl = collectedBowl
+                            showDeleteChallenge = true
+                        } else {
+                            isResetting = true
+                            selectedPhoto = nil
+                            isEditingName = false
+                            AppReset.shared.reset()
+                        }
                     }
                     Button("Cancel", role: .cancel) {}
                 } message: {
@@ -885,16 +903,21 @@ private struct AccountDeletionChallengeView: View {
         .foregroundStyle(AppTheme.ink)
         .interactiveDismissDisabled()
         .sensoryFeedback(.impact(weight: .heavy), trigger: hitCount)
+        .onAppear {
+            BowlBreakSound.shared.prepare()
+        }
     }
 
     private func strikeBowl() {
         guard hitCount < requiredHits else { return }
+        BowlBreakSound.shared.play()
         hitCount += 1
 
         if hitCount == requiredHits {
             fragmentsVisible = true
             Task { @MainActor in
                 try? await Task.sleep(for: .milliseconds(55))
+                BowlBreakSound.shared.playCompletion()
                 withAnimation(.timingCurve(0.20, 0.72, 0.24, 1, duration: 0.78)) {
                     fragmentsExpanded = true
                 }
@@ -1171,6 +1194,271 @@ private struct Shipaton2026View: View {
             .lineSpacing(6)
             .fixedSize(horizontal: false, vertical: true)
     }
+}
+
+private enum JapaneseIconBackgroundStyle: String, CaseIterable, Identifiable {
+    case original = "Original"
+
+    var id: String { rawValue }
+
+    var title: String {
+        "Original cream"
+    }
+
+    var baseColor: Color {
+        Color(red: 247 / 255, green: 244 / 255, blue: 237 / 255)
+    }
+
+    var patternColor: Color {
+        Color(red: 238 / 255, green: 223 / 255, blue: 203 / 255).opacity(0.82)
+    }
+}
+
+private extension BowlKind {
+    var appIconToken: String {
+        switch self {
+        case .teriyaki: "Teriyaki"
+        case .chirashi: "Chirashi"
+        case .katsuRamen: "Katsu"
+        case .tofuCurry: "Tofu"
+        }
+    }
+
+}
+
+private struct AppIconPickerView: View {
+    @Environment(\.dismiss) private var dismiss
+    @State private var store = StudySessionStore.shared
+    @State private var selectedBackground: JapaneseIconBackgroundStyle = .original
+    @State private var selectedBowl: BowlKind = .teriyaki
+    @State private var isApplying = false
+    @State private var errorMessage: String?
+
+    private var availableBowls: [BowlKind] {
+        BowlCatalog.entries
+            .prefix(store.unlockedBowlCount)
+            .compactMap(\.kind)
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 20) {
+                    AppIconPreview(background: selectedBackground, bowl: selectedBowl)
+                        .frame(width: 184, height: 184)
+                        .shadow(color: AppTheme.ink.opacity(0.18), radius: 18, y: 10)
+                        .padding(.top, 2)
+
+                    Menu {
+                        ForEach(JapaneseIconBackgroundStyle.allCases) { background in
+                            Button {
+                                withAnimation(.spring(duration: 0.32, bounce: 0.16)) {
+                                    selectedBackground = background
+                                }
+                            } label: {
+                                if selectedBackground == background {
+                                    Label(background.title, systemImage: "checkmark")
+                                } else {
+                                    Text(background.title)
+                                }
+                            }
+                        }
+                    } label: {
+                        HStack(spacing: 12) {
+                            JapaneseIconBackground(style: selectedBackground)
+                                .frame(width: 42, height: 42)
+                                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Background")
+                                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                                    .foregroundStyle(AppTheme.secondaryInk)
+                                Text(selectedBackground.title)
+                                    .font(.system(size: 16, weight: .semibold, design: .rounded))
+                                    .foregroundStyle(AppTheme.ink)
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.up.chevron.down")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(AppTheme.secondaryInk)
+                        }
+                        .padding(.horizontal, 14)
+                        .frame(maxWidth: .infinity, minHeight: 58)
+                        .background(AppTheme.surface.opacity(0.76), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+
+                    Menu {
+                        ForEach(availableBowls, id: \.self) { bowl in
+                            Button {
+                                withAnimation(.spring(duration: 0.32, bounce: 0.16)) {
+                                    selectedBowl = bowl
+                                }
+                            } label: {
+                                if selectedBowl == bowl {
+                                    Label(bowl.name, systemImage: "checkmark")
+                                } else {
+                                    Text(bowl.name)
+                                }
+                            }
+                        }
+                    } label: {
+                        HStack(spacing: 12) {
+                            DishArtworkView(
+                                level: 3,
+                                availableWidth: 96,
+                                preferredWidth: 48,
+                                kind: selectedBowl
+                            )
+                                .frame(width: 48, height: 42)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Unlocked")
+                                .font(.system(size: 12, weight: .medium, design: .rounded))
+                                .foregroundStyle(CourseColor.green.deepTint)
+                                Text(selectedBowl.name)
+                                    .font(.system(size: 16, weight: .semibold, design: .rounded))
+                                    .foregroundStyle(AppTheme.ink)
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.up.chevron.down")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(AppTheme.secondaryInk)
+                        }
+                        .padding(.horizontal, 14)
+                        .frame(maxWidth: .infinity, minHeight: 58)
+                        .background(AppTheme.surface.opacity(0.76), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+
+                    if let errorMessage {
+                        Text(errorMessage)
+                            .font(.system(size: 13, design: .rounded))
+                            .foregroundStyle(CourseColor.red.deepTint)
+                            .multilineTextAlignment(.center)
+                    }
+
+                    Button(action: applyIcon) {
+                        Group {
+                            if isApplying {
+                                ProgressView().tint(.white)
+                            } else {
+                                Label("Use this icon", systemImage: "app.badge.checkmark.fill")
+                            }
+                        }
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity, minHeight: 54)
+                        .background(AppTheme.ink, in: Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(isApplying)
+                }
+                .padding(.horizontal, 24)
+                .padding(.bottom, 20)
+            }
+            .background(AppTheme.paper.ignoresSafeArea())
+            .navigationTitle("App Icon")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { dismiss() }
+                }
+            }
+            .onAppear(perform: loadCurrentSelection)
+        }
+    }
+
+    private var alternateIconName: String {
+        "AppIcon-\(selectedBackground.rawValue)-\(selectedBowl.appIconToken)"
+    }
+
+    private func loadCurrentSelection() {
+        guard let name = UIApplication.shared.alternateIconName else {
+            selectedBackground = .original
+            selectedBowl = availableBowls.first ?? .teriyaki
+            return
+        }
+        let parts = name.split(separator: "-").map(String.init)
+        if parts.count == 3, let background = JapaneseIconBackgroundStyle(rawValue: parts[1]) {
+            selectedBackground = background
+            if let bowl = availableBowls.first(where: { $0.appIconToken == parts[2] }) {
+                selectedBowl = bowl
+            }
+        }
+    }
+
+    private func applyIcon() {
+        guard UIApplication.shared.supportsAlternateIcons else {
+            errorMessage = "Alternate app icons are not available on this device."
+            return
+        }
+        isApplying = true
+        errorMessage = nil
+        UIApplication.shared.setAlternateIconName(alternateIconName) { error in
+            Task { @MainActor in
+                isApplying = false
+                if let error {
+                    errorMessage = error.localizedDescription
+                }
+            }
+        }
+    }
+}
+
+private struct AppIconPreview: View {
+    let background: JapaneseIconBackgroundStyle
+    let bowl: BowlKind
+
+    var body: some View {
+        ZStack {
+            JapaneseIconBackground(style: background)
+            Circle()
+                .fill(Color.white.opacity(0.10))
+                .frame(width: 146, height: 146)
+                .blur(radius: 5)
+            DishArtworkView(
+                level: 3,
+                availableWidth: 224,
+                preferredWidth: 168,
+                kind: bowl
+            )
+                .shadow(color: AppTheme.ink.opacity(0.28), radius: 7, y: 5)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 42, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 42, style: .continuous)
+                .strokeBorder(AppTheme.ink.opacity(0.10), lineWidth: 1)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Preview: \(bowl.name) with \(background.title) background")
+    }
+}
+
+private struct JapaneseIconBackground: View {
+    let style: JapaneseIconBackgroundStyle
+
+    var body: some View {
+        Canvas { context, size in
+            context.fill(Path(CGRect(origin: .zero, size: size)), with: .color(style.baseColor))
+            drawWaves(context: &context, size: size)
+        }
+    }
+
+    private func drawWaves(context: inout GraphicsContext, size: CGSize) {
+        let spacing = max(24, size.width / 6)
+        for row in -1...Int(size.height / (spacing * 0.8)) + 1 {
+            for column in -1...Int(size.width / spacing) + 1 {
+                let center = CGPoint(x: CGFloat(column) * spacing + (row.isMultiple(of: 2) ? 0 : spacing / 2),
+                                     y: CGFloat(row) * spacing * 0.8)
+                for factor in [0.25, 0.42, 0.58] as [CGFloat] {
+                    var path = Path()
+                    path.addArc(center: center, radius: spacing * factor,
+                                startAngle: .degrees(0), endAngle: .degrees(180), clockwise: false)
+                    context.stroke(path, with: .color(style.patternColor), lineWidth: max(1, size.width / 130))
+                }
+            }
+        }
+    }
+
 }
 
 private struct AboutYutoriStarField: View {

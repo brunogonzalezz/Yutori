@@ -38,19 +38,25 @@ private struct YutoriRootView: View {
     @State private var appReset = AppReset.shared
 
     var body: some View {
-        Group {
+        ZStack {
+            AppTheme.paper.ignoresSafeArea()
+
             if hasCompletedOnboarding {
                 TabBarView()
+                    .transition(.opacity)
             } else if appReset.shouldShowResetLoading {
                 YutoriLaunchView()
                     .transition(.opacity)
             } else {
                 OnboardingView(allowsDismiss: false) {
-                    hasCompletedOnboarding = true
+                    withAnimation(.easeInOut(duration: 0.55)) {
+                        hasCompletedOnboarding = true
+                    }
                 }
                 .transition(.opacity)
             }
         }
+        .animation(.easeInOut(duration: 0.62), value: hasCompletedOnboarding)
         .id(appReset.revision)
         .task(id: appReset.revision) {
             guard appReset.shouldShowResetLoading else { return }

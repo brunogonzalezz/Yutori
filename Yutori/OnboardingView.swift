@@ -13,16 +13,19 @@ struct OnboardingView: View {
     @State private var starterBowlCollected = StudySessionStore.shared.collectedKinds.contains(.teriyaki)
     @State private var onboardingBowlLevel = 0
     @State private var movesForward = true
+    @State private var courseNameExample = "Maths"
+    @State private var completionTransition = false
     @AppStorage("profileAvatarColor") private var avatarColor = "Jade Teal"
     @FocusState private var focusedField: Field?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private enum Field { case name, course }
-    private let pageCount = 7
+    private let pageCount = 8
     private let icons = CourseIconCatalog.icons
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 12) {
+            ZStack {
                 HStack(spacing: 6) {
                     ForEach(0..<pageCount, id: \.self) { index in
                         Capsule()
@@ -30,18 +33,20 @@ struct OnboardingView: View {
                             .frame(width: index == page ? 28 : 8, height: 6)
                     }
                 }
-
-                Spacer()
+                .frame(maxWidth: .infinity)
 
                 if allowsDismiss {
-                    Button(action: onComplete) {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 15, weight: .bold))
-                            .frame(width: 40, height: 40)
-                            .background(AppTheme.surface, in: Circle())
+                    HStack {
+                        Spacer()
+                        Button(action: onComplete) {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 15, weight: .bold))
+                                .frame(width: 40, height: 40)
+                                .background(AppTheme.surface, in: Circle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Close onboarding")
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Close onboarding")
                 }
             }
             .padding(.horizontal, 24)
@@ -96,6 +101,7 @@ struct OnboardingView: View {
                     .buttonStyle(.plain)
                     .disabled(!canAdvance)
                     .opacity(canAdvance ? 1 : 0.35)
+                    .allowsHitTesting(page < pageCount - 1)
                 }
             }
             .padding(.horizontal, 24)
@@ -104,6 +110,14 @@ struct OnboardingView: View {
         }
         .foregroundStyle(AppTheme.ink)
         .background(AppTheme.paper.ignoresSafeArea())
+        .overlay {
+            if completionTransition {
+                AppTheme.paper
+                    .ignoresSafeArea()
+                    .transition(.opacity)
+                    .allowsHitTesting(true)
+            }
+        }
         .interactiveDismissDisabled(!allowsDismiss)
         .onAppear {
             guard courseStore.courses.isEmpty,
@@ -118,10 +132,11 @@ struct OnboardingView: View {
         switch page {
         case 0: welcomePage
         case 1: namePage
-        case 2: storyPage
-        case 3: coursesExplanationPage
-        case 4: coursePage
-        case 5: growthPage
+        case 2: studyProblemPage
+        case 3: storyPage
+        case 4: coursesExplanationPage
+        case 5: coursePage
+        case 6: growthPage
         default: collectionExplanationPage
         }
     }
@@ -135,7 +150,7 @@ struct OnboardingView: View {
             VStack(spacing: 10) {
                 Text("Welcome to Yutori")
                     .font(.system(size: 36, weight: .bold, design: .rounded))
-                Text("Turn focused study time into bowls you can grow, complete and collect.")
+                Text("Make your study time come to life")
                     .font(.system(size: 16, design: .rounded))
                     .foregroundStyle(AppTheme.secondaryInk)
                     .multilineTextAlignment(.center)
@@ -166,27 +181,73 @@ struct OnboardingView: View {
         .scrollBounceBehavior(.basedOnSize)
     }
 
-    private var storyPage: some View {
+    private var studyProblemPage: some View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: 24) {
-                onboardingHeader(icon: "sparkles", color: CourseColor.purple.tint,
-                                 title: "Make studying feel rewarding",
-                                 text: "Staying focused has never been harder. Yutori exists to make studying more fun, turn effort into something visible and give you a reason to return tomorrow.")
-
-                OnboardingAttentionStory()
-                    .frame(height: 260)
-
-                VStack(spacing: 12) {
-                    storyReason(icon: "bell.slash.fill", color: CourseColor.red.tint,
-                                title: "Make room to focus",
-                                text: "A study session gives one task your full attention, away from the noise around you.")
-                    storyReason(icon: "chart.line.uptrend.xyaxis", color: CourseColor.teal.tint,
-                                title: "Turn effort into progress",
-                                text: "Every focused minute helps a bowl grow, making study time feel more playful and rewarding.")
-                    storyReason(icon: "leaf.fill", color: CourseColor.green.tint,
-                                title: "Build a calm habit",
-                                text: "Consistency grows one session at a time. You do not need to do everything today.")
+                VStack(spacing: 10) {
+                    Image(systemName: "calendar.badge.clock")
+                        .font(.system(size: 32, weight: .medium))
+                        .foregroundStyle(CourseColor.teal.tint)
+                    Text("Showing up is the hard part.")
+                        .font(.system(size: 31, weight: .bold, design: .rounded))
+                        .multilineTextAlignment(.center)
+                    Text("According to various studies on university students,")
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .foregroundStyle(AppTheme.secondaryInk)
+                        .multilineTextAlignment(.center)
                 }
+
+                OnboardingConsistencyVisual()
+                    .frame(maxWidth: .infinity)
+
+                VStack(spacing: 7) {
+                    Text("Starting is easy.\nShowing up again tomorrow is harder.")
+                        .font(.system(size: 16, weight: .semibold, design: .rounded))
+                        .multilineTextAlignment(.center)
+                        .lineSpacing(3)
+                }
+                .padding(.horizontal, 18)
+                .padding(.top, 14)
+            }
+            .padding(.horizontal, 24)
+            .padding(.vertical, 22)
+        }
+        .scrollBounceBehavior(.basedOnSize)
+    }
+
+    private var storyPage: some View {
+        ScrollView(showsIndicators: false) {
+            VStack(spacing: 22) {
+                VStack(spacing: 12) {
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 32, weight: .medium))
+                        .foregroundStyle(CourseColor.purple.tint)
+                    Text("That’s why we made Yutori.")
+                        .font(.system(size: 30, weight: .bold, design: .rounded))
+                        .multilineTextAlignment(.center)
+                    Text("Studying can feel repetitive. You put in the hours, but the progress can be hard to feel.")
+                        .font(.system(size: 15, design: .rounded))
+                        .foregroundStyle(AppTheme.secondaryInk)
+                        .multilineTextAlignment(.center)
+                        .lineSpacing(3)
+                        .frame(maxWidth: 340)
+                }
+
+                OnboardingStudyStory()
+                    .frame(height: 245)
+
+                VStack(spacing: 14) {
+                    Text("We wanted to make the effort itself feel rewarding.")
+                        .font(.system(size: 17, weight: .bold, design: .rounded))
+                        .multilineTextAlignment(.center)
+                    Text("Something small to look forward to. Something that makes you want to come back tomorrow.")
+                        .font(.system(size: 14, design: .rounded))
+                        .foregroundStyle(AppTheme.secondaryInk)
+                        .multilineTextAlignment(.center)
+                        .lineSpacing(2)
+                }
+                .padding(.horizontal, 18)
+                .padding(.top, 8)
             }
             .padding(24)
         }
@@ -196,9 +257,9 @@ struct OnboardingView: View {
     private var growthPage: some View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: 18) {
-                onboardingHeader(icon: "timer", color: CourseColor.orange.tint,
+                onboardingHeader(icon: "timer", color: CourseColor.teal.tint,
                                  title: "Study and watch it grow",
-                                 text: "Your active bowl receives the focused time from each session. Every hour adds one level until it reaches level 5.")
+                                 text: "Choose one active bowl. Time from every completed session moves it forward: one focused hour, one new level.")
 
                 if let savedCourse = courseStore.courses.first {
                     HStack(spacing: 10) {
@@ -240,7 +301,7 @@ struct OnboardingView: View {
             VStack(spacing: 20) {
                 onboardingHeader(icon: "square.grid.2x2", color: CourseColor.pink.tint,
                                  title: "Build your collection",
-                                 text: "When a bowl reaches level 5, it becomes collected forever. Then you choose another unlocked bowl and begin growing it in your next sessions.")
+                                 text: "Reach level 5 and the finished bowl joins My bowls. Your next bowl then takes its place, ready to grow from future sessions.")
 
                 OnboardingCollectionJourneyView(isCollected: $starterBowlCollected,
                                                  onCollect: collectStarterBowl,
@@ -299,7 +360,7 @@ struct OnboardingView: View {
                 VStack(spacing: 8) {
                     Text("What should we call you?")
                         .font(.system(size: 30, weight: .bold, design: .rounded))
-                    Text("This name will appear on your home screen. Tap your avatar to try another colour.")
+                    Text("We’ll use your name to make Yutori feel like your own. Tap the avatar to find a colour you like.")
                         .font(.system(size: 15, design: .rounded))
                         .foregroundStyle(AppTheme.secondaryInk)
                         .frame(maxWidth: 320)
@@ -339,6 +400,36 @@ struct OnboardingView: View {
         }
     }
 
+    private func animateCourseNameExamples() async {
+        let examples = ["Maths", "Science", "History", "Languages", "Design"]
+        guard !reduceMotion else {
+            courseNameExample = examples[0]
+            return
+        }
+        do {
+            while !Task.isCancelled && page == 5 && course.name.isEmpty && focusedField != .course {
+                for example in examples {
+                    try Task.checkCancellation()
+                    courseNameExample = ""
+                    for letter in example {
+                        try Task.checkCancellation()
+                        courseNameExample.append(letter)
+                        try await Task.sleep(for: .milliseconds(75))
+                    }
+                    try await Task.sleep(for: .seconds(1.5))
+                    while !courseNameExample.isEmpty {
+                        try Task.checkCancellation()
+                        courseNameExample.removeLast()
+                        try await Task.sleep(for: .milliseconds(35))
+                    }
+                    try await Task.sleep(for: .milliseconds(220))
+                }
+            }
+        } catch {
+            courseNameExample = "Maths"
+        }
+    }
+
     private func storyReason(icon: String, color: Color, title: String, text: String) -> some View {
         HStack(spacing: 14) {
             Image(systemName: icon)
@@ -361,11 +452,11 @@ struct OnboardingView: View {
     private var coursePage: some View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: 20) {
-                onboardingHeader(icon: "book.closed.fill", color: CourseColor.orange.tint,
-                                 title: courseStore.courses.isEmpty ? "Create your first course" : "Your first course is ready",
+                onboardingHeader(icon: "book.closed.fill", color: CourseColor.purple.tint,
+                                 title: courseStore.courses.isEmpty ? "Create your first course" : "Your course is ready",
                                  text: courseStore.courses.isEmpty
-                                    ? "A course tells Yutori what you are studying. Every session is saved under it, with its own colour and icon. Create yours now."
-                                    : "You already have a course, so you are ready to begin a session.")
+                                    ? "Give your first subject a name and a look you can spot at a glance. You can add more courses whenever you need them."
+                                    : "Everything is set. Sessions for this subject will stay together in its history and statistics.")
 
                 if let existing = courseStore.courses.first {
                     HStack(spacing: 14) {
@@ -382,13 +473,16 @@ struct OnboardingView: View {
                 } else {
                     HStack(spacing: 14) {
                         CourseBadge(course: course)
-                        TextField("Course name", text: $course.name)
+                        TextField("Course name", text: $course.name, prompt: Text(courseNameExample))
                             .font(.system(size: 19, weight: .semibold, design: .rounded))
                             .textInputAutocapitalization(.words)
                             .submitLabel(.done)
                             .focused($focusedField, equals: .course)
                             .onChange(of: course.name) { _, value in
                                 if value.count > 60 { course.name = String(value.prefix(60)) }
+                            }
+                            .task(id: page == 5 && course.name.isEmpty && focusedField != .course) {
+                                await animateCourseNameExamples()
                             }
                     }
                     .padding(14)
@@ -440,20 +534,21 @@ struct OnboardingView: View {
 
     private var canAdvance: Bool {
         if page == 1 { return !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
-        if page == 4 && courseStore.courses.isEmpty {
+        if page == 5 && courseStore.courses.isEmpty {
             return !course.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         }
         return true
     }
 
     private func advance() {
+        guard page < pageCount - 1 else { return }
         errorMessage = nil
         focusedField = nil
         if page == 1 {
             UserDefaults.standard.set(String(name.trimmingCharacters(in: .whitespacesAndNewlines).prefix(40)),
                                       forKey: "profileName")
         }
-        if page == 4 && courseStore.courses.isEmpty {
+        if page == 5 && courseStore.courses.isEmpty {
             do {
                 try courseStore.save(course)
             } catch {
@@ -475,10 +570,19 @@ struct OnboardingView: View {
     }
 
     private func finishInCollection() {
-        sessionStore.clearActiveBowlSelection()
-        UserDefaults.standard.removeObject(forKey: "openBowlsAfterOnboarding")
-        NotificationCenter.default.post(name: Notification.Name("OpenHomeFromOnboarding"), object: nil)
-        onComplete()
+        withAnimation(.easeInOut(duration: 0.42)) {
+            completionTransition = true
+        }
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(reduceMotion ? 180 : 560))
+            sessionStore.clearActiveBowlSelection()
+            if UserDefaults.standard.object(forKey: "appFirstUseTimestamp") == nil {
+                UserDefaults.standard.set(Date.now.timeIntervalSince1970, forKey: "appFirstUseTimestamp")
+            }
+            UserDefaults.standard.removeObject(forKey: "openBowlsAfterOnboarding")
+            NotificationCenter.default.post(name: Notification.Name("OpenHomeFromOnboarding"), object: nil)
+            onComplete()
+        }
     }
 
     private func onboardingHeader(icon: String, color: Color, title: String, text: String) -> some View {
@@ -700,64 +804,301 @@ private struct OnboardingCoursesExplanation: View {
     }
 }
 
-private struct OnboardingAttentionStory: View {
+private struct OnboardingConsistencyVisual: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var focused = false
+    @State private var completedDays = 0
+    @State private var breakVisible = false
 
-    private let distractions: [(String, Color, CGFloat, CGFloat)] = [
-        ("message.fill", CourseColor.teal.tint, -118, -74),
-        ("play.rectangle.fill", CourseColor.red.tint, 118, -68),
-        ("bell.fill", CourseColor.orange.tint, -132, 64),
-        ("heart.fill", CourseColor.pink.tint, 126, 70),
-        ("ellipsis.bubble.fill", CourseColor.purple.tint, 0, -108)
+    private let days = ["M", "T", "W", "T", "F", "S", "S"]
+
+    var body: some View {
+        VStack(spacing: 0) {
+            VStack(spacing: 6) {
+                Text("88%")
+                    .font(.system(size: 62, weight: .bold, design: .rounded))
+                    .foregroundStyle(CourseColor.red.deepTint)
+                Text("of university students struggle to study consistently\nfor more than a week.")
+                    .font(.system(size: 15, weight: .medium, design: .rounded))
+                    .foregroundStyle(AppTheme.secondaryInk)
+                    .multilineTextAlignment(.center)
+                    .lineSpacing(3)
+            }
+
+            Spacer()
+                .frame(height: 38)
+
+            VStack(spacing: 11) {
+                HStack(spacing: 0) {
+                    ForEach(days.indices, id: \.self) { index in
+                        Text(days[index])
+                            .font(.system(size: 12, weight: .bold, design: .rounded))
+                            .foregroundStyle(index <= 3 ? AppTheme.secondaryInk : AppTheme.muted)
+                            .frame(maxWidth: .infinity)
+                    }
+                }
+
+                ZStack {
+                    GeometryReader { geometry in
+                        Capsule()
+                            .fill(AppTheme.muted.opacity(0.22))
+                            .frame(width: max(0, geometry.size.width - 42), height: 5)
+                            .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
+
+                        Capsule()
+                            .fill(CourseColor.green.tint.opacity(0.72))
+                            .frame(width: max(0, geometry.size.width - 42) * CGFloat(completedDays) / 6,
+                                   height: 5)
+                            .position(x: 21 + max(0, geometry.size.width - 42) * CGFloat(completedDays) / 12,
+                                      y: geometry.size.height / 2)
+                    }
+
+                    HStack(spacing: 0) {
+                        ForEach(days.indices, id: \.self) { index in
+                            ZStack {
+                                Circle()
+                                    .fill(dayColor(at: index))
+                                    .frame(width: 34, height: 34)
+                                    .overlay {
+                                        Circle()
+                                            .strokeBorder(AppTheme.ink.opacity(index > 3 ? 0.07 : 0), lineWidth: 1)
+                                    }
+
+                                if index < completedDays {
+                                    Image(systemName: "checkmark")
+                                        .font(.system(size: 13, weight: .black))
+                                        .foregroundStyle(.white)
+                                        .transition(.scale(scale: 0.3).combined(with: .opacity))
+                                } else if index == 3 && breakVisible {
+                                    Image(systemName: "xmark")
+                                        .font(.system(size: 12, weight: .black))
+                                        .foregroundStyle(.white)
+                                        .transition(.scale(scale: 0.3).combined(with: .opacity))
+                                } else {
+                                    Circle()
+                                        .fill(AppTheme.muted.opacity(0.34))
+                                        .frame(width: 6, height: 6)
+                                }
+                            }
+                            .frame(maxWidth: .infinity)
+                            .scaleEffect((index < completedDays || (index == 3 && breakVisible)) ? 1 : 0.88)
+                        }
+                    }
+                }
+                .frame(height: 38)
+                .accessibilityHidden(true)
+
+                HStack {
+                    Label("A good start", systemImage: "checkmark.circle.fill")
+                        .foregroundStyle(CourseColor.green.deepTint)
+                    Spacer()
+                    Label("Routine breaks", systemImage: "xmark.circle.fill")
+                        .foregroundStyle(CourseColor.red.deepTint)
+                }
+                .font(.system(size: 12, weight: .semibold, design: .rounded))
+            }
+        }
+        .padding(.horizontal, 24)
+        .padding(.vertical, 26)
+        .background(AppTheme.surface.opacity(0.72), in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .strokeBorder(AppTheme.ink.opacity(0.07), lineWidth: 1)
+        }
+        .shadow(color: AppTheme.ink.opacity(0.08), radius: 16, y: 8)
+        .task {
+            if reduceMotion {
+                completedDays = 3
+                breakVisible = true
+            } else {
+                do {
+                    while !Task.isCancelled {
+                        withAnimation(.easeInOut(duration: 0.42)) {
+                            completedDays = 0
+                            breakVisible = false
+                        }
+                        try await Task.sleep(for: .milliseconds(700))
+
+                        for day in 1...3 {
+                            withAnimation(.spring(duration: 0.58, bounce: 0.18)) {
+                                completedDays = day
+                            }
+                            try await Task.sleep(for: .milliseconds(650))
+                        }
+
+                        withAnimation(.spring(duration: 0.62, bounce: 0.20)) {
+                            breakVisible = true
+                        }
+                        try await Task.sleep(for: .seconds(5))
+                    }
+                } catch {
+                    return
+                }
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("88 percent of university students struggle to study consistently for more than a week")
+    }
+
+    private func dayColor(at index: Int) -> Color {
+        if index < completedDays { return CourseColor.green.tint }
+        if index == 3 && breakVisible { return CourseColor.red.tint }
+        return AppTheme.paper
+    }
+}
+
+private struct OnboardingStudyStory: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var completedLines = 0
+    @State private var writingLine = 0
+    @State private var lineProgress: CGFloat = 0
+    @State private var pageAlive = false
+    @State private var pencilVisible = true
+    @State private var cycleOpacity = 0.0
+
+    private let lineWidths: [CGFloat] = [126, 164, 142, 98]
+    private let accents: [(String, Color, CGFloat, CGFloat, Double)] = [
+        ("sparkle", CourseColor.orange.tint, -126, -70, -12),
+        ("leaf.fill", CourseColor.green.tint, 126, -58, 20),
+        ("sparkle", CourseColor.pink.tint, -132, 54, 8),
+        ("circle.fill", CourseColor.teal.tint, 132, 62, 0),
+        ("sparkle", CourseColor.lemon.tint, 92, -96, -8),
+        ("circle.fill", CourseColor.red.tint, -92, 98, 0)
     ]
 
     var body: some View {
         ZStack {
-            Circle()
-                .fill(CourseColor.purple.tint.opacity(focused ? 0.08 : 0.16))
-                .frame(width: focused ? 178 : 220, height: focused ? 178 : 220)
+            Ellipse()
+                .fill(CourseColor.orange.tint.opacity(pageAlive ? 0.12 : 0.05))
+                .frame(width: 286, height: 204)
 
-            ForEach(Array(distractions.enumerated()), id: \.offset) { index, item in
-                Image(systemName: item.0)
-                    .font(.system(size: 25, weight: .medium))
-                    .foregroundStyle(item.1)
-                    .frame(width: 48, height: 48)
-                    .offset(x: item.2, y: item.3)
-                    .scaleEffect(focused ? 0.68 : 1)
-                    .opacity(focused ? 0.24 : 0.90)
-                    .rotationEffect(.degrees(focused ? Double(index - 2) * 5 : 0))
+            ForEach(accents.indices, id: \.self) { index in
+                let accent = accents[index]
+                Image(systemName: accent.0)
+                    .font(.system(size: index.isMultiple(of: 2) ? 22 : 17, weight: .bold))
+                    .foregroundStyle(accent.1)
+                    .offset(x: accent.2, y: accent.3)
+                    .rotationEffect(.degrees(pageAlive ? accent.4 : 0))
+                    .scaleEffect(pageAlive ? 1 : 0.15)
+                    .opacity(pageAlive ? (index.isMultiple(of: 2) ? 0.82 : 0.62) : 0)
             }
 
-            VStack(spacing: 9) {
-                Image(systemName: focused ? "brain.head.profile.fill" : "brain.head.profile")
-                    .font(.system(size: 43, weight: .semibold))
-                    .foregroundStyle(focused ? CourseColor.green.tint : AppTheme.secondaryInk)
-                Text(focused ? "Space to focus" : "Too much noise")
-                    .font(.system(size: 17, weight: .bold, design: .rounded))
-                    .contentTransition(.opacity)
+            ZStack(alignment: .topLeading) {
+                RoundedRectangle(cornerRadius: 24)
+                    .fill(AppTheme.paper)
+                    .shadow(color: AppTheme.ink.opacity(0.12), radius: 18, y: 10)
+
+                HStack(spacing: 7) {
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(CourseColor.orange.tint)
+                    Text("Enjoy the little wins")
+                        .font(.system(size: 15, weight: .bold, design: .rounded))
+                        .foregroundStyle(AppTheme.secondaryInk)
+                }
+                .frame(width: 182, alignment: .leading)
+                .offset(x: 24, y: 20)
+
+                ForEach(lineWidths.indices, id: \.self) { index in
+                    Capsule()
+                        .fill(index == 3 ? CourseColor.orange.tint.opacity(0.72) : AppTheme.ink.opacity(0.22))
+                        .frame(width: lineWidth(at: index), height: 4)
+                        .offset(x: 24, y: 58 + CGFloat(index) * 17)
+                }
+
+                Label("Come back tomorrow", systemImage: "checkmark.circle.fill")
+                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                    .foregroundStyle(CourseColor.green.deepTint)
+                    .frame(width: 182, alignment: .leading)
+                    .offset(x: 24, y: 126)
+                    .scaleEffect(pageAlive ? 1 : 0.82)
+                    .opacity(pageAlive ? 1 : 0)
+
+                Image(systemName: "pencil")
+                    .font(.system(size: 25, weight: .semibold))
+                    .foregroundStyle(CourseColor.orange.tint)
+                    .rotationEffect(.degrees(-42))
+                    .offset(pencilOffset)
+                    .opacity(pencilVisible ? 1 : 0)
             }
-            .frame(width: 138, height: 138)
-            .background(AppTheme.paper, in: RoundedRectangle(cornerRadius: 42, style: .continuous))
-            .shadow(color: AppTheme.ink.opacity(0.10), radius: 18, y: 8)
-            .scaleEffect(focused ? 1.05 : 0.94)
+            .frame(width: 230, height: 168)
+            .rotationEffect(.degrees(-2))
         }
+        .opacity(cycleOpacity)
         .task {
-            guard !reduceMotion else { focused = true; return }
-            while !Task.isCancelled {
-                withAnimation(.easeInOut(duration: 1.25)) { focused = true }
-                try? await Task.sleep(for: .milliseconds(1700))
-                withAnimation(.easeInOut(duration: 1.15)) { focused = false }
-                try? await Task.sleep(for: .milliseconds(1400))
+            if reduceMotion {
+                completedLines = lineWidths.count
+                writingLine = lineWidths.count - 1
+                lineProgress = 1
+                pageAlive = true
+                pencilVisible = false
+                cycleOpacity = 1
+                return
+            }
+
+            do {
+                while !Task.isCancelled {
+                    completedLines = 0
+                    writingLine = 0
+                    lineProgress = 0
+                    pageAlive = false
+                    pencilVisible = true
+                    cycleOpacity = 0
+                    withAnimation(.easeInOut(duration: 0.35)) { cycleOpacity = 1 }
+                    try await Task.sleep(for: .milliseconds(360))
+
+                    for line in lineWidths.indices {
+                        if line == 0 {
+                            writingLine = line
+                            lineProgress = 0
+                        } else {
+                            withAnimation(.easeInOut(duration: 0.22)) {
+                                writingLine = line
+                                lineProgress = 0
+                            }
+                            try await Task.sleep(for: .milliseconds(240))
+                        }
+                        withAnimation(.easeInOut(duration: 0.72)) { lineProgress = 1 }
+                        try await Task.sleep(for: .milliseconds(760))
+                        completedLines = line + 1
+                    }
+
+                    withAnimation(.easeOut(duration: 0.24)) { pencilVisible = false }
+                    withAnimation(.spring(duration: 0.88, bounce: 0.20)) { pageAlive = true }
+                    try await Task.sleep(for: .seconds(4.2))
+
+                    withAnimation(.easeInOut(duration: 0.46)) { cycleOpacity = 0 }
+                    try await Task.sleep(for: .milliseconds(500))
+                }
+            } catch {
+                return
             }
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Enjoy the little wins. Come back tomorrow.")
+    }
+
+    private func lineWidth(at index: Int) -> CGFloat {
+        if index < completedLines { return lineWidths[index] }
+        if index == writingLine { return lineWidths[index] * lineProgress }
+        return 0
+    }
+
+    private var pencilOffset: CGSize {
+        let safeLine = min(writingLine, lineWidths.count - 1)
+        let drawnWidth = safeLine < completedLines
+            ? lineWidths[safeLine]
+            : lineWidths[safeLine] * lineProgress
+        return CGSize(width: 17 + drawnWidth,
+                      height: 34 + CGFloat(safeLine) * 17)
     }
 }
 
 private struct OnboardingGrowthAnimation: View {
     @Binding var level: Int
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var particleBurst = false
+    @State private var particlesVisible = false
+    @State private var particlesExpanded = false
+    @State private var particleOrbit = 0.0
 
     var body: some View {
         VStack(spacing: 8) {
@@ -767,17 +1108,29 @@ private struct OnboardingGrowthAnimation: View {
                     .frame(width: 245, height: 245)
                     .scaleEffect(0.78 + CGFloat(level) * 0.045)
 
-                ForEach(0..<8, id: \.self) { index in
+                ForEach(0..<14, id: \.self) { index in
+                    let angle = Double(index) * .pi * 2 / 14 - .pi / 2
+                    let radiusVariation = CGFloat(index % 3) * 6
+                    let horizontalRadius = particlesExpanded ? 110 + radiusVariation : 62
+                    let verticalRadius = particlesExpanded ? 86 + radiusVariation * 0.55 : 48
                     Image(systemName: "sparkle")
-                        .font(.system(size: index.isMultiple(of: 2) ? 14 : 9, weight: .bold))
-                        .foregroundStyle([CourseColor.orange.tint, CourseColor.green.tint, CourseColor.lemon.tint][index % 3])
-                        .offset(x: cos(Double(index) * .pi / 4) * CGFloat(particleBurst ? 126 : 92),
-                                y: sin(Double(index) * .pi / 4) * CGFloat(particleBurst ? 102 : 68))
-                        .scaleEffect(particleBurst ? 1.15 : 0.45)
-                        .opacity(level == 0 ? 0.10 : (particleBurst ? 0.82 : 0.16))
+                        .font(.system(size: index.isMultiple(of: 3) ? 16 : (index.isMultiple(of: 2) ? 12 : 9),
+                                      weight: .semibold, design: .rounded))
+                        .foregroundStyle(CourseColor.lemon.tint.opacity(index.isMultiple(of: 2) ? 0.94 : 0.72))
+                        .rotationEffect(.degrees(-particleOrbit))
+                        .offset(x: cos(angle) * horizontalRadius,
+                                y: sin(angle) * verticalRadius)
+                        .rotationEffect(.degrees(particleOrbit))
+                        .scaleEffect(particlesExpanded ? 1 : 0.45)
+                        .opacity(particlesVisible && !reduceMotion ? 1 : 0)
+                        .animation(.easeOut(duration: 0.95).delay(Double(index) * 0.025),
+                                   value: particlesExpanded)
+                        .accessibilityHidden(true)
                 }
 
-                DishArtworkView(level: level, availableWidth: 300, preferredWidth: CGFloat(150 + level * 18), kind: .teriyaki)
+                let artworkWidths: [CGFloat] = [150, 114, 176, 208, 240, 266]
+                DishArtworkView(level: level, availableWidth: 300,
+                                preferredWidth: artworkWidths[min(level, 5)], kind: .teriyaki)
                     .id(level)
                     .transition(.scale(scale: 0.94).combined(with: .opacity))
             }
@@ -811,18 +1164,37 @@ private struct OnboardingGrowthAnimation: View {
             try? await Task.sleep(for: .milliseconds(900))
             while !Task.isCancelled {
                 if level == 5 {
-                    try? await Task.sleep(for: .milliseconds(2100))
-                    withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.80)) {
+                    try? await Task.sleep(for: .milliseconds(2800))
+                    withAnimation(reduceMotion ? nil : .easeInOut(duration: 1.00)) {
                         level = 0
                     }
-                    try? await Task.sleep(for: .milliseconds(1300))
+                    particlesVisible = false
+                    particlesExpanded = false
+                    particleOrbit = 0
+                    try? await Task.sleep(for: .milliseconds(1600))
                     continue
                 }
-                withAnimation(reduceMotion ? nil : .easeOut(duration: 0.48)) { particleBurst = true }
-                withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.82)) { level += 1 }
-                try? await Task.sleep(for: .milliseconds(820))
-                withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.62)) { particleBurst = false }
-                try? await Task.sleep(for: .milliseconds(980))
+                var resetTransaction = Transaction()
+                resetTransaction.disablesAnimations = true
+                withTransaction(resetTransaction) {
+                    particlesExpanded = false
+                    particleOrbit = 0
+                }
+                withAnimation(reduceMotion ? nil : .easeIn(duration: 0.25)) {
+                    particlesVisible = true
+                }
+                try? await Task.sleep(for: .milliseconds(220))
+                withAnimation(reduceMotion ? nil : .easeOut(duration: 1.05)) {
+                    particlesExpanded = true
+                    particleOrbit = 48
+                }
+                try? await Task.sleep(for: .milliseconds(1200))
+                withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.65)) { level += 1 }
+                try? await Task.sleep(for: .milliseconds(350))
+                withAnimation(reduceMotion ? nil : .easeOut(duration: 0.55)) {
+                    particlesVisible = false
+                }
+                try? await Task.sleep(for: .milliseconds(1650))
             }
         }
     }
@@ -850,7 +1222,7 @@ private struct OnboardingStarterCollectionView: View {
                 if isCollected {
                     HStack(spacing: 12) {
                         collectionTile(kind: .teriyaki, title: "Collected", complete: true)
-                        collectionTile(kind: .katsuRamen, title: "Ready to grow", complete: false)
+                        collectionTile(kind: .chirashi, title: "Ready to grow", complete: false)
                     }
                     .transition(.scale(scale: 0.72).combined(with: .opacity))
                 } else {
@@ -1101,11 +1473,13 @@ private struct OnboardingCollectionJourneyView: View {
     @State private var landed = false
     @State private var collecting = false
     @State private var finishing = false
+    @State private var launchVisible = false
     @Namespace private var bowlFlight
 
     var body: some View {
         GeometryReader { geometry in
             ZStack {
+                ZStack {
                 VStack(spacing: 10) {
                     HStack {
                         Text("My bowls")
@@ -1172,9 +1546,44 @@ private struct OnboardingCollectionJourneyView: View {
                 .opacity(collecting ? 0.65 : (finishing ? 0 : 1))
                 .padding(.horizontal, 12)
                 .position(x: geometry.size.width / 2, y: geometry.size.height * 0.90)
+                }
+                .scaleEffect(finishing ? 1.06 : 1)
+                .opacity(finishing ? 0 : 1)
+
+                if launchVisible {
+                    ZStack {
+                        Circle()
+                            .fill(AppTheme.paper)
+                            .frame(width: 120, height: 120)
+                            .shadow(color: CourseColor.orange.tint.opacity(finishing ? 0 : 0.20), radius: 30)
+                            .scaleEffect(finishing ? 8.2 : 0.22)
+
+                        ForEach(0..<18, id: \.self) { index in
+                            let angle = Double(index) * .pi * 2 / 18
+                            Image(systemName: index.isMultiple(of: 3) ? "leaf.fill" : "sparkle")
+                                .font(.system(size: index.isMultiple(of: 2) ? 15 : 10, weight: .bold))
+                                .foregroundStyle([
+                                    CourseColor.orange.tint, CourseColor.green.tint,
+                                    CourseColor.pink.tint, CourseColor.teal.tint
+                                ][index % 4])
+                                .offset(x: cos(angle) * (finishing ? geometry.size.width * 0.62 : 28),
+                                        y: sin(angle) * (finishing ? geometry.size.height * 0.48 : 22))
+                                .rotationEffect(.degrees(finishing ? Double(index) * 28 : 0))
+                                .scaleEffect(finishing ? 1.4 : 0.35)
+                                .opacity(finishing ? 0 : 1)
+                        }
+
+                        Image(systemName: "leaf.fill")
+                            .font(.system(size: 28, weight: .semibold))
+                            .foregroundStyle(CourseColor.green.tint)
+                            .scaleEffect(finishing ? 1 : 0.45)
+                            .opacity(finishing ? 1 : 0)
+                    }
+                    .position(x: geometry.size.width / 2, y: geometry.size.height * 0.57)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+                }
             }
-            .scaleEffect(finishing ? 0.975 : 1)
-            .opacity(finishing ? 0 : 1)
         }
         .onAppear {
             if isCollected {
@@ -1187,11 +1596,13 @@ private struct OnboardingCollectionJourneyView: View {
     private func primaryAction() {
         if landed || isCollected {
             guard !finishing else { return }
-            withAnimation(reduceMotion ? .easeOut(duration: 0.18) : .easeInOut(duration: 0.42)) {
-                finishing = true
-            }
             Task { @MainActor in
-                try? await Task.sleep(for: .milliseconds(reduceMotion ? 160 : 390))
+                launchVisible = true
+                try? await Task.sleep(for: .milliseconds(30))
+                withAnimation(reduceMotion ? .easeOut(duration: 0.22) : .timingCurve(0.22, 0.72, 0.18, 1, duration: 0.96)) {
+                    finishing = true
+                }
+                try? await Task.sleep(for: .milliseconds(reduceMotion ? 240 : 1040))
                 onFinished()
             }
             return
@@ -1223,7 +1634,7 @@ private struct OnboardingCollectionJourneyView: View {
                         .frame(width: 80, height: 70)
                         .mask {
                             DishArtworkView(level: 5, availableWidth: 124, preferredWidth: 76,
-                                            kind: index == 1 ? .katsuRamen : (index == 2 ? .tofuCurry : .teriyaki))
+                                            kind: index == 1 ? .chirashi : (index == 2 ? .katsuRamen : .teriyaki))
                         }
                 }
 

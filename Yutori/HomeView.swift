@@ -136,7 +136,7 @@ struct HomeView: View {
                     .disabled(isCollecting)
                 }
             }
-            .padding(.bottom, 32)
+            .padding(.bottom, dishProgress.isComplete ? 4 : 32)
             } else {
                 AppEmptyStateCard(
                     icon: "takeoutbag.and.cup.and.straw.fill",
@@ -295,7 +295,7 @@ struct DishArtworkView: View {
         (CGSize(width: 224, height: 224), CGRect(x: 31, y: 51, width: 162, height: 132)),
         (CGSize(width: 223, height: 209), CGRect(x: 11, y: 24, width: 201, height: 162)),
         (CGSize(width: 251, height: 251), CGRect(x: 3, y: 18, width: 245, height: 216)),
-        (CGSize(width: 287, height: 287), CGRect(x: 3, y: 7, width: 280, height: 270))
+        (CGSize(width: 1148, height: 1148), CGRect(x: 33, y: 80, width: 1069, height: 981))
     ]
 
     // Visible alpha bounds in the original ×4 exports, with a two-pixel edge margin.
@@ -317,6 +317,15 @@ struct DishArtworkView: View {
         (CGSize(width: 1236, height: 1236), CGRect(x: 85, y: 189, width: 1064, height: 889))
     ]
 
+    private static let chirashiArtwork: [(canvas: CGSize, bounds: CGRect)] = [
+        (CGSize(width: 808, height: 808), CGRect(x: 18, y: 148, width: 777, height: 546)),
+        (CGSize(width: 1004, height: 1004), CGRect(x: 241, y: 269, width: 520, height: 449)),
+        (CGSize(width: 1064, height: 896), CGRect(x: 200, y: 186, width: 662, height: 546)),
+        (CGSize(width: 1020, height: 816), CGRect(x: 89, y: 81, width: 843, height: 688)),
+        (CGSize(width: 1096, height: 1096), CGRect(x: 46, y: 121, width: 993, height: 847)),
+        (CGSize(width: 1172, height: 1172), CGRect(x: 42, y: 110, width: 1089, height: 981))
+    ]
+
     var body: some View {
         let index = min(max(level, 0), 5)
         let bowlKind = kind ?? StudySessionStore.shared.activeBowlKind
@@ -324,6 +333,7 @@ struct DishArtworkView: View {
         case .teriyaki: Self.teriyakiArtwork[index]
         case .katsuRamen: Self.artwork[index]
         case .tofuCurry: Self.tofuCurryArtwork[index]
+        case .chirashi: Self.chirashiArtwork[index]
         }
         let screenFactor = min(1, max(0, availableWidth - 80) / 266)
         let targetWidth = preferredWidth.map { min($0, max(0, availableWidth - 48)) }
