@@ -5,7 +5,7 @@ struct OnboardingView: View {
     let onComplete: () -> Void
 
     @State private var page = 0
-    @State private var name = UserDefaults.standard.string(forKey: "profileName") ?? ""
+    @State private var name = String((UserDefaults.standard.string(forKey: "profileName") ?? "").prefix(20))
     @State private var course = StudyCourse(name: "", color: .orange, icon: "book.fill")
     @State private var errorMessage: String?
     @State private var courseStore = CourseStore.shared
@@ -187,7 +187,7 @@ struct OnboardingView: View {
                 VStack(spacing: 10) {
                     Image(systemName: "calendar.badge.clock")
                         .font(.system(size: 32, weight: .medium))
-                        .foregroundStyle(CourseColor.teal.tint)
+                        .foregroundStyle(CourseColor.lemon.deepTint)
                     Text("Showing up is the hard part.")
                         .font(.system(size: 31, weight: .bold, design: .rounded))
                         .multilineTextAlignment(.center)
@@ -257,7 +257,7 @@ struct OnboardingView: View {
     private var growthPage: some View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: 18) {
-                onboardingHeader(icon: "timer", color: CourseColor.teal.tint,
+                onboardingHeader(icon: "timer", color: CourseColor.orange.tint,
                                  title: "Study and watch it grow",
                                  text: "Choose one active bowl. Time from every completed session moves it forward: one focused hour, one new level.")
 
@@ -382,7 +382,7 @@ struct OnboardingView: View {
                             .strokeBorder(focusedField == .name ? AppTheme.ink : AppTheme.ink.opacity(0.10), lineWidth: focusedField == .name ? 2 : 1)
                     }
                     .onChange(of: name) { _, value in
-                        if value.count > 40 { name = String(value.prefix(40)) }
+                        if value.count > 20 { name = String(value.prefix(20)) }
                     }
                 Spacer()
             }
@@ -452,7 +452,7 @@ struct OnboardingView: View {
     private var coursePage: some View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: 20) {
-                onboardingHeader(icon: "book.closed.fill", color: CourseColor.purple.tint,
+                onboardingHeader(icon: "book.closed.fill", color: CourseColor.indigo.tint,
                                  title: courseStore.courses.isEmpty ? "Create your first course" : "Your course is ready",
                                  text: courseStore.courses.isEmpty
                                     ? "Give your first subject a name and a look you can spot at a glance. You can add more courses whenever you need them."
@@ -545,7 +545,7 @@ struct OnboardingView: View {
         errorMessage = nil
         focusedField = nil
         if page == 1 {
-            UserDefaults.standard.set(String(name.trimmingCharacters(in: .whitespacesAndNewlines).prefix(40)),
+            UserDefaults.standard.set(String(name.trimmingCharacters(in: .whitespacesAndNewlines).prefix(20)),
                                       forKey: "profileName")
         }
         if page == 5 && courseStore.courses.isEmpty {
@@ -565,6 +565,7 @@ struct OnboardingView: View {
             errorMessage = "Your starter bowl could not be added. Please try again."
             return false
         }
+        CollectionSound.shared.play()
         starterBowlCollected = true
         return true
     }
@@ -1099,27 +1100,40 @@ private struct OnboardingGrowthAnimation: View {
     @State private var particlesVisible = false
     @State private var particlesExpanded = false
     @State private var particleOrbit = 0.0
+    @State private var particleSeed = 0
+
+    private let artworkWidths: [CGFloat] = [150, 114, 176, 208, 240, 266]
+
+    private var artworkWidth: CGFloat {
+        artworkWidths[min(max(level, 0), artworkWidths.count - 1)]
+    }
+
+    private var effectDiameter: CGFloat {
+        min(292, max(202, artworkWidth + 32))
+    }
 
     var body: some View {
         VStack(spacing: 8) {
             ZStack {
                 Circle()
                     .fill(CourseColor.orange.tint.opacity(0.12))
-                    .frame(width: 245, height: 245)
-                    .scaleEffect(0.78 + CGFloat(level) * 0.045)
+                    .frame(width: effectDiameter, height: effectDiameter)
+                    .animation(.easeInOut(duration: 0.65), value: effectDiameter)
 
                 ForEach(0..<14, id: \.self) { index in
-                    let angle = Double(index) * .pi * 2 / 14 - .pi / 2
-                    let radiusVariation = CGFloat(index % 3) * 6
-                    let horizontalRadius = particlesExpanded ? 110 + radiusVariation : 62
-                    let verticalRadius = particlesExpanded ? 86 + radiusVariation * 0.55 : 48
+                    let baseAngle = Double(index) * .pi * 2 / 14 - .pi / 2
+                    let angle = baseAngle + particleVariation(index, salt: 3) * 0.22
+                    let radiusVariation = CGFloat(particleVariation(index, salt: 7)) * 14
+                    let radius = particlesExpanded
+                        ? effectDiameter / 2 + 4 + radiusVariation
+                        : effectDiameter * 0.27 + radiusVariation * 0.25
                     Image(systemName: "sparkle")
-                        .font(.system(size: index.isMultiple(of: 3) ? 16 : (index.isMultiple(of: 2) ? 12 : 9),
+                        .font(.system(size: 9 + CGFloat(particleVariation(index, salt: 11) + 1) * 3.1,
                                       weight: .semibold, design: .rounded))
                         .foregroundStyle(CourseColor.lemon.tint.opacity(index.isMultiple(of: 2) ? 0.94 : 0.72))
                         .rotationEffect(.degrees(-particleOrbit))
-                        .offset(x: cos(angle) * horizontalRadius,
-                                y: sin(angle) * verticalRadius)
+                        .offset(x: cos(angle) * radius,
+                                y: sin(angle) * radius)
                         .rotationEffect(.degrees(particleOrbit))
                         .scaleEffect(particlesExpanded ? 1 : 0.45)
                         .opacity(particlesVisible && !reduceMotion ? 1 : 0)
@@ -1128,7 +1142,6 @@ private struct OnboardingGrowthAnimation: View {
                         .accessibilityHidden(true)
                 }
 
-                let artworkWidths: [CGFloat] = [150, 114, 176, 208, 240, 266]
                 DishArtworkView(level: level, availableWidth: 300,
                                 preferredWidth: artworkWidths[min(level, 5)], kind: .teriyaki)
                     .id(level)
@@ -1171,6 +1184,7 @@ private struct OnboardingGrowthAnimation: View {
                     particlesVisible = false
                     particlesExpanded = false
                     particleOrbit = 0
+                    particleSeed += 1
                     try? await Task.sleep(for: .milliseconds(1600))
                     continue
                 }
@@ -1179,6 +1193,7 @@ private struct OnboardingGrowthAnimation: View {
                 withTransaction(resetTransaction) {
                     particlesExpanded = false
                     particleOrbit = 0
+                    particleSeed += 1
                 }
                 withAnimation(reduceMotion ? nil : .easeIn(duration: 0.25)) {
                     particlesVisible = true
@@ -1197,6 +1212,11 @@ private struct OnboardingGrowthAnimation: View {
                 try? await Task.sleep(for: .milliseconds(1650))
             }
         }
+    }
+
+    private func particleVariation(_ index: Int, salt: Int) -> Double {
+        let value = (index * 47 + particleSeed * 31 + salt * 19) % 101
+        return Double(value) / 100 - 0.5
     }
 }
 

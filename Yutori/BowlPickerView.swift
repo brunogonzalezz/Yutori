@@ -41,18 +41,30 @@ struct BowlPickerView: View {
                                         pageArrow(step: 1)
                                     }
                                 }
-                                Text(selectedBowl.name)
+                                Text(selectedBowl.kind == nil ? "Coming soon" : selectedBowl.name)
                                     .font(.system(size: 22, weight: .bold, design: .rounded))
                                     .multilineTextAlignment(.center)
                                     .lineLimit(2)
-                                if selectedBowlIsCollected {
-                                    Label("Already collected", systemImage: "checkmark.seal.fill")
-                                        .font(.system(size: 12, weight: .semibold, design: .rounded))
-                                        .foregroundStyle(CourseColor.green.deepTint)
-                                        .padding(.horizontal, 11)
-                                        .padding(.vertical, 5)
-                                        .background(CourseColor.green.tint.opacity(0.18), in: Capsule())
+                                ZStack {
+                                    if selectedBowl.kind == nil {
+                                        Label("This bowl is still being prepared", systemImage: "hourglass")
+                                            .font(.system(size: 12, weight: .semibold, design: .rounded))
+                                            .foregroundStyle(AppTheme.secondaryInk)
+                                            .padding(.horizontal, 11)
+                                            .padding(.vertical, 5)
+                                            .background(AppTheme.surface.opacity(0.85), in: Capsule())
+                                    } else if selectedBowlIsCollected {
+                                        Label("Already collected", systemImage: "checkmark.seal.fill")
+                                            .font(.system(size: 12, weight: .semibold, design: .rounded))
+                                            .foregroundStyle(CourseColor.green.deepTint)
+                                            .padding(.horizontal, 11)
+                                            .padding(.vertical, 5)
+                                            .background(CourseColor.green.tint.opacity(0.18), in: Capsule())
+                                            .transition(.opacity.combined(with: .scale(scale: 0.92)))
+                                    }
                                 }
+                                .frame(height: 27)
+                                .animation(.easeInOut(duration: 0.2), value: selectedBowlIsCollected)
                             }
                             .padding(.horizontal, 20)
 
@@ -152,7 +164,7 @@ struct BowlPickerView: View {
                         .frame(width: geometry.size.width, height: geometry.size.height)
                 }
                 .frame(height: 60)
-                Text(entry.name)
+                Text(entry.kind == nil ? "Coming soon" : entry.name)
                     .font(.system(size: 11, weight: .semibold, design: .rounded))
                     .multilineTextAlignment(.center)
                     .lineLimit(2)
@@ -180,11 +192,15 @@ struct BowlPickerView: View {
         if let kind = entry.kind {
             DishArtworkView(level: 0, availableWidth: width + 48, preferredWidth: width, kind: kind)
         } else if let previewImageName = entry.previewImageName {
-            Image(previewImageName)
-                .resizable()
-                .interpolation(.none)
-                .scaledToFit()
+            AppTheme.muted
                 .frame(width: width, height: width)
+                .mask {
+                    Image(previewImageName)
+                        .resizable()
+                        .interpolation(.none)
+                        .scaledToFit()
+                        .frame(width: width, height: width)
+                }
                 .accessibilityHidden(true)
         } else {
             AppTheme.muted

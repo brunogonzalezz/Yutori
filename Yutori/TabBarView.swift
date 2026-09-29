@@ -46,6 +46,7 @@ struct TabBarView: View {
                              onCollect: { frame in
                         guard collectingFrame == nil, frame.width > 0,
                               StudySessionStore.shared.canCollectBowl else { return }
+                        CollectionSound.shared.play()
                         collectionArrived = false
                         collectingFrame = frame
                     }, onSelectBowl: { showStartStudy = true })

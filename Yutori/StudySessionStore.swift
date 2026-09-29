@@ -171,13 +171,28 @@ final class StudySessionStore {
     var earnedDishProgress: DishProgress { DishProgress(totalSeconds: availableDishSeconds) }
 
     private let unlockSecondsKey = "bowlUnlock.studySeconds.v1"
+    private let unlockedCountKey = "bowlUnlock.claimedCount.v1"
     private(set) var bowlUnlockSeconds: TimeInterval = 0
-    var unlockedBowlCount: Int { BowlCatalog.unlockedCount(seconds: bowlUnlockSeconds) }
+    private(set) var unlockedBowlCount: Int
+    private var hasLoadedUnlockedCount: Bool
     var nextBowlMilestone: Int? {
         unlockedBowlCount < BowlCatalog.entries.count
             ? BowlCatalog.entries[unlockedBowlCount].requiredHours : nil
     }
+    var canUnlockNextBowl: Bool {
+        unlockedBowlCount < BowlCatalog.entries.count
+            && unlockedBowlCount < BowlCatalog.unlockedCount(seconds: bowlUnlockSeconds)
+    }
     func isBowlUnlocked(_ entry: BowlCatalogEntry) -> Bool { entry.id < unlockedBowlCount }
+
+    @discardableResult
+    func unlockNextBowl() -> Bool {
+        guard canUnlockNextBowl else { return false }
+        unlockedBowlCount += 1
+        defaults.set(unlockedBowlCount, forKey: unlockedCountKey)
+        hasLoadedUnlockedCount = true
+        return true
+    }
 
     private func updateBowlUnlocks() {
         // Manual time edits never count: dishDuration keeps the originally recorded time.
@@ -186,6 +201,15 @@ final class StudySessionStore {
         }
         bowlUnlockSeconds = studied
         defaults.set(bowlUnlockSeconds, forKey: unlockSecondsKey)
+        let eligibleCount = BowlCatalog.unlockedCount(seconds: bowlUnlockSeconds)
+        if hasLoadedUnlockedCount {
+            unlockedBowlCount = min(max(BowlCatalog.initialUnlockedCount, unlockedBowlCount), eligibleCount)
+        } else {
+            // Preserve bowls earned before unlocks became an explicit action.
+            unlockedBowlCount = eligibleCount
+            hasLoadedUnlockedCount = true
+        }
+        defaults.set(unlockedBowlCount, forKey: unlockedCountKey)
     }
 
     private func reconcileCollectionWithEarnedTime(deleting sessionID: UUID? = nil) {
@@ -350,6 +374,9 @@ final class StudySessionStore {
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
+        let savedUnlockedCount = defaults.object(forKey: unlockedCountKey) as? NSNumber
+        unlockedBowlCount = savedUnlockedCount?.intValue ?? BowlCatalog.initialUnlockedCount
+        hasLoadedUnlockedCount = savedUnlockedCount != nil
         let savedUnlockSeconds = defaults.double(forKey: unlockSecondsKey)
         bowlUnlockSeconds = savedUnlockSeconds.isFinite ? max(0, savedUnlockSeconds) : 0
         if let data = defaults.data(forKey: collectionKey) {
@@ -435,7 +462,10 @@ final class StudySessionStore {
 
     func resetAllData() {
         bowlUnlockSeconds = 0
+        unlockedBowlCount = BowlCatalog.initialUnlockedCount
+        hasLoadedUnlockedCount = true
         defaults.removeObject(forKey: unlockSecondsKey)
+        defaults.set(unlockedBowlCount, forKey: unlockedCountKey)
         defaults.removeObject(forKey: key)
         defaults.set([String](), forKey: dishBaselineKey)
         defaults.removeObject(forKey: "bowlWallet.v1")

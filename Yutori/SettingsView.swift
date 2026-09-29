@@ -152,15 +152,16 @@ struct SettingsView: View {
         )
         .onAppear {
             avatarColor = ProfileAvatarView.updatedColorName(avatarColor)
-            draftName = String(profileName.prefix(40))
+            profileName = String(profileName.prefix(20))
+            draftName = profileName
             saveName()
             withAnimation(.easeInOut(duration: 2.2).repeatForever(autoreverses: true)) {
                 proBowlIsFloating = true
             }
         }
         .onChange(of: draftName) { _, name in
-            if name.count > 40 {
-                draftName = String(name.prefix(40))
+            if name.count > 20 {
+                draftName = String(name.prefix(20))
             }
         }
         .onChange(of: isEditingName) { _, editing in
@@ -240,7 +241,7 @@ struct SettingsView: View {
         }
         .sheet(isPresented: $showAppIcons) {
             AppIconPickerView()
-                .presentationDetents([.medium])
+                .presentationDetents([.fraction(0.67)])
                 .presentationDragIndicator(.visible)
                 .modifier(AppSheetStyle())
         }
@@ -682,7 +683,7 @@ struct SettingsView: View {
 
     private func saveName() {
         guard !isResetting else { return }
-        let name = String(draftName.trimmingCharacters(in: .whitespacesAndNewlines).prefix(40))
+        let name = String(draftName.trimmingCharacters(in: .whitespacesAndNewlines).prefix(20))
         if !name.isEmpty { profileName = name }
         draftName = profileName
     }
@@ -1198,20 +1199,33 @@ private struct Shipaton2026View: View {
 
 private enum JapaneseIconBackgroundStyle: String, CaseIterable, Identifiable {
     case original = "Original"
+    case shippoBlue = "ShippoBlue"
+    case asanoha = "Asanoha"
+    case kikkoLavender = "KikkoLavender"
+    case yagasuriRose = "YagasuriRose"
 
     var id: String { rawValue }
 
     var title: String {
-        "Original cream"
+        switch self {
+        case .original: "Original cream"
+        case .shippoBlue: "Shippo blue"
+        case .asanoha: "Sage asanoha"
+        case .kikkoLavender: "Kikko lavender"
+        case .yagasuriRose: "Yagasuri rose"
+        }
     }
 
     var baseColor: Color {
-        Color(red: 247 / 255, green: 244 / 255, blue: 237 / 255)
+        switch self {
+        case .original: Color(red: 247 / 255, green: 244 / 255, blue: 237 / 255)
+        case .shippoBlue: Color(red: 221 / 255, green: 231 / 255, blue: 236 / 255)
+        case .asanoha: Color(red: 228 / 255, green: 232 / 255, blue: 222 / 255)
+        case .kikkoLavender: Color(red: 226 / 255, green: 221 / 255, blue: 230 / 255)
+        case .yagasuriRose: Color(red: 247 / 255, green: 240 / 255, blue: 227 / 255)
+        }
     }
 
-    var patternColor: Color {
-        Color(red: 238 / 255, green: 223 / 255, blue: 203 / 255).opacity(0.82)
-    }
 }
 
 private extension BowlKind {
@@ -1227,37 +1241,54 @@ private extension BowlKind {
 }
 
 private struct AppIconPickerView: View {
-    @Environment(\.dismiss) private var dismiss
     @State private var store = StudySessionStore.shared
+    @State private var purchaseManager = PurchaseManager.shared
     @State private var selectedBackground: JapaneseIconBackgroundStyle = .original
-    @State private var selectedBowl: BowlKind = .teriyaki
+    @State private var selectedBowl: BowlKind?
     @State private var isApplying = false
     @State private var errorMessage: String?
+    @State private var showPaywall = false
 
     private var availableBowls: [BowlKind] {
         BowlCatalog.entries
-            .prefix(store.unlockedBowlCount)
             .compactMap(\.kind)
+            .filter { store.collectedKinds.contains($0) }
     }
 
     var body: some View {
         NavigationStack {
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 20) {
-                    AppIconPreview(background: selectedBackground, bowl: selectedBowl)
-                        .frame(width: 184, height: 184)
-                        .shadow(color: AppTheme.ink.opacity(0.18), radius: 18, y: 10)
-                        .padding(.top, 2)
+                    Group {
+                        if let selectedBowl {
+                            AppIconPreview(background: selectedBackground, bowl: selectedBowl)
+                        } else {
+                            RoundedRectangle(cornerRadius: 42, style: .continuous)
+                                .fill(AppTheme.surface.opacity(0.72))
+                                .overlay {
+                                    VStack(spacing: 10) {
+                                        Image(systemName: "takeoutbag.and.cup.and.straw")
+                                            .font(.system(size: 34, weight: .medium))
+                                        Text("Collect a bowl first")
+                                            .font(.system(size: 15, weight: .semibold, design: .rounded))
+                                    }
+                                    .foregroundStyle(AppTheme.secondaryInk)
+                                }
+                        }
+                    }
+                    .frame(width: 184, height: 184)
+                    .shadow(color: AppTheme.ink.opacity(0.18), radius: 18, y: 10)
+                    .padding(.top, 2)
 
                     Menu {
                         ForEach(JapaneseIconBackgroundStyle.allCases) { background in
                             Button {
-                                withAnimation(.spring(duration: 0.32, bounce: 0.16)) {
-                                    selectedBackground = background
-                                }
+                                chooseBackground(background)
                             } label: {
                                 if selectedBackground == background {
                                     Label(background.title, systemImage: "checkmark")
+                                } else if !purchaseManager.isPro {
+                                    Label(background.title, systemImage: "lock.fill")
                                 } else {
                                     Text(background.title)
                                 }
@@ -1290,12 +1321,12 @@ private struct AppIconPickerView: View {
                     Menu {
                         ForEach(availableBowls, id: \.self) { bowl in
                             Button {
-                                withAnimation(.spring(duration: 0.32, bounce: 0.16)) {
-                                    selectedBowl = bowl
-                                }
+                                chooseBowl(bowl)
                             } label: {
                                 if selectedBowl == bowl {
                                     Label(bowl.name, systemImage: "checkmark")
+                                } else if !purchaseManager.isPro {
+                                    Label(bowl.name, systemImage: "lock.fill")
                                 } else {
                                     Text(bowl.name)
                                 }
@@ -1303,18 +1334,24 @@ private struct AppIconPickerView: View {
                         }
                     } label: {
                         HStack(spacing: 12) {
-                            DishArtworkView(
-                                level: 3,
-                                availableWidth: 96,
-                                preferredWidth: 48,
-                                kind: selectedBowl
-                            )
+                            if let selectedBowl {
+                                DishArtworkView(
+                                    level: 3,
+                                    availableWidth: 96,
+                                    preferredWidth: 48,
+                                    kind: selectedBowl
+                                )
                                 .frame(width: 48, height: 42)
+                            } else {
+                                Image(systemName: "lock.fill")
+                                    .foregroundStyle(AppTheme.secondaryInk)
+                                    .frame(width: 48, height: 42)
+                            }
                             VStack(alignment: .leading, spacing: 2) {
-                                Text("Unlocked")
+                                Text(selectedBowl == nil ? "No collected bowls" : "Collected")
                                 .font(.system(size: 12, weight: .medium, design: .rounded))
-                                .foregroundStyle(CourseColor.green.deepTint)
-                                Text(selectedBowl.name)
+                                .foregroundStyle(selectedBowl == nil ? AppTheme.secondaryInk : CourseColor.green.deepTint)
+                                Text(selectedBowl?.name ?? "Choose a bowl")
                                     .font(.system(size: 16, weight: .semibold, design: .rounded))
                                     .foregroundStyle(AppTheme.ink)
                             }
@@ -1329,6 +1366,12 @@ private struct AppIconPickerView: View {
                     }
                     .buttonStyle(.plain)
 
+                    Text("Collect more bowls to unlock more personalized app icons.")
+                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .foregroundStyle(AppTheme.secondaryInk)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 12)
+
                     if let errorMessage {
                         Text(errorMessage)
                             .font(.system(size: 13, design: .rounded))
@@ -1336,57 +1379,62 @@ private struct AppIconPickerView: View {
                             .multilineTextAlignment(.center)
                     }
 
-                    Button(action: applyIcon) {
-                        Group {
-                            if isApplying {
-                                ProgressView().tint(.white)
-                            } else {
-                                Label("Use this icon", systemImage: "app.badge.checkmark.fill")
-                            }
-                        }
-                        .font(.system(size: 16, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity, minHeight: 54)
-                        .background(AppTheme.ink, in: Capsule())
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(isApplying)
                 }
                 .padding(.horizontal, 24)
                 .padding(.bottom, 20)
             }
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                Button(action: applyIcon) {
+                    Group {
+                        if isApplying {
+                            ProgressView().tint(.white)
+                        } else {
+                            Label("Use this icon", systemImage: "app.badge.checkmark.fill")
+                        }
+                    }
+                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity, minHeight: 54)
+                    .background(AppTheme.ink, in: Capsule())
+                }
+                .buttonStyle(.plain)
+                .disabled(isApplying || selectedBowl == nil)
+                .opacity(selectedBowl == nil ? 0.45 : 1)
+                .padding(.horizontal, 24)
+                .padding(.vertical, 8)
+            }
             .background(AppTheme.paper.ignoresSafeArea())
             .navigationTitle("App Icon")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") { dismiss() }
-                }
-            }
             .onAppear(perform: loadCurrentSelection)
+        }
+        .sheet(isPresented: $showPaywall) {
+            PaywallView()
+                .modifier(AppSheetStyle())
         }
     }
 
-    private var alternateIconName: String {
-        "AppIcon-\(selectedBackground.rawValue)-\(selectedBowl.appIconToken)"
+    private var alternateIconName: String? {
+        guard let selectedBowl else { return nil }
+        return "AppIcon-\(selectedBackground.rawValue)-\(selectedBowl.appIconToken)"
     }
 
     private func loadCurrentSelection() {
         guard let name = UIApplication.shared.alternateIconName else {
             selectedBackground = .original
-            selectedBowl = availableBowls.first ?? .teriyaki
+            selectedBowl = availableBowls.first
             return
         }
         let parts = name.split(separator: "-").map(String.init)
         if parts.count == 3, let background = JapaneseIconBackgroundStyle(rawValue: parts[1]) {
             selectedBackground = background
-            if let bowl = availableBowls.first(where: { $0.appIconToken == parts[2] }) {
-                selectedBowl = bowl
-            }
+            selectedBowl = availableBowls.first(where: { $0.appIconToken == parts[2] })
+                ?? availableBowls.first
         }
     }
 
     private func applyIcon() {
+        guard let alternateIconName else { return }
         guard UIApplication.shared.supportsAlternateIcons else {
             errorMessage = "Alternate app icons are not available on this device."
             return
@@ -1400,6 +1448,28 @@ private struct AppIconPickerView: View {
                     errorMessage = error.localizedDescription
                 }
             }
+        }
+    }
+
+    private func chooseBackground(_ background: JapaneseIconBackgroundStyle) {
+        guard background != selectedBackground else { return }
+        guard purchaseManager.isPro else {
+            showPaywall = true
+            return
+        }
+        withAnimation(.spring(duration: 0.32, bounce: 0.16)) {
+            selectedBackground = background
+        }
+    }
+
+    private func chooseBowl(_ bowl: BowlKind) {
+        guard bowl != selectedBowl else { return }
+        guard purchaseManager.isPro else {
+            showPaywall = true
+            return
+        }
+        withAnimation(.spring(duration: 0.32, bounce: 0.16)) {
+            selectedBowl = bowl
         }
     }
 }
@@ -1418,7 +1488,7 @@ private struct AppIconPreview: View {
             DishArtworkView(
                 level: 3,
                 availableWidth: 224,
-                preferredWidth: 168,
+                preferredWidth: 160,
                 kind: bowl
             )
                 .shadow(color: AppTheme.ink.opacity(0.28), radius: 7, y: 5)
@@ -1437,26 +1507,32 @@ private struct JapaneseIconBackground: View {
     let style: JapaneseIconBackgroundStyle
 
     var body: some View {
-        Canvas { context, size in
-            context.fill(Path(CGRect(origin: .zero, size: size)), with: .color(style.baseColor))
-            drawWaves(context: &context, size: size)
-        }
-    }
-
-    private func drawWaves(context: inout GraphicsContext, size: CGSize) {
-        let spacing = max(24, size.width / 6)
-        for row in -1...Int(size.height / (spacing * 0.8)) + 1 {
-            for column in -1...Int(size.width / spacing) + 1 {
-                let center = CGPoint(x: CGFloat(column) * spacing + (row.isMultiple(of: 2) ? 0 : spacing / 2),
-                                     y: CGFloat(row) * spacing * 0.8)
-                for factor in [0.25, 0.42, 0.58] as [CGFloat] {
-                    var path = Path()
-                    path.addArc(center: center, radius: spacing * factor,
-                                startAngle: .degrees(0), endAngle: .degrees(180), clockwise: false)
-                    context.stroke(path, with: .color(style.patternColor), lineWidth: max(1, size.width / 130))
-                }
+        ZStack {
+            style.baseColor
+            switch style {
+            case .original:
+                Image("AppIconBackgroundOriginal")
+                    .resizable()
+                    .scaledToFill()
+            case .shippoBlue:
+                Image("AppIconBackgroundShippoBlue")
+                    .resizable()
+                    .scaledToFill()
+            case .asanoha:
+                Image("AppIconBackgroundAsanoha")
+                    .resizable()
+                    .scaledToFill()
+            case .kikkoLavender:
+                Image("AppIconBackgroundKikkoLavender")
+                    .resizable()
+                    .scaledToFill()
+            case .yagasuriRose:
+                Image("AppIconBackgroundYagasuriRose")
+                    .resizable()
+                    .scaledToFill()
             }
         }
+        .clipped()
     }
 
 }

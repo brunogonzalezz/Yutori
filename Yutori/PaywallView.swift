@@ -84,6 +84,10 @@ struct PaywallView: View {
                                    title: "Keep learning organised",
                                    detail: "Separate your sessions and progress with ease.")
                         divider
+                        benefitRow(icon: "app.badge.fill", color: CourseColor.purple.tint,
+                                   title: "Personalized app icons",
+                                   detail: "Make Yutori yours with exclusive bowls and Japanese-inspired backgrounds.")
+                        divider
                         benefitRow(icon: "brain.head.profile", color: CourseColor.indigo.tint,
                                    title: "Made for student habits",
                                    detail: "A calm system built around focus, consistency and visible progress.")
@@ -193,7 +197,7 @@ struct PaywallView: View {
                         if let yearlyPackage {
                             planButton(package: yearlyPackage, title: "Yearly",
                                        detail: yearlyPackage.storeProduct.localizedPriceString,
-                                       accent: CourseColor.purple.tint)
+                                       accent: CourseColor.green.tint)
                         }
                     }
 

@@ -364,12 +364,7 @@
 		36EA6F2F3049D5FF00A3A8DC /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES = (
-					"AppIcon-Original-Teriyaki",
-					"AppIcon-Original-Chirashi",
-					"AppIcon-Original-Katsu",
-					"AppIcon-Original-Tofu",
-				);
+				ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES = "AppIcon-Original-Teriyaki AppIcon-Original-Chirashi AppIcon-Original-Katsu AppIcon-Original-Tofu AppIcon-ShippoBlue-Teriyaki AppIcon-ShippoBlue-Chirashi AppIcon-ShippoBlue-Katsu AppIcon-ShippoBlue-Tofu AppIcon-Asanoha-Teriyaki AppIcon-Asanoha-Chirashi AppIcon-Asanoha-Katsu AppIcon-Asanoha-Tofu AppIcon-KikkoLavender-Teriyaki AppIcon-KikkoLavender-Chirashi AppIcon-KikkoLavender-Katsu AppIcon-KikkoLavender-Tofu AppIcon-YagasuriRose-Teriyaki AppIcon-YagasuriRose-Chirashi AppIcon-YagasuriRose-Katsu AppIcon-YagasuriRose-Tofu";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
@@ -405,12 +400,7 @@
 		36EA6F303049D5FF00A3A8DC /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES = (
-					"AppIcon-Original-Teriyaki",
-					"AppIcon-Original-Chirashi",
-					"AppIcon-Original-Katsu",
-					"AppIcon-Original-Tofu",
-				);
+				ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES = "AppIcon-Original-Teriyaki AppIcon-Original-Chirashi AppIcon-Original-Katsu AppIcon-Original-Tofu AppIcon-ShippoBlue-Teriyaki AppIcon-ShippoBlue-Chirashi AppIcon-ShippoBlue-Katsu AppIcon-ShippoBlue-Tofu AppIcon-Asanoha-Teriyaki AppIcon-Asanoha-Chirashi AppIcon-Asanoha-Katsu AppIcon-Asanoha-Tofu AppIcon-KikkoLavender-Teriyaki AppIcon-KikkoLavender-Chirashi AppIcon-KikkoLavender-Katsu AppIcon-KikkoLavender-Tofu AppIcon-YagasuriRose-Teriyaki AppIcon-YagasuriRose-Chirashi AppIcon-YagasuriRose-Katsu AppIcon-YagasuriRose-Tofu";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;

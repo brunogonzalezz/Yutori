@@ -63,6 +63,7 @@ private struct BowlCollectionView: View {
     let store: StudySessionStore
     let onOpenCollectedBowl: (CollectedBowl) -> Void
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 10), count: 3)
+    @State private var isUnlockingNextBowl = false
 
     var body: some View {
         let collectedByKind = Dictionary(grouping: store.collectedBowls, by: \.bowlKind)
@@ -77,6 +78,7 @@ private struct BowlCollectionView: View {
                 ForEach(unlockedEntries) { entry in
                     let bowls = entry.kind.flatMap { collectedByKind[$0] } ?? []
                     tile(entry, collectedBowl: bowls.first, count: bowls.count, isUnlocking: false)
+                        .transition(.scale(scale: 0.72).combined(with: .opacity))
                 }
             }
 
@@ -92,6 +94,7 @@ private struct BowlCollectionView: View {
             }
         }
         .padding(.top, 2)
+        .animation(.spring(duration: 0.62, bounce: 0.18), value: store.unlockedBowlCount)
     }
 
     private func milestone(target: Int, entry: BowlCatalogEntry) -> some View {
@@ -101,18 +104,19 @@ private struct BowlCollectionView: View {
         let progress = min(1, secondsIntoMilestone / (Double(requiredHours) * 3600))
         let percentage = min(100, max(0, Int((progress * 100).rounded(.down))))
         let remainingSeconds = max(0, Double(requiredHours) * 3600 - secondsIntoMilestone)
+        let ready = store.canUnlockNextBowl
         return ZStack(alignment: .topLeading) {
             HStack(alignment: .center, spacing: 10) {
                 milestoneInformation(percentage: percentage,
                                      remainingText: unlockTimeRemaining(remainingSeconds),
                                      progress: progress)
                     .padding(.top, 35)
-                milestoneBowl(entry)
+                milestoneBowl(entry, ready: ready)
                     .frame(maxWidth: .infinity)
             }
 
             HStack(spacing: 9) {
-                Image(systemName: "lock.fill")
+                Image(systemName: ready ? "lock.open.fill" : "lock.fill")
                     .font(.system(size: 12, weight: .bold))
                     .foregroundStyle(AppTheme.paper)
                     .frame(width: 31, height: 31)
@@ -137,14 +141,43 @@ private struct BowlCollectionView: View {
                     .strokeBorder(AppTheme.ink.opacity(0.10), lineWidth: 1)
             }
         }
-        .accessibilityElement(children: .ignore)
+        .overlay {
+            if ready {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .fill(.ultraThinMaterial)
+                        .opacity(isUnlockingNextBowl ? 0.42 : 0.72)
+
+                    if !isUnlockingNextBowl {
+                        Button {
+                            unlock()
+                        } label: {
+                            Label("Unlock", systemImage: "lock.open.fill")
+                                .font(.system(size: 15, weight: .bold, design: .rounded))
+                                .foregroundStyle(AppTheme.paper)
+                                .padding(.horizontal, 22)
+                                .frame(height: 44)
+                                .background(AppTheme.ink.opacity(0.96), in: Capsule())
+                                .overlay { Capsule().strokeBorder(AppTheme.paper.opacity(0.72), lineWidth: 1) }
+                                .shadow(color: AppTheme.ink.opacity(0.22), radius: 9, y: 4)
+                        }
+                        .buttonStyle(.plain)
+                        .transition(.scale(scale: 0.86).combined(with: .opacity))
+                    }
+                }
+            }
+        }
+        .accessibilityElement(children: store.canUnlockNextBowl ? .contain : .ignore)
         .accessibilityLabel("Next bowl unlock progress")
         .accessibilityValue("\(percentage) percent, \(unlockTimeRemaining(remainingSeconds))")
     }
 
-    private func milestoneBowl(_ entry: BowlCatalogEntry) -> some View {
+    private func milestoneBowl(_ entry: BowlCatalogEntry, ready: Bool) -> some View {
         VStack(spacing: 2) {
-            milestoneArtwork(entry)
+            milestoneArtwork(entry, ready: ready)
+                .scaleEffect(isUnlockingNextBowl ? 1.12 : 1)
+                .offset(y: isUnlockingNextBowl ? -8 : 0)
+                .opacity(isUnlockingNextBowl ? 0.15 : 1)
             Text(entry.name)
                 .font(.system(size: 15, weight: .bold, design: .rounded))
                 .foregroundStyle(AppTheme.ink)
@@ -162,7 +195,7 @@ private struct BowlCollectionView: View {
                     .font(.system(size: 32, weight: .bold, design: .rounded))
                     .foregroundStyle(AppTheme.ink)
                     .monospacedDigit()
-                Text("unlocked")
+                Text("progress")
                     .font(.system(size: 11, weight: .semibold, design: .rounded))
                     .foregroundStyle(AppTheme.secondaryInk)
             }
@@ -176,11 +209,7 @@ private struct BowlCollectionView: View {
                                 .strokeBorder(CourseColor.teal.tint.opacity(0.18), lineWidth: 1)
                         }
 
-                    Capsule()
-                        .fill(LinearGradient(colors: [CourseColor.teal.tint,
-                                                      CourseColor.green.tint,
-                                                      CourseColor.lemon.tint],
-                                             startPoint: .leading, endPoint: .trailing))
+                    GoldenStripedProgress()
                         .frame(width: geometry.size.width * progress)
                 }
             }
@@ -205,7 +234,7 @@ private struct BowlCollectionView: View {
         return "\(minutes)m remaining"
     }
 
-    private func milestoneArtwork(_ entry: BowlCatalogEntry) -> some View {
+    private func milestoneArtwork(_ entry: BowlCatalogEntry, ready: Bool) -> some View {
         let kind = entry.kind ?? .teriyaki
         return ZStack {
             AppTheme.muted
@@ -223,7 +252,7 @@ private struct BowlCollectionView: View {
                     }
                 }
 
-            Image(systemName: "lock.fill")
+            Image(systemName: ready ? "lock.open.fill" : "lock.fill")
                 .font(.system(size: 14, weight: .bold))
                 .foregroundStyle(AppTheme.paper)
                 .frame(width: 34, height: 34)
@@ -234,6 +263,20 @@ private struct BowlCollectionView: View {
         }
         .frame(width: 136, height: 116)
         .accessibilityHidden(true)
+    }
+
+    private func unlock() {
+        guard store.canUnlockNextBowl, !isUnlockingNextBowl else { return }
+        withAnimation(.spring(duration: 0.42, bounce: 0.28)) {
+            isUnlockingNextBowl = true
+        }
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(430))
+            withAnimation(.spring(duration: 0.62, bounce: 0.18)) {
+                _ = store.unlockNextBowl()
+                isUnlockingNextBowl = false
+            }
+        }
     }
 
     private func tile(_ entry: BowlCatalogEntry, collectedBowl: CollectedBowl?, count: Int,
@@ -334,6 +377,23 @@ private struct BowlCollectionView: View {
         case .tofuCurry: CourseColor.sky.tint
         case .chirashi: CourseColor.blue.tint
         }
+    }
+}
+
+private struct GoldenStripedProgress: View {
+    var body: some View {
+        Canvas { context, size in
+            context.fill(Path(CGRect(origin: .zero, size: size)), with: .color(CourseColor.lemon.tint))
+            var stripes = Path()
+            for startX in stride(from: -size.height, through: size.width + size.height, by: 9) {
+                stripes.move(to: CGPoint(x: startX, y: size.height))
+                stripes.addLine(to: CGPoint(x: startX + size.height, y: 0))
+            }
+            context.stroke(stripes,
+                           with: .color(AppTheme.paper.opacity(0.42)),
+                           style: StrokeStyle(lineWidth: 3, lineCap: .butt))
+        }
+        .clipShape(Capsule())
     }
 }
 
