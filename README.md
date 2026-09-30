@@ -8,8 +8,6 @@ You can spend hours studying and still feel like you have nothing to show for it
 
 **So I made Yutori.**
 
----
-
 ## The idea
 
 Yutori combines a study timer, statistics, and a visual representation of your progress.
@@ -29,7 +27,6 @@ The name **Yutori (ゆとり)** can refer to having extra space, time, or mental
 
 **Swift · SwiftUI · RevenueCat**
 
----
 
 ## Shipaton
 
