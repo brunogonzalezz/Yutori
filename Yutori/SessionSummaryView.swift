@@ -26,7 +26,7 @@ struct SessionSummaryView: View {
     @State private var showsCoursePicker = false
     @State private var selectedCourse: StudyCourse?
     @State private var courseStore = CourseStore.shared
-    @State private var descriptionExample = "Reviewed my notes"
+    @State private var descriptionExample = AppLanguage.localized("Reviewed my notes")
     @FocusState private var descriptionFocused: Bool
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
@@ -38,7 +38,7 @@ struct SessionSummaryView: View {
 
     private func animateDescriptions() async {
         guard animatesDescription else { return }
-        let examples = ["Reviewed my notes", "Practised exam questions", "Finished chapter 3", "Revised for tomorrow's test", "Studied a new topic"]
+        let examples = ["Reviewed my notes", "Practised exam questions", "Finished chapter 3", "Revised for tomorrow's test", "Studied a new topic"].map(AppLanguage.localized)
         do {
             while !Task.isCancelled {
                 for example in examples {
@@ -58,7 +58,7 @@ struct SessionSummaryView: View {
                 }
             }
         } catch {
-            descriptionExample = "Reviewed my notes"
+            descriptionExample = AppLanguage.localized("Reviewed my notes")
         }
     }
 
@@ -427,7 +427,9 @@ struct SessionSummaryView: View {
                 }
             }
             .frame(width: width, height: 140)
-            Text(savedSession != nil && savedSession?.startingDishSeconds == nil ? "Not recorded" : "Level \(level)")
+            Text(savedSession != nil && savedSession?.startingDishSeconds == nil
+                 ? AppLanguage.localized("Not recorded")
+                 : AppLanguage.formatted("Level %lld", Int64(level)))
                 .font(.system(size: 19, weight: .semibold, design: .rounded))
                 .foregroundStyle(AppTheme.ink)
         }
@@ -439,7 +441,7 @@ struct SessionSummaryView: View {
             Text(value).font(.system(size: 34, weight: .bold, design: .rounded)).monospacedDigit()
                 .foregroundStyle(AppTheme.paper)
                 .lineLimit(1).minimumScaleFactor(0.65)
-            Text(label).font(.system(size: 13, weight: .medium, design: .rounded))
+            Text(AppLanguage.localized(label)).font(.system(size: 13, weight: .medium, design: .rounded))
                 .foregroundStyle(AppTheme.paper.opacity(0.72))
                 .lineLimit(1).minimumScaleFactor(0.8)
         }

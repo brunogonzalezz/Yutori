@@ -91,7 +91,7 @@ struct CoursesPage: View {
                                 .contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)
-                            .accessibilityLabel("Edit \(course.name)")
+                            .accessibilityLabel(AppLanguage.formatted("Edit %@", course.name))
                         }
                     }
                 }
@@ -171,7 +171,7 @@ struct CourseEditorView: View {
     }
     @State private var activeAlert: EditorAlert?
     @State private var preparedColor = false
-    @State private var nameExample = "Maths"
+    @State private var nameExample = AppLanguage.localized("Maths")
     @FocusState private var nameFocused: Bool
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
@@ -182,7 +182,7 @@ struct CourseEditorView: View {
 
     private func animateNameExamples() async {
         guard animatesNameExample else { return }
-        let examples = ["Maths", "Science", "History", "Biology", "Art", "Physics", "English"]
+        let examples = ["Maths", "Science", "History", "Biology", "Art", "Physics", "English"].map(AppLanguage.localized)
         do {
             while !Task.isCancelled {
                 for example in examples {
@@ -202,7 +202,7 @@ struct CourseEditorView: View {
                 }
             }
         } catch {
-            nameExample = "Maths"
+            nameExample = AppLanguage.localized("Maths")
         }
     }
 
@@ -264,16 +264,16 @@ struct CourseEditorView: View {
                             .buttonStyle(.plain)
                             .disabled(!available)
                             .opacity(available ? 1 : 0.4)
-                            .accessibilityLabel(color.displayName)
-                            .accessibilityHint(available ? "Available" : "Used by another course")
+                            .accessibilityLabel(Text(color.displayName))
+                            .accessibilityHint(Text(AppLanguage.localized(available ? "Available" : "Used by another course")))
                             .accessibilityAddTraits(course.color.paletteColor == color.paletteColor ? .isSelected : [])
                         }
                     }
                     .padding(.vertical, 4)
                     if !store.isColorAvailable(course.color, for: course.id) {
-                        Text(CourseColor.selectable.contains { store.isColorAvailable($0, for: course.id) }
+                        Text(AppLanguage.localized(CourseColor.selectable.contains { store.isColorAvailable($0, for: course.id) }
                              ? "Choose an unused color. Each course has its own color."
-                             : "All colors are in use. Free a color by deleting a course first.")
+                             : "All colors are in use. Free a color by deleting a course first."))
                             .font(.caption)
                             .foregroundStyle(AppTheme.secondaryInk)
                     }
@@ -296,7 +296,7 @@ struct CourseEditorView: View {
                                     }
                             }
                             .buttonStyle(.plain)
-                            .accessibilityLabel(name)
+                            .accessibilityLabel(Text(AppLanguage.localized(name)))
                             .accessibilityAddTraits(course.icon == icon ? .isSelected : [])
                         }
                     }
@@ -348,7 +348,7 @@ struct CourseEditorView: View {
                     return Alert(title: Text("Couldn't save course"), message: Text("Please try again. Your changes haven't been saved."))
                 }
             }
-            .navigationTitle(store.courses.contains(where: { $0.id == course.id }) ? "Edit course" : "New course")
+            .navigationTitle(AppLanguage.localized(store.courses.contains(where: { $0.id == course.id }) ? "Edit course" : "New course"))
             .navigationBarTitleDisplayMode(.inline)
             .navigationBarBackButtonHidden()
             .onAppear {
@@ -376,7 +376,7 @@ struct CourseEditorView: View {
                     activeAlert = .saveFailed
                 }
             } label: {
-                Text(store.courses.contains(where: { $0.id == course.id }) ? "Save changes" : "Create course")
+                Text(AppLanguage.localized(store.courses.contains(where: { $0.id == course.id }) ? "Save changes" : "Create course"))
                     .font(.system(size: 17, weight: .semibold, design: .rounded))
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity, minHeight: 50)

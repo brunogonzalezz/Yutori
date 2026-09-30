@@ -226,7 +226,7 @@ enum PurchaseManagerError: LocalizedError {
         case .notConfigured:
             "Add REVENUECAT_API_KEY to the Yutori Run scheme or RevenueCatSecrets.plist for Debug builds."
         case .operationInProgress:
-            "A purchase is already being processed. Finish or cancel it, then try again."
+            AppLanguage.localized("A purchase is already being processed. Finish or cancel it, then try again.")
         }
     }
 }

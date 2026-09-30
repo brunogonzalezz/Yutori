@@ -92,6 +92,9 @@ struct SessionEmptyStateCard: View {
                     Text("Your study story starts here")
                         .font(.system(size: 16, weight: .bold, design: .rounded))
                         .foregroundStyle(AppTheme.ink)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.88)
+                        .allowsTightening(true)
 
                     Text("Complete a session and it will appear in your history.")
                         .font(.system(size: 12, design: .rounded))

@@ -17,15 +17,16 @@ struct StudySessionActivityWidget: Widget {
         ActivityConfiguration(for: StudyActivityAttributes.self) { context in
             GeometryReader { geometry in
                 HStack(alignment: .center, spacing: 16) {
-                    bowl(context.state, large: true)
+                    bowl(context.state, language: context.state.languageCode ?? context.attributes.languageCode, large: true)
                         .frame(width: min(140, geometry.size.width * 0.42), height: 132)
                     VStack(alignment: .center, spacing: 10) {
                         clock(context.state)
                             .font(.system(size: 48, weight: .bold, design: .rounded))
                             .multilineTextAlignment(.center)
                             .frame(maxWidth: .infinity)
-                            .accessibilityLabel("Elapsed study time")
+                            .accessibilityLabel(activityText("Elapsed study time", language: context.state.languageCode ?? context.attributes.languageCode))
                         controls(context.attributes.sessionID,
+                                 language: context.state.languageCode ?? context.attributes.languageCode,
                                  paused: context.state.runningSince == nil,
                                  size: 50, spacing: 16)
                     }
@@ -52,7 +53,7 @@ struct StudySessionActivityWidget: Widget {
                     // Keep both columns inside the usable area below the camera.
                     // Fixed-size lateral regions can extend beyond the system's lower mask.
                     HStack(alignment: .center, spacing: 12) {
-                        bowl(context.state, large: true)
+                        bowl(context.state, language: context.state.languageCode ?? context.attributes.languageCode, large: true)
                             .frame(width: 132, height: 100)
                         VStack(spacing: 8) {
                             clock(context.state)
@@ -62,6 +63,7 @@ struct StudySessionActivityWidget: Widget {
                                 .frame(maxWidth: .infinity)
                                 .frame(height: 44)
                             controls(context.attributes.sessionID,
+                                     language: context.state.languageCode ?? context.attributes.languageCode,
                                      paused: context.state.runningSince == nil,
                                      size: 48, spacing: 16, systemStyle: true)
                         }
@@ -72,7 +74,7 @@ struct StudySessionActivityWidget: Widget {
                     .padding(.bottom, 8)
                 }
             } compactLeading: {
-                bowl(context.state)
+                bowl(context.state, language: context.state.languageCode ?? context.attributes.languageCode)
                     .frame(width: 28, height: 28)
             } compactTrailing: {
                 clock(context.state)
@@ -81,22 +83,22 @@ struct StudySessionActivityWidget: Widget {
                     .multilineTextAlignment(.trailing)
                     .frame(width: 52, height: 28, alignment: .trailing)
             } minimal: {
-                bowl(context.state, compact: true).frame(width: 24, height: 24)
+                bowl(context.state, language: context.state.languageCode ?? context.attributes.languageCode, compact: true).frame(width: 24, height: 24)
             }
             .keylineTint(ink)
         }
     }
 
-    private func bowl(_ state: StudyActivityAttributes.ContentState, compact: Bool = false, large: Bool = false) -> some View {
+    private func bowl(_ state: StudyActivityAttributes.ContentState, language: String?, compact: Bool = false, large: Bool = false) -> some View {
         Image(state.imageName + (compact ? "Small" : (large ? "Large" : ""))).resizable().interpolation(.none).scaledToFit()
-            .accessibilityLabel("Bowl level \(state.level)")
+            .accessibilityLabel(activityFormatted("Bowl level %lld", language: language, Int64(state.level)))
     }
 
     private func clock(_ state: StudyActivityAttributes.ContentState) -> some View {
         StudyActivityClock(state: state)
     }
 
-    private func controls(_ id: String, paused: Bool, size: CGFloat = 44, spacing: CGFloat? = nil, systemStyle: Bool = false) -> some View {
+    private func controls(_ id: String, language: String?, paused: Bool, size: CGFloat = 44, spacing: CGFloat? = nil, systemStyle: Bool = false) -> some View {
         let pauseColor = systemStyle ? Color(red: 44 / 255, green: 44 / 255, blue: 46 / 255) : ink
         let stopColor = systemStyle ? Color(red: 255 / 255, green: 59 / 255, blue: 48 / 255) : vermilion
         return HStack(spacing: spacing ?? (size == 60 ? 24 : 16)) {
@@ -108,7 +110,7 @@ struct StudySessionActivityWidget: Widget {
                     .contentShape(Circle())
             }
             .tint(pauseColor)
-            .accessibilityLabel(paused ? "Resume session" : "Pause session")
+            .accessibilityLabel(activityText(paused ? "Resume session" : "Pause session", language: language))
             Button(intent: FinishStudySessionIntent(sessionID: id)) {
                 Image(systemName: "xmark")
                     .font(.system(size: size * 0.45, weight: .bold, design: .rounded))
@@ -117,11 +119,22 @@ struct StudySessionActivityWidget: Widget {
                     .contentShape(Circle())
             }
             .tint(stopColor)
-            .accessibilityLabel("Finish session")
+            .accessibilityLabel(activityText("Finish session", language: language))
         }
         .buttonStyle(.plain)
         .foregroundStyle(systemStyle ? Color.white : paper)
     }
+}
+
+private func activityText(_ key: String, language: String?) -> String {
+    guard language == "es",
+          let path = Bundle.main.path(forResource: "es", ofType: "lproj"),
+          let bundle = Bundle(path: path) else { return key }
+    return bundle.localizedString(forKey: key, value: key, table: "Localizable")
+}
+
+private func activityFormatted(_ key: String, language: String?, _ arguments: CVarArg...) -> String {
+    String(format: activityText(key, language: language), locale: Locale(identifier: language ?? "en"), arguments: arguments)
 }
 
 private struct StudyActivityClock: View {

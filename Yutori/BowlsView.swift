@@ -225,9 +225,15 @@ private struct BowlCollectionView: View {
 
     private func unlockTimeRemaining(_ seconds: TimeInterval) -> String {
         let totalMinutes = max(0, Int(ceil(seconds / 60)))
-        guard totalMinutes > 0 else { return "Ready to unlock" }
+        guard totalMinutes > 0 else { return AppLanguage.localized("Ready to unlock") }
         let hours = totalMinutes / 60
         let minutes = totalMinutes % 60
+        if AppLanguage.selected == .spanish {
+            if hours > 0 {
+                return minutes > 0 ? "Quedan \(hours) h \(minutes) min" : "Quedan \(hours) h"
+            }
+            return "Quedan \(minutes) min"
+        }
         if hours > 0 {
             return minutes > 0 ? "\(hours)h \(minutes)m remaining" : "\(hours)h remaining"
         }
@@ -361,8 +367,10 @@ private struct BowlCollectionView: View {
                 .frame(height: 30, alignment: .top)
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(distant ? "Mystery bowl" : entry.name), \(collected ? "collected" : (unlocked ? "unlocked" : "locked"))")
-        .accessibilityValue(collected ? "Completed \(count) times" : (unlocked && entry.kind == nil ? "Coming soon" : ""))
+        .accessibilityLabel("\(distant ? AppLanguage.localized("Mystery bowl") : entry.name), \(AppLanguage.localized(collected ? "collected" : (unlocked ? "unlocked" : "locked")))")
+        .accessibilityValue(collected
+                            ? AppLanguage.formatted("Completed %lld times", Int64(count))
+                            : (unlocked && entry.kind == nil ? AppLanguage.localized("Coming soon") : ""))
         .accessibilityAddTraits(collected ? .isButton : [])
         .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         .onTapGesture {
@@ -450,42 +458,32 @@ private struct CollectedBowlDetailView: View {
     }
 
     var body: some View {
-        ZStack(alignment: .topTrailing) {
-            LinearGradient(colors: [containerColor.opacity(0.31),
-                                    containerColor.opacity(0.12),
-                                    AppTheme.paper],
-                           startPoint: .top, endPoint: .bottom)
-                .ignoresSafeArea()
+        NavigationStack {
+            ZStack {
+                LinearGradient(colors: [containerColor.opacity(0.31),
+                                        containerColor.opacity(0.12),
+                                        AppTheme.paper],
+                               startPoint: .top, endPoint: .bottom)
+                    .ignoresSafeArea()
 
-            ScrollView(showsIndicators: false) {
-                VStack(spacing: 28) {
-                    hero
-                    story
-                    ingredients
-                    journey
-                }
-                .padding(.horizontal, 24)
-                .padding(.top, 52)
-                .padding(.bottom, 42)
-            }
-
-            Button(action: { dismiss() }) {
-                Image(systemName: "xmark")
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundStyle(AppTheme.ink)
-                    .frame(width: 46, height: 46)
-                    .background(AppTheme.surface, in: Circle())
-                    .overlay {
-                        Circle().strokeBorder(AppTheme.ink.opacity(0.08), lineWidth: 1)
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 28) {
+                        hero
+                        story
+                        ingredients
+                        journey
                     }
-                    .contentShape(Circle())
-                    .shadow(color: AppTheme.ink.opacity(0.14), radius: 8, y: 4)
+                    .padding(.horizontal, 24)
+                    .padding(.top, 8)
+                    .padding(.bottom, 42)
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Close bowl details")
-                .padding(.top, 10)
-                .padding(.trailing, 20)
-                .zIndex(10)
+            }
+            .toolbarBackground(.hidden, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Close", systemImage: "xmark") { dismiss() }
+                }
+            }
         }
         .sheet(item: $selectedSession) { session in
             Group {
@@ -519,7 +517,13 @@ private struct CollectedBowlDetailView: View {
                 .font(.system(size: 34, weight: .bold, design: .rounded))
                 .multilineTextAlignment(.center)
 
-            Label("Collected \(bowl.collectedAt.formatted(date: .abbreviated, time: .omitted))",
+            Label(AppLanguage.formatted(
+                "Collected %@",
+                bowl.collectedAt.formatted(
+                    Date.FormatStyle(date: .abbreviated, time: .omitted)
+                        .locale(AppLanguage.selected.locale)
+                )
+            ),
                   systemImage: "checkmark.seal.fill")
                 .font(.system(size: 13, weight: .semibold, design: .rounded))
                 .foregroundStyle(CourseColor.green.deepTint)
@@ -533,7 +537,7 @@ private struct CollectedBowlDetailView: View {
 
     private var story: some View {
         detailSection(title: "About this bowl", icon: "text.book.closed.fill", accent: colors[0]) {
-            Text(bowl.bowlKind.bowlDescription)
+            Text(AppLanguage.localized(bowl.bowlKind.bowlDescription))
                 .font(.system(size: 15, design: .rounded))
                 .foregroundStyle(AppTheme.secondaryInk)
                 .lineSpacing(4)
@@ -546,7 +550,7 @@ private struct CollectedBowlDetailView: View {
             IngredientFlowLayout(spacing: 8) {
                 ForEach(bowl.bowlKind.ingredients, id: \.self) { ingredient in
                     let color = ingredientColor(ingredient)
-                    Text(ingredient)
+                    Text(AppLanguage.localized(ingredient))
                         .font(.system(size: 13, weight: .semibold, design: .rounded))
                         .foregroundStyle(color.deepTint)
                         .fixedSize(horizontal: true, vertical: false)
@@ -599,7 +603,7 @@ private struct CollectedBowlDetailView: View {
                             sessionRow(session)
                         }
                         .buttonStyle(.plain)
-                        .accessibilityHint("Open session summary")
+                        .accessibilityHint(AppLanguage.localized("Open session summary"))
                     }
                 }
             }
@@ -607,7 +611,8 @@ private struct CollectedBowlDetailView: View {
     }
 
     private var sessionCountText: String {
-        "\(bowlSessions.count) \(bowlSessions.count == 1 ? "session" : "sessions")"
+        let unit = AppLanguage.localized(bowlSessions.count == 1 ? "session" : "sessions")
+        return "\(bowlSessions.count) \(unit)"
     }
 
     private func sessionRow(_ session: StudySession) -> some View {
@@ -622,7 +627,9 @@ private struct CollectedBowlDetailView: View {
                         .foregroundStyle(AppTheme.secondaryInk)
                         .lineLimit(1)
                 }
-                Text(session.endedAt.formatted(date: .abbreviated, time: .shortened))
+                Text(session.endedAt.formatted(
+                    Date.FormatStyle(date: .abbreviated, time: .shortened).locale(AppLanguage.selected.locale)
+                ))
                     .font(.system(size: 11, design: .rounded))
                     .foregroundStyle(AppTheme.secondaryInk.opacity(0.82))
             }
@@ -644,9 +651,9 @@ private struct CollectedBowlDetailView: View {
             Image(systemName: icon)
                 .font(.system(size: 25, weight: .medium))
                 .foregroundStyle(AppTheme.secondaryInk)
-            Text(title)
+            Text(AppLanguage.localized(title))
                 .font(.system(size: 15, weight: .bold, design: .rounded))
-            Text(text)
+            Text(AppLanguage.localized(text))
                 .font(.system(size: 13, design: .rounded))
                 .foregroundStyle(AppTheme.secondaryInk)
                 .multilineTextAlignment(.center)
@@ -660,7 +667,11 @@ private struct CollectedBowlDetailView: View {
                                                @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .firstTextBaseline, spacing: 10) {
-                Label(title, systemImage: icon)
+                Label {
+                    Text(AppLanguage.localized(title))
+                } icon: {
+                    Image(systemName: icon)
+                }
                     .font(.system(size: 18, weight: .bold, design: .rounded))
                     .foregroundStyle(AppTheme.ink)
                     .symbolRenderingMode(.hierarchical)

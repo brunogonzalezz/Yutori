@@ -55,7 +55,7 @@ struct HomeView: View {
                 .accessibilityLabel("Open settings")
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(greeting)
+                    Text(AppLanguage.localized(greeting))
                         .font(.system(size: 14, weight: .medium, design: .rounded))
                         .foregroundStyle(AppTheme.secondaryInk)
 
@@ -111,7 +111,11 @@ struct HomeView: View {
                 VStack(alignment: .leading, spacing: -4) {
                     DishProgressBar(progress: dishProgress)
 
-                    Text(sessionStore.loadFailed ? "Progress unavailable" : dishProgress.isComplete ? "Dish complete!" : "\(dishProgress.remainingMinutes) min remaining")
+                    Text(sessionStore.loadFailed
+                         ? AppLanguage.localized("Progress unavailable")
+                         : dishProgress.isComplete
+                           ? AppLanguage.localized("Dish complete!")
+                           : AppLanguage.formatted("%lld min remaining", Int64(dishProgress.remainingMinutes)))
                         .font(.system(size: 16, design: .rounded))
                         .foregroundStyle(AppTheme.secondaryInk)
                         .lineLimit(1)
@@ -347,7 +351,7 @@ struct DishArtworkView: View {
         }
         .padding(.top, index == 0 ? 14 * screenFactor : 0)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Dish level \(index) of 5")
+        .accessibilityLabel(AppLanguage.formatted("Dish level %lld of 5", Int64(index)))
     }
 }
 
@@ -423,8 +427,10 @@ struct DishProgressBar: View {
         }
         .frame(height: 36)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(progress.isComplete ? "Dish complete" : "Progress to level \(progress.level + 1)")
-        .accessibilityValue("\(Int(progress.fraction * 100)) percent")
+        .accessibilityLabel(progress.isComplete
+                            ? AppLanguage.localized("Dish complete")
+                            : AppLanguage.formatted("Progress to level %lld", Int64(progress.level + 1)))
+        .accessibilityValue(AppLanguage.formatted("%lld percent", Int64(progress.fraction * 100)))
     }
 }
 

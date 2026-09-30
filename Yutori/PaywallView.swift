@@ -155,9 +155,9 @@ struct PaywallView: View {
                     .font(.system(size: 20, weight: .semibold))
                     .foregroundStyle(isSelected ? accent : AppTheme.muted)
 
-                Text(title)
+                Text(AppLanguage.localized(title))
                     .font(.system(size: 17, weight: .semibold, design: .rounded))
-                Text(detail)
+                Text(AppLanguage.localized(detail))
                     .font(.system(size: 15, weight: .medium, design: .rounded))
                     .foregroundStyle(AppTheme.secondaryInk)
                     .lineLimit(1)
@@ -210,7 +210,7 @@ struct PaywallView: View {
                 }
 
                 if let errorMessage {
-                    Text(errorMessage)
+                    Text(AppLanguage.localized(errorMessage))
                         .font(.system(size: 13, design: .rounded))
                         .foregroundStyle(.red)
                         .multilineTextAlignment(.center)
@@ -258,9 +258,9 @@ struct PaywallView: View {
                 .frame(width: 40, height: 40)
                 .background(color, in: RoundedRectangle(cornerRadius: 13, style: .continuous))
             VStack(alignment: .leading, spacing: 3) {
-                Text(title)
+                Text(AppLanguage.localized(title))
                     .font(.system(size: 16, weight: .semibold, design: .rounded))
-                Text(detail)
+                Text(AppLanguage.localized(detail))
                     .font(.system(size: 13, design: .rounded))
                     .foregroundStyle(AppTheme.secondaryInk)
                     .fixedSize(horizontal: false, vertical: true)
@@ -291,7 +291,9 @@ struct PaywallView: View {
                 }
             }
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = AppLanguage.selected == .spanish
+                ? AppLanguage.localized("We couldn't load the plans. Please try again.")
+                : error.localizedDescription
         }
         isLoadingOfferings = false
     }
@@ -308,7 +310,9 @@ struct PaywallView: View {
                     showCongratulations = true
                 }
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = AppLanguage.selected == .spanish
+                    ? AppLanguage.localized("We couldn't complete the purchase. Please try again.")
+                    : error.localizedDescription
             }
         }
     }
@@ -328,7 +332,9 @@ struct PaywallView: View {
                     errorMessage = "No active Yutori Pro purchase was found."
                 }
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = AppLanguage.selected == .spanish
+                    ? AppLanguage.localized("We couldn't restore your purchases. Please try again.")
+                    : error.localizedDescription
             }
         }
     }

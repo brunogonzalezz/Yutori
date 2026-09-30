@@ -2,9 +2,10 @@ import Foundation
 
 struct BowlCatalogEntry: Identifiable {
     let id: Int
-    let name: String
+    let sourceName: String
     let kind: BowlKind?
     let previewImageName: String?
+    var name: String { AppLanguage.localized(sourceName) }
     var requiredHours: Int { id < BowlCatalog.initialUnlockedCount ? 0 : (id - 2) * BowlCatalog.hoursPerBowl }
 }
 
@@ -45,7 +46,7 @@ enum BowlCatalog {
         case 20: "NasuDengakuBowlLevel5"
         default: nil
         }
-        return BowlCatalogEntry(id: index, name: name, kind: kind, previewImageName: previewImageName)
+        return BowlCatalogEntry(id: index, sourceName: name, kind: kind, previewImageName: previewImageName)
     }
 
     static func unlockedCount(seconds: TimeInterval) -> Int {

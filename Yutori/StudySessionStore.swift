@@ -119,10 +119,10 @@ enum BowlKind: String, Codable, CaseIterable {
     case teriyaki, katsuRamen, tofuCurry, chirashi
     var name: String {
         switch self {
-        case .teriyaki: "Teriyaki Bowl"
-        case .katsuRamen: "Katsu Ramen"
-        case .tofuCurry: "Tofu Curry"
-        case .chirashi: "Chirashi Bowl"
+        case .teriyaki: AppLanguage.localized("Teriyaki Bowl")
+        case .katsuRamen: AppLanguage.localized("Katsu Ramen")
+        case .tofuCurry: AppLanguage.localized("Tofu Curry")
+        case .chirashi: AppLanguage.localized("Chirashi Bowl")
         }
     }
     func imageName(level: Int) -> String {

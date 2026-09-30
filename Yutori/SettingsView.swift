@@ -25,7 +25,7 @@ struct SettingsView: View {
     @State private var feedbackError = false
     @State private var showReviewNotice = false
     @State private var nameFrame: CGRect = .zero
-    @State private var selectedLanguage = "English"
+    @AppStorage(AppLanguage.storageKey) private var selectedLanguage = AppLanguage.english.rawValue
     @State private var confirmReset = false
     @State private var isResetting = false
     @State private var showDeleteChallenge = false
@@ -218,7 +218,7 @@ struct SettingsView: View {
                                                 .foregroundStyle(option.color)
                                         }
                                     }
-                                Text(option.name)
+                                Text(AppLanguage.localized(option.name))
                                     .font(.system(size: 12, weight: .medium, design: .rounded))
                                     .foregroundStyle(AppTheme.ink)
                                     .multilineTextAlignment(.center)
@@ -272,7 +272,7 @@ struct SettingsView: View {
         ) {
             Button("OK", role: .cancel) { restorePurchasesMessage = nil }
         } message: {
-            Text(restorePurchasesMessage ?? "")
+            Text(AppLanguage.localized(restorePurchasesMessage ?? ""))
         }
     }
 
@@ -409,16 +409,18 @@ struct SettingsView: View {
                         } icon: {
                             Image(uiImage: Self.englishFlag)
                                 .renderingMode(.original)
-                        }.tag("English")
+                        }.tag(AppLanguage.english.rawValue)
                         Label {
                             Text("Español")
                         } icon: {
                             Image(uiImage: Self.spanishFlag)
                                 .renderingMode(.original)
-                        }.tag("Español")
+                        }.tag(AppLanguage.spanish.rawValue)
                     }
                 } label: {
-                    settingsRow("Language", icon: "character.bubble", selection: selectedLanguage, flag: selectedLanguageFlag)
+                    settingsRow("Language", icon: "character.bubble",
+                                selection: AppLanguage.localized(AppLanguage(rawValue: selectedLanguage)?.title ?? AppLanguage.english.title),
+                                flag: selectedLanguageFlag)
                         .transaction { $0.animation = nil }
                 }
                 .buttonStyle(.plain)
@@ -536,7 +538,10 @@ struct SettingsView: View {
             .padding(.top, 12)
 #endif
 
-            Text("Version \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—")")
+            Text(AppLanguage.formatted(
+                "Version %@",
+                Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—"
+            ))
                 .font(.system(size: 13, design: .rounded))
                 .foregroundStyle(AppTheme.secondaryInk)
                 .padding(.top, 12)
@@ -573,7 +578,7 @@ struct SettingsView: View {
         @ViewBuilder content: () -> Content
     ) -> some View {
         VStack(alignment: .leading, spacing: 7) {
-            Text(title)
+            Text(AppLanguage.localized(title))
                 .font(.system(size: 13, weight: .medium, design: .rounded))
                 .foregroundStyle(AppTheme.secondaryInk)
                 .padding(.leading, 4)
@@ -591,7 +596,7 @@ struct SettingsView: View {
                 .font(.system(size: 19, design: .rounded))
                 .frame(width: 24)
                 .accessibilityHidden(true)
-            Text(title)
+            Text(AppLanguage.localized(title))
                 .font(.system(size: 18, design: .rounded))
             Spacer(minLength: 8)
             HStack(spacing: 5) {
@@ -603,7 +608,7 @@ struct SettingsView: View {
                         .accessibilityHidden(true)
                 }
                 if let selection {
-                    Text(selection)
+                    Text(AppLanguage.localized(selection))
                         .font(.system(size: 14, design: .rounded))
                         .foregroundStyle(AppTheme.ink)
                         .lineLimit(1)
@@ -651,14 +656,16 @@ struct SettingsView: View {
                     ? "Yutori Pro has been restored."
                     : "No active Yutori Pro purchase was found."
             } catch {
-                restorePurchasesMessage = error.localizedDescription
+                restorePurchasesMessage = AppLanguage.selected == .spanish
+                    ? AppLanguage.localized("We couldn't restore your purchases. Please try again.")
+                    : error.localizedDescription
             }
         }
     }
 
     private var selectedLanguageFlag: UIImage {
         switch selectedLanguage {
-        case "Español": return Self.spanishFlag
+        case AppLanguage.spanish.rawValue: return Self.spanishFlag
         default: return Self.englishFlag
         }
     }
@@ -671,7 +678,10 @@ struct SettingsView: View {
         var components = URLComponents()
         components.scheme = "mailto"
         components.path = "brunoogonzalezcano@gmail.com"
-        components.queryItems = [URLQueryItem(name: "subject", value: "Yutori Feedback")]
+        components.queryItems = [URLQueryItem(
+            name: "subject",
+            value: AppLanguage.localized("Yutori Feedback")
+        )]
         guard let url = components.url else {
             feedbackError = true
             return
@@ -785,9 +795,9 @@ private struct LegalDocumentView: View {
                         .foregroundStyle(.white)
                         .frame(width: 64, height: 64)
                         .background(CourseColor.teal.tint, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-                    Text(document.title)
+                    Text(AppLanguage.localized(document.title))
                         .font(.system(size: 34, weight: .bold, design: .rounded))
-                    Text(document.introduction)
+                    Text(AppLanguage.localized(document.introduction))
                         .font(.system(size: 16, design: .rounded))
                         .foregroundStyle(AppTheme.secondaryInk)
                         .lineSpacing(3)
@@ -796,9 +806,9 @@ private struct LegalDocumentView: View {
                 VStack(alignment: .leading, spacing: 22) {
                     ForEach(Array(document.sections.enumerated()), id: \.offset) { _, section in
                         VStack(alignment: .leading, spacing: 7) {
-                            Text(section.0)
+                            Text(AppLanguage.localized(section.0))
                                 .font(.system(size: 18, weight: .bold, design: .rounded))
-                            Text(section.1)
+                            Text(AppLanguage.localized(section.1))
                                 .font(.system(size: 15, design: .rounded))
                                 .foregroundStyle(AppTheme.secondaryInk)
                                 .lineSpacing(4)
@@ -889,10 +899,12 @@ private struct AccountDeletionChallengeView: View {
                 }
                 .buttonStyle(.plain)
                 .disabled(fragmentsVisible)
-                .accessibilityLabel("Break (kind.name)")
-                .accessibilityValue("\(hitCount) of \(requiredHits) hits")
+                .accessibilityLabel(AppLanguage.formatted("Break %@", kind.name))
+                .accessibilityValue(AppLanguage.formatted("%lld of %lld hits", Int64(hitCount), Int64(requiredHits)))
 
-                Text(hitCount == 0 ? "Tap to begin" : "\(requiredHits - hitCount) taps remaining")
+                Text(hitCount == 0
+                     ? AppLanguage.localized("Tap to begin")
+                     : AppLanguage.formatted("%lld taps remaining", Int64(requiredHits - hitCount)))
                     .font(.system(size: 15, weight: .semibold, design: .rounded))
                     .foregroundStyle(AppTheme.secondaryInk)
                     .monospacedDigit()
@@ -1208,11 +1220,11 @@ private enum JapaneseIconBackgroundStyle: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .original: "Original cream"
-        case .shippoBlue: "Shippo blue"
-        case .asanoha: "Sage asanoha"
-        case .kikkoLavender: "Kikko lavender"
-        case .yagasuriRose: "Yagasuri rose"
+        case .original: AppLanguage.localized("Original cream")
+        case .shippoBlue: AppLanguage.localized("Shippo blue")
+        case .asanoha: AppLanguage.localized("Sage asanoha")
+        case .kikkoLavender: AppLanguage.localized("Kikko lavender")
+        case .yagasuriRose: AppLanguage.localized("Yagasuri rose")
         }
     }
 
@@ -1348,10 +1360,10 @@ private struct AppIconPickerView: View {
                                     .frame(width: 48, height: 42)
                             }
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(selectedBowl == nil ? "No collected bowls" : "Collected")
+                                Text(AppLanguage.localized(selectedBowl == nil ? "No collected bowls" : "Collected"))
                                 .font(.system(size: 12, weight: .medium, design: .rounded))
                                 .foregroundStyle(selectedBowl == nil ? AppTheme.secondaryInk : CourseColor.green.deepTint)
-                                Text(selectedBowl?.name ?? "Choose a bowl")
+                                Text(selectedBowl?.name ?? AppLanguage.localized("Choose a bowl"))
                                     .font(.system(size: 16, weight: .semibold, design: .rounded))
                                     .foregroundStyle(AppTheme.ink)
                             }
@@ -1373,7 +1385,7 @@ private struct AppIconPickerView: View {
                         .padding(.horizontal, 12)
 
                     if let errorMessage {
-                        Text(errorMessage)
+                        Text(AppLanguage.localized(errorMessage))
                             .font(.system(size: 13, design: .rounded))
                             .foregroundStyle(CourseColor.red.deepTint)
                             .multilineTextAlignment(.center)
@@ -1445,7 +1457,9 @@ private struct AppIconPickerView: View {
             Task { @MainActor in
                 isApplying = false
                 if let error {
-                    errorMessage = error.localizedDescription
+                    errorMessage = AppLanguage.selected == .spanish
+                        ? AppLanguage.localized("We couldn't change the app icon. Please try again.")
+                        : error.localizedDescription
                 }
             }
         }

@@ -39,15 +39,18 @@ struct StudyStreakView: View {
                                 }
                                 .frame(width: 34, height: 34)
 
-                                Text(["M", "T", "W", "T", "F", "S", "S"][index])
+                                Text((AppLanguage.selected == .spanish
+                                      ? ["L", "M", "X", "J", "V", "S", "D"]
+                                      : ["M", "T", "W", "T", "F", "S", "S"])[index])
                                     .font(.system(size: 11, weight: day == today ? .bold : .semibold, design: .rounded))
                                     .foregroundStyle(day == today ? AppTheme.ink : AppTheme.secondaryInk)
                             }
                             .frame(maxWidth: .infinity)
                             .accessibilityElement(children: .ignore)
                             .accessibilityLabel(Text(day, format: .dateTime.weekday(.wide).month().day()))
-                            .accessibilityValue(dominantCourse.map { "Studied most: \($0.name)" }
-                                                ?? (day == today ? "Today, not studied yet" : "Not studied"))
+                            .accessibilityValue(dominantCourse.map {
+                                AppLanguage.formatted("Studied most: %@", $0.name)
+                            } ?? AppLanguage.localized(day == today ? "Today, not studied yet" : "Not studied"))
                         }
                     }
 
@@ -56,11 +59,11 @@ struct StudyStreakView: View {
                             .font(.system(size: 21, weight: .bold, design: .rounded))
                             .monospacedDigit()
 
-                        Text(streak.days.contains(today)
+                        Text(AppLanguage.localized(streak.days.contains(today)
                              ? "A little progress each day builds a lasting habit."
                              : (streak.count > 0
                                 ? "Study today to keep your rhythm going."
-                                : "Complete a session to begin your study streak."))
+                                : "Complete a session to begin your study streak.")))
                             .font(.system(size: 13, design: .rounded))
                             .foregroundStyle(AppTheme.secondaryInk)
                             .multilineTextAlignment(.center)
@@ -81,9 +84,9 @@ struct StudyStreakView: View {
 
     private func streakTitle(_ count: Int) -> String {
         switch count {
-        case 0: "Start your streak"
-        case 1: "You've started a streak!"
-        default: "\(count)-day study streak!"
+        case 0: AppLanguage.localized("Start your streak")
+        case 1: AppLanguage.localized("You've started a streak!")
+        default: AppLanguage.formatted("%lld-day study streak!", Int64(count))
         }
     }
 

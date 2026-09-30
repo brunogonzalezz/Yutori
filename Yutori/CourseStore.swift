@@ -18,7 +18,7 @@ enum CourseColor: String, Codable, CaseIterable {
     }
 
     var displayName: String {
-        switch paletteColor {
+        let name: String = switch paletteColor {
         case .sky: "Asagi Blue"
         case .moss: "Moss Olive"
         case .red: "Torii Vermilion"
@@ -32,6 +32,7 @@ enum CourseColor: String, Codable, CaseIterable {
         case .indigo: "Kōbai Rose"
         default: "Walnut Brown"
         }
+        return AppLanguage.localized(name)
     }
 
     var rgbHex: UInt32 {

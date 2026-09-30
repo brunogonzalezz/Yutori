@@ -58,25 +58,17 @@ struct StudyCalendarView: View {
             calendar.startOfDay(for: $0.collectedAt)
         }
         VStack(alignment: .leading, spacing: 18) {
-            HStack {
-                Text("Calendar")
-                    .font(.system(size: 24, weight: .bold, design: .rounded))
-                    .foregroundStyle(AppTheme.ink)
-                Spacer()
-                HStack(spacing: 5) {
-                    monthButton(systemImage: "chevron.left", enabled: canMoveBackward) {
-                        withAnimation(.easeInOut(duration: 0.22)) { monthOffset -= 1 }
-                    }
+            ViewThatFits(in: .horizontal) {
+                HStack {
+                    calendarTitle
+                    Spacer(minLength: 10)
+                    monthNavigation
+                }
 
-                    Text(monthStart, format: .dateTime.month(.wide).year())
-                        .font(.system(size: 13, weight: .semibold, design: .rounded))
-                        .foregroundStyle(AppTheme.secondaryInk)
-                        .frame(minWidth: 112)
-                        .contentTransition(.numericText())
-
-                    monthButton(systemImage: "chevron.right", enabled: canMoveForward) {
-                        withAnimation(.easeInOut(duration: 0.22)) { monthOffset += 1 }
-                    }
+                VStack(alignment: .leading, spacing: 10) {
+                    calendarTitle
+                    monthNavigation
+                        .frame(maxWidth: .infinity, alignment: .trailing)
                 }
             }
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 7), spacing: 7) {
@@ -112,6 +104,33 @@ struct StudyCalendarView: View {
         }
     }
 
+    private var calendarTitle: some View {
+        Text("Calendar")
+            .font(.system(size: 24, weight: .bold, design: .rounded))
+            .foregroundStyle(AppTheme.ink)
+    }
+
+    private var monthNavigation: some View {
+        HStack(spacing: 5) {
+            monthButton(systemImage: "chevron.left", enabled: canMoveBackward) {
+                withAnimation(.easeInOut(duration: 0.22)) { monthOffset -= 1 }
+            }
+
+            Text(monthStart, format: .dateTime.month(.wide).year())
+                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                .foregroundStyle(AppTheme.secondaryInk)
+                .lineLimit(1)
+                .minimumScaleFactor(0.88)
+                .allowsTightening(true)
+                .frame(width: 142)
+                .contentTransition(.numericText())
+
+            monthButton(systemImage: "chevron.right", enabled: canMoveForward) {
+                withAnimation(.easeInOut(duration: 0.22)) { monthOffset += 1 }
+            }
+        }
+    }
+
     private func monthButton(systemImage: String, enabled: Bool,
                              action: @escaping () -> Void) -> some View {
         Button(action: action) {
@@ -123,7 +142,7 @@ struct StudyCalendarView: View {
         }
         .buttonStyle(.plain)
         .disabled(!enabled)
-        .accessibilityLabel(systemImage == "chevron.left" ? "Previous month" : "Next month")
+        .accessibilityLabel(AppLanguage.localized(systemImage == "chevron.left" ? "Previous month" : "Next month"))
     }
 
     private func dominantCourse(in sessions: [StudySession]) -> StudyCourse? {
@@ -183,15 +202,19 @@ private struct CalendarDayView: View {
         }
         .aspectRatio(0.73, contentMode: .fit)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(date.formatted(.dateTime.weekday(.wide).day().month()))
+        .accessibilityLabel(date.formatted(
+            .dateTime.weekday(.wide).day().month().locale(AppLanguage.selected.locale)
+        ))
         .accessibilityValue(accessibilitySummary)
     }
 
     private var accessibilitySummary: String {
         var parts: [String] = []
-        if isToday { parts.append("Today") }
+        if isToday { parts.append(AppLanguage.localized("Today")) }
         if let course { parts.append(course.name) }
-        if !bowls.isEmpty { parts.append("\(bowls.count) bowls collected") }
-        return parts.isEmpty ? "No study activity" : parts.joined(separator: ", ")
+        if !bowls.isEmpty {
+            parts.append(AppLanguage.formatted("%lld bowls collected", Int64(bowls.count)))
+        }
+        return parts.isEmpty ? AppLanguage.localized("No study activity") : parts.joined(separator: ", ")
     }
 }

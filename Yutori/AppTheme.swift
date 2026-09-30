@@ -80,11 +80,11 @@ struct AppEmptyStateCard: View {
                 .foregroundStyle(AppTheme.secondaryInk)
                 .frame(width: 52, height: 44)
 
-            Text(title)
+            Text(AppLanguage.localized(title))
                 .font(.system(size: 18, weight: .bold, design: .rounded))
                 .foregroundStyle(AppTheme.ink)
 
-            Text(message)
+            Text(AppLanguage.localized(message))
                 .font(.system(size: 14, design: .rounded))
                 .foregroundStyle(AppTheme.secondaryInk)
                 .multilineTextAlignment(.center)
@@ -92,7 +92,9 @@ struct AppEmptyStateCard: View {
                 .frame(maxWidth: 250)
 
             if let actionTitle, let action {
-                Button(actionTitle, action: action)
+                Button(action: action) {
+                    Text(AppLanguage.localized(actionTitle))
+                }
                     .font(.system(size: 14, weight: .semibold, design: .rounded))
                     .foregroundStyle(AppTheme.paper)
                     .padding(.horizontal, 18)

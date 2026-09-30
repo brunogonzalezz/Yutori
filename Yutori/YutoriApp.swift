@@ -35,6 +35,7 @@ struct YutoriApp: App {
 
 private struct YutoriRootView: View {
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
+    @AppStorage(AppLanguage.storageKey) private var appLanguage = AppLanguage.english.rawValue
     @State private var appReset = AppReset.shared
 
     var body: some View {
@@ -56,8 +57,13 @@ private struct YutoriRootView: View {
                 .transition(.opacity)
             }
         }
+        .environment(\.locale, AppLanguage(rawValue: appLanguage)?.locale ?? AppLanguage.english.locale)
         .animation(.easeInOut(duration: 0.62), value: hasCompletedOnboarding)
+        .id(appLanguage)
         .id(appReset.revision)
+        .onChange(of: appLanguage) {
+            Task { await ActiveStudySession.shared.syncActivity() }
+        }
         .task(id: appReset.revision) {
             guard appReset.shouldShowResetLoading else { return }
             try? await Task.sleep(for: .milliseconds(1650))

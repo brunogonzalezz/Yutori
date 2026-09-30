@@ -13,7 +13,7 @@ struct OnboardingView: View {
     @State private var starterBowlCollected = StudySessionStore.shared.collectedKinds.contains(.teriyaki)
     @State private var onboardingBowlLevel = 0
     @State private var movesForward = true
-    @State private var courseNameExample = "Maths"
+    @State private var courseNameExample = AppLanguage.localized("Maths")
     @State private var completionTransition = false
     @AppStorage("profileAvatarColor") private var avatarColor = "Jade Teal"
     @FocusState private var focusedField: Field?
@@ -65,7 +65,7 @@ struct OnboardingView: View {
             .animation(.spring(duration: 0.52, bounce: 0.12), value: page)
 
             if let errorMessage {
-                Text(errorMessage)
+                Text(AppLanguage.localized(errorMessage))
                     .font(.system(size: 13, design: .rounded))
                     .foregroundStyle(.red)
                     .multilineTextAlignment(.center)
@@ -308,9 +308,9 @@ struct OnboardingView: View {
                                                  onFinished: finishInCollection)
                     .frame(height: 470)
 
-                Text(starterBowlCollected
+                Text(AppLanguage.localized(starterBowlCollected
                      ? "Your Teriyaki Bowl is now part of My bowls."
-                     : "Tap Collect when you are ready to add your first bowl.")
+                     : "Tap Collect when you are ready to add your first bowl."))
                     .font(.system(size: 13, weight: .medium, design: .rounded))
                     .foregroundStyle(AppTheme.secondaryInk)
                     .multilineTextAlignment(.center)
@@ -401,7 +401,7 @@ struct OnboardingView: View {
     }
 
     private func animateCourseNameExamples() async {
-        let examples = ["Maths", "Science", "History", "Languages", "Design"]
+        let examples = ["Maths", "Science", "History", "Languages", "Design"].map(AppLanguage.localized)
         guard !reduceMotion else {
             courseNameExample = examples[0]
             return
@@ -426,7 +426,7 @@ struct OnboardingView: View {
                 }
             }
         } catch {
-            courseNameExample = "Maths"
+            courseNameExample = AppLanguage.localized("Maths")
         }
     }
 
@@ -437,8 +437,8 @@ struct OnboardingView: View {
                 .foregroundStyle(color)
                 .frame(width: 34)
             VStack(alignment: .leading, spacing: 3) {
-                Text(title).font(.system(size: 16, weight: .semibold, design: .rounded))
-                Text(text)
+                Text(AppLanguage.localized(title)).font(.system(size: 16, weight: .semibold, design: .rounded))
+                Text(AppLanguage.localized(text))
                     .font(.system(size: 13, design: .rounded))
                     .foregroundStyle(AppTheme.secondaryInk)
                     .fixedSize(horizontal: false, vertical: true)
@@ -521,7 +521,7 @@ struct OnboardingView: View {
                                                     in: RoundedRectangle(cornerRadius: 13, style: .continuous))
                                 }
                                 .buttonStyle(.plain)
-                                .accessibilityLabel(label)
+                                .accessibilityLabel(Text(AppLanguage.localized(label)))
                             }
                         }
                     }
@@ -595,9 +595,9 @@ struct OnboardingView: View {
             Capsule()
                 .fill(color.opacity(0.55))
                 .frame(width: 34, height: 3)
-            Text(title)
+            Text(AppLanguage.localized(title))
                 .font(.system(size: 30, weight: .bold, design: .rounded))
-            Text(text)
+            Text(AppLanguage.localized(text))
                 .font(.system(size: 15, design: .rounded))
                 .foregroundStyle(AppTheme.secondaryInk)
                 .multilineTextAlignment(.center)
@@ -609,8 +609,8 @@ struct OnboardingView: View {
     private func ideaCard(icon: String, color: Color, title: String, text: String) -> some View {
         VStack(spacing: 8) {
             Image(systemName: icon).font(.system(size: 20, weight: .semibold)).foregroundStyle(color)
-            Text(title).font(.system(size: 15, weight: .bold, design: .rounded))
-            Text(text)
+            Text(AppLanguage.localized(title)).font(.system(size: 15, weight: .bold, design: .rounded))
+            Text(AppLanguage.localized(text))
                 .font(.system(size: 12, design: .rounded))
                 .foregroundStyle(AppTheme.secondaryInk)
                 .multilineTextAlignment(.center)
@@ -629,8 +629,8 @@ struct OnboardingView: View {
                 .frame(width: 40, height: 40)
                 .background(color, in: Circle())
             VStack(alignment: .leading, spacing: 3) {
-                Text(title).font(.system(size: 16, weight: .semibold, design: .rounded))
-                Text(text).font(.system(size: 13, design: .rounded)).foregroundStyle(AppTheme.secondaryInk)
+                Text(AppLanguage.localized(title)).font(.system(size: 16, weight: .semibold, design: .rounded))
+                Text(AppLanguage.localized(text)).font(.system(size: 13, design: .rounded)).foregroundStyle(AppTheme.secondaryInk)
             }
             Spacer(minLength: 0)
         }
@@ -703,7 +703,7 @@ private struct OnboardingFocusFlow: View {
                             .background(step.2, in: RoundedRectangle(cornerRadius: 23, style: .continuous))
                             .scaleEffect(activeStep == index ? 1.12 : 0.92)
                             .shadow(color: step.2.opacity(activeStep == index ? 0.34 : 0), radius: 14)
-                        Text(step.1)
+                        Text(AppLanguage.localized(step.1))
                             .font(.system(size: 13, weight: .semibold, design: .rounded))
                     }
                     .frame(maxWidth: .infinity)
@@ -717,7 +717,7 @@ private struct OnboardingFocusFlow: View {
                 }
             }
 
-            Text(["Pick what matters now", "Give it your attention", "Keep the progress you made"][activeStep])
+            Text(AppLanguage.localized(["Pick what matters now", "Give it your attention", "Keep the progress you made"][activeStep]))
                 .font(.system(size: 16, weight: .medium, design: .rounded))
                 .foregroundStyle(AppTheme.secondaryInk)
                 .contentTransition(.numericText())
@@ -756,7 +756,7 @@ private struct OnboardingCoursesExplanation: View {
                             .foregroundStyle(.white)
                             .frame(width: 70, height: 70)
                             .background(example.2, in: Circle())
-                        Text(example.1)
+                        Text(AppLanguage.localized(example.1))
                             .font(.system(size: 13, weight: .semibold, design: .rounded))
                     }
                     .frame(maxWidth: .infinity)
@@ -810,7 +810,11 @@ private struct OnboardingConsistencyVisual: View {
     @State private var completedDays = 0
     @State private var breakVisible = false
 
-    private let days = ["M", "T", "W", "T", "F", "S", "S"]
+    private var days: [String] {
+        AppLanguage.selected == .spanish
+            ? ["L", "M", "X", "J", "V", "S", "D"]
+            : ["M", "T", "W", "T", "F", "S", "S"]
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -1154,7 +1158,7 @@ private struct OnboardingGrowthAnimation: View {
                     .font(.system(size: 15, weight: .bold, design: .rounded))
                     .monospacedDigit()
                 Spacer()
-                Text(level == 5 ? "Ready to collect" : "Studying…")
+                Text(AppLanguage.localized(level == 5 ? "Ready to collect" : "Studying…"))
                     .font(.system(size: 13, weight: .medium, design: .rounded))
                     .foregroundStyle(level == 5 ? CourseColor.green.tint : AppTheme.secondaryInk)
             }
@@ -1305,7 +1309,7 @@ private struct OnboardingStarterCollectionView: View {
         VStack(spacing: 2) {
             DishArtworkView(level: complete ? 5 : 0, availableWidth: 150,
                             preferredWidth: complete ? 126 : 102, kind: kind)
-            Text(title)
+            Text(AppLanguage.localized(title))
                 .font(.system(size: 11, weight: .semibold, design: .rounded))
                 .foregroundStyle(AppTheme.secondaryInk)
         }
@@ -1373,9 +1377,11 @@ private struct OnboardingGrowthAndCollectionView: View {
 
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(isCollected ? "Teriyaki collected" : "Teriyaki Bowl · Level \(level)")
+                    Text(isCollected
+                         ? AppLanguage.localized("Teriyaki collected")
+                         : AppLanguage.formatted("Teriyaki Bowl · Level %lld", Int64(level)))
                         .font(.system(size: 15, weight: .bold, design: .rounded))
-                    Text(statusText)
+                    Text(AppLanguage.localized(statusText))
                         .font(.system(size: 12, design: .rounded))
                         .foregroundStyle(AppTheme.secondaryInk)
                 }
@@ -1399,7 +1405,7 @@ private struct OnboardingGrowthAndCollectionView: View {
             Button(action: primaryAction) {
                 HStack(spacing: 8) {
                     Image(systemName: actionIcon)
-                    Text(actionTitle)
+                    Text(AppLanguage.localized(actionTitle))
                 }
                 .font(.system(size: 15, weight: .semibold, design: .rounded))
                 .foregroundStyle(AppTheme.paper)
@@ -1411,9 +1417,9 @@ private struct OnboardingGrowthAndCollectionView: View {
             .disabled(isAdvancing || isCollecting)
             .opacity(isAdvancing || isCollecting ? 0.58 : 1)
 
-            Text(level < 5
+            Text(AppLanguage.localized(level < 5
                  ? "For this walkthrough, each tap represents one focused hour."
-                 : "A level 5 bowl becomes part of your permanent collection.")
+                 : "A level 5 bowl becomes part of your permanent collection."))
                 .font(.system(size: 12, design: .rounded))
                 .foregroundStyle(AppTheme.secondaryInk)
                 .multilineTextAlignment(.center)
@@ -1553,7 +1559,7 @@ private struct OnboardingCollectionJourneyView: View {
                         } else {
                             Image(systemName: landed || isCollected ? "leaf.fill" : "sparkles")
                         }
-                        Text(landed || isCollected ? "Start my journey" : "Collect Teriyaki Bowl")
+                        Text(AppLanguage.localized(landed || isCollected ? "Start my journey" : "Collect Teriyaki Bowl"))
                     }
                     .font(.system(size: 15, weight: .semibold, design: .rounded))
                     .foregroundStyle(AppTheme.paper)
@@ -1675,7 +1681,7 @@ private struct OnboardingCollectionJourneyView: View {
                 .foregroundStyle(AppTheme.secondaryInk.opacity(0.75))
                 .monospacedDigit()
 
-            Text(index == 0 ? "Teriyaki Bowl" : "???")
+            Text(index == 0 ? BowlKind.teriyaki.name : "???")
                 .font(.system(size: 10, weight: highlighted ? .semibold : .medium, design: .rounded))
                 .foregroundStyle(highlighted ? AppTheme.ink : AppTheme.secondaryInk)
                 .multilineTextAlignment(.center)

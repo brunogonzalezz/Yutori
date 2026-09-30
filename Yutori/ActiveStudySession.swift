@@ -94,8 +94,13 @@ final class ActiveStudySession {
     func syncActivity() async {
         guard let id, let course else { return }
         let level = DishProgress(totalSeconds: startingSeconds + stopwatch.elapsed(at: .now)).level
-        let state = StudyActivityAttributes.ContentState(accumulated: stopwatch.accumulated,
-            runningSince: stopwatch.runningSince, imageName: kind.imageName(level: level), level: level)
+        let state = StudyActivityAttributes.ContentState(
+            accumulated: stopwatch.accumulated,
+            runningSince: stopwatch.runningSince,
+            imageName: kind.imageName(level: level),
+            level: level,
+            languageCode: AppLanguage.selected.rawValue
+        )
         let content = ActivityContent(state: state, staleDate: nil)
         let activities = Activity<StudyActivityAttributes>.activities.filter { $0.attributes.sessionID == id.uuidString }
         if finishedAt != nil {
@@ -104,7 +109,13 @@ final class ActiveStudySession {
             for activity in activities { await activity.update(content) }
         } else if ActivityAuthorizationInfo().areActivitiesEnabled {
             do {
-                _ = try Activity.request(attributes: StudyActivityAttributes(sessionID: id.uuidString, courseName: course.name, courseIcon: course.icon, courseColorHex: course.color.rgbHex),
+                _ = try Activity.request(attributes: StudyActivityAttributes(
+                    sessionID: id.uuidString,
+                    courseName: course.name,
+                    courseIcon: course.icon,
+                    courseColorHex: course.color.rgbHex,
+                    languageCode: AppLanguage.selected.rawValue
+                ),
                                          content: content, pushType: nil)
             } catch {
                 // The session remains usable if Live Activities are disabled or unavailable.

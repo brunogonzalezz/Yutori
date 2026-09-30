@@ -71,7 +71,7 @@ struct StudyTimerView: View {
                         .background(AppTheme.ink, in: Circle())
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel(stopwatch.isRunning ? "Pause" : "Resume")
+                .accessibilityLabel(AppLanguage.localized(stopwatch.isRunning ? "Pause" : "Resume"))
 
                 Button {
                     finishSession(at: .now)
@@ -293,9 +293,11 @@ struct DishEvolutionView: View {
             VStack(spacing: 24) {
                 Spacer(minLength: 24)
                 VStack(spacing: 10) {
-                    Text(revealed ? (currentLevel < toLevel ? "And there's more…" : message.after) : message.before)
+                    Text(AppLanguage.localized(revealed ? (currentLevel < toLevel ? "And there's more…" : message.after) : message.before))
                         .font(.system(size: 26, weight: .bold, design: .rounded))
-                    Text(revealed ? "Level \(currentLevel) unlocked" : message.detail)
+                    Text(revealed
+                         ? AppLanguage.formatted("Level %lld unlocked", Int64(currentLevel))
+                         : AppLanguage.localized(message.detail))
                         .font(.subheadline)
                         .foregroundStyle(AppTheme.secondaryInk)
                 }
@@ -323,7 +325,9 @@ struct DishEvolutionView: View {
                         .shadow(color: palette[0].opacity(glow ? 0.62 : 0), radius: 20)
                 }
                 .frame(height: 320)
-                    Text(evolutionCount > 1 ? "\(evolutionCount) levels earned, one study bite at a time." : message.footer)
+                    Text(evolutionCount > 1
+                         ? AppLanguage.formatted("%lld levels earned, one study bite at a time.", Int64(evolutionCount))
+                         : AppLanguage.localized(message.footer))
                         .font(.subheadline)
                         .foregroundStyle(AppTheme.secondaryInk)
                 .multilineTextAlignment(.center)

@@ -30,6 +30,9 @@ struct StatsView: View {
                 Text("Your study journey")
                     .font(.system(size: 30, weight: .bold, design: .rounded))
                     .foregroundStyle(AppTheme.ink)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.88)
+                    .allowsTightening(true)
                     .padding(.horizontal, 8)
                     .padding(.bottom, 24)
 
@@ -171,7 +174,7 @@ private struct MetricView: View {
                 .monospacedDigit()
                 .lineLimit(1)
                 .minimumScaleFactor(0.55)
-            Text(label)
+            Text(AppLanguage.localized(label))
                 .font(.system(size: labelSize, weight: .semibold, design: .rounded))
                 .foregroundStyle(Color(red: 161 / 255, green: 154 / 255, blue: 138 / 255))
                 .lineLimit(1)
@@ -266,10 +269,10 @@ private struct WeeklySummaryChart: View {
     private func activityMark(_ bar: ActivityBar) -> some ChartContent {
         let centre: String = String(Int(bar.dayIndex))
         let height: Double = bar.minutes / divisor
-        let day: String = bar.date.formatted(.dateTime.weekday(.wide))
+        let day: String = bar.date.formatted(.dateTime.weekday(.wide).locale(AppLanguage.selected.locale))
         let minutes: String = bar.minutes.formatted(.number.precision(.fractionLength(0...1)))
         let label = Text(verbatim: bar.course + ", " + day)
-        let value = Text(verbatim: minutes + " minutes")
+        let value = Text(verbatim: AppLanguage.formatted("%@ minutes", minutes))
         return BarMark(
             x: .value("Day", centre),
             y: .value("Study time", height),

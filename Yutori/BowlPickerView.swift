@@ -41,7 +41,7 @@ struct BowlPickerView: View {
                                         pageArrow(step: 1)
                                     }
                                 }
-                                Text(selectedBowl.kind == nil ? "Coming soon" : selectedBowl.name)
+                                Text(selectedBowl.kind == nil ? AppLanguage.localized("Coming soon") : selectedBowl.name)
                                     .font(.system(size: 22, weight: .bold, design: .rounded))
                                     .multilineTextAlignment(.center)
                                     .lineLimit(2)
@@ -114,8 +114,8 @@ struct BowlPickerView: View {
                 if dismissOnSelection { dismiss() }
             }
         } label: {
-            Text(selectedBowl.kind == nil ? "Coming soon" :
-                    (selectedBowlIsCollected ? "Grow this bowl again" : "Select bowl"))
+            Text(AppLanguage.localized(selectedBowl.kind == nil ? "Coming soon" :
+                    (selectedBowlIsCollected ? "Grow this bowl again" : "Select bowl")))
                 .font(.system(size: 16, weight: .semibold, design: .rounded))
                 .foregroundStyle(AppTheme.paper)
                 .frame(maxWidth: .infinity, minHeight: 50)
@@ -147,7 +147,7 @@ struct BowlPickerView: View {
         .buttonStyle(.plain)
         .disabled(!enabled)
         .opacity(enabled ? 1 : 0.25)
-        .accessibilityLabel(step < 0 ? "Previous bowl" : "Next bowl")
+        .accessibilityLabel(AppLanguage.localized(step < 0 ? "Previous bowl" : "Next bowl"))
     }
 
     private func bowlTile(_ entry: BowlCatalogEntry) -> some View {
@@ -164,7 +164,7 @@ struct BowlPickerView: View {
                         .frame(width: geometry.size.width, height: geometry.size.height)
                 }
                 .frame(height: 60)
-                Text(entry.kind == nil ? "Coming soon" : entry.name)
+                Text(entry.kind == nil ? AppLanguage.localized("Coming soon") : entry.name)
                     .font(.system(size: 11, weight: .semibold, design: .rounded))
                     .multilineTextAlignment(.center)
                     .lineLimit(2)
@@ -182,8 +182,8 @@ struct BowlPickerView: View {
             .contentShape(RoundedRectangle(cornerRadius: 16))
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(isCollected ? "\(entry.name), collected" : entry.name)
-        .accessibilityHint(entry.kind == nil ? "Coming soon" : "Preview this bowl")
+        .accessibilityLabel(isCollected ? "\(entry.name), \(AppLanguage.localized("collected"))" : entry.name)
+        .accessibilityHint(AppLanguage.localized(entry.kind == nil ? "Coming soon" : "Preview this bowl"))
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 

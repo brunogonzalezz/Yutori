@@ -41,7 +41,7 @@ final class TimeRulerView: UIView, UIScrollViewDelegate {
         indicator.isUserInteractionEnabled = false
         addSubview(indicator)
         isAccessibilityElement = true
-        accessibilityLabel = "Adjust time in minutes"
+        accessibilityLabel = AppLanguage.localized("Adjust time in minutes")
         accessibilityTraits = .adjustable
     }
 
@@ -63,7 +63,7 @@ final class TimeRulerView: UIView, UIScrollViewDelegate {
             selected = value
             needsPositionRestore = true
         }
-        accessibilityValue = "\(value) minutes"
+        accessibilityValue = AppLanguage.formatted("%@ minutes", String(value))
         setNeedsLayout()
     }
 
@@ -113,7 +113,7 @@ final class TimeRulerView: UIView, UIScrollViewDelegate {
             limits.lowerBound + Int((scrollView.contentOffset.x / step).rounded())))
         guard next != selected else { return }
         selected = next
-        accessibilityValue = "\(next) minutes"
+        accessibilityValue = AppLanguage.formatted("%@ minutes", String(next))
         if scrollView.isDragging || scrollView.isDecelerating {
             feedback.selectionChanged()
             onSelection?(next)
