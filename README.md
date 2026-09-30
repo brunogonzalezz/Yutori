@@ -1,3 +1,8 @@
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/b8d29aff-b68c-49c5-b800-82673ae4c02b" width="100%">
+</p>
+
+
 # Yutori 🍜
 
 ### A study tracker that makes progress visible.
