@@ -24,11 +24,6 @@ final class PurchaseManager {
     private(set) var configurationMessage: String?
     private(set) var operation: Operation = .idle
 
-#if DEBUG
-    private let debugProOverrideKey = "debug.yutoriProOverride"
-    private var debugProOverride: Bool?
-#endif
-
     var isBusy: Bool { operation != .idle }
 
     var isPurchasing: Bool {
@@ -40,28 +35,7 @@ final class PurchaseManager {
 
     private var customerInfoTask: Task<Void, Never>?
 
-    private init() {
-#if DEBUG
-        if UserDefaults.standard.object(forKey: debugProOverrideKey) != nil {
-            let override = UserDefaults.standard.bool(forKey: debugProOverrideKey)
-            debugProOverride = override
-            isPro = override
-        }
-#endif
-    }
-
-#if DEBUG
-    func setDebugPro(_ enabled: Bool) {
-        debugProOverride = enabled
-        UserDefaults.standard.set(enabled, forKey: debugProOverrideKey)
-        isPro = enabled
-    }
-
-    private func clearDebugProOverride() {
-        debugProOverride = nil
-        UserDefaults.standard.removeObject(forKey: debugProOverrideKey)
-    }
-#endif
+    private init() {}
 
     func configure() {
         guard !isConfigured else { return }
@@ -139,10 +113,6 @@ final class PurchaseManager {
             throw PurchaseManagerError.operationInProgress
         }
 
-#if DEBUG
-        clearDebugProOverride()
-#endif
-
         operation = .purchasing(productIdentifier: package.storeProduct.productIdentifier)
         defer { operation = .idle }
 
@@ -168,10 +138,6 @@ final class PurchaseManager {
             throw PurchaseManagerError.operationInProgress
         }
 
-#if DEBUG
-        clearDebugProOverride()
-#endif
-
         operation = .restoring
         defer { operation = .idle }
 
@@ -181,16 +147,16 @@ final class PurchaseManager {
     }
 
     private func update(with customerInfo: CustomerInfo) {
-        let revenueCatIsPro = customerInfo.entitlements.all[Self.entitlementIdentifier]?.isActive == true
-#if DEBUG
-        isPro = debugProOverride ?? revenueCatIsPro
-#else
-        isPro = revenueCatIsPro
-#endif
+        isPro = customerInfo.entitlements.all[Self.entitlementIdentifier]?.isActive == true
     }
 
     private func updatePackages(from offerings: Offerings) {
-        guard let offering = offerings.all[Self.offeringIdentifier] else {
+        // `current` is the offering selected by RevenueCat targeting. Falling back
+        // to the named/default and first populated offerings keeps the paywall
+        // working when the dashboard identifier changes.
+        guard let offering = offerings.current
+                ?? offerings.all[Self.offeringIdentifier]
+                ?? offerings.all.values.first(where: { !$0.availablePackages.isEmpty }) else {
             packages = []
             return
         }

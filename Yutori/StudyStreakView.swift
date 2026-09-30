@@ -2,12 +2,10 @@ import SwiftUI
 
 struct StudyStreakView: View {
     let sessions: [StudySession]
-    @State private var testClock = StudyTestClock.shared
-
     var body: some View {
         TimelineView(.periodic(from: .now, by: 60)) { timeline in
             let calendar = Calendar.autoupdatingCurrent
-            let effectiveNow = testClock.date(for: timeline.date)
+            let effectiveNow = timeline.date
             let today = calendar.startOfDay(for: effectiveNow)
             let streak = StudyStreak(sessionDates: sessions.map(\.endedAt), now: effectiveNow, calendar: calendar)
             let mondayOffset = (calendar.component(.weekday, from: today) + 5) % 7

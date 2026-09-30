@@ -55,13 +55,6 @@ final class ActiveStudySession {
         persist()
         Task { await syncActivity() }
     }
-    func advanceForTesting(by seconds: TimeInterval) {
-        guard id != nil, finishedAt == nil else { return }
-        stopwatch.advanceForTesting(by: seconds)
-        persist()
-        Task { await syncActivity() }
-    }
-
     func finish(at date: Date) {
         guard id != nil else { return }
         stopwatch.pause(at: date)

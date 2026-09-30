@@ -7,16 +7,15 @@ struct StatsView: View {
     @State private var showSettings = false
     @State private var sessionStore = StudySessionStore.shared
     @State private var courseStore = CourseStore.shared
-    @State private var testClock = StudyTestClock.shared
 
     var body: some View {
         // Read the observable stores in the parent so every mutation redraws Stats.
         let sessions = sessionStore.sessions
         let courses = courseStore.courses
         // The periodic refresh only handles calendar changes while the screen is idle.
-        TimelineView(.periodic(from: .now, by: 60)) { _ in
+        TimelineView(.periodic(from: .now, by: 60)) { timeline in
         let stats = WeeklyStudyStats(sessions: sessions, courses: courses,
-                                    now: testClock.date(for: .now))
+                                    now: timeline.date)
         let weeklySeries = CourseWeeklySeries.series(from: stats)
         let hasStudyActivity = weeklySeries.contains { series in
             series.dailyMinutes.contains { $0.minutes > 0 }
@@ -65,7 +64,7 @@ struct StatsView: View {
 
                 StudyCalendarView(sessions: sessions, courses: courses,
                                   bowls: sessionStore.collectedBowls,
-                                  now: testClock.date(for: .now))
+                                  now: timeline.date)
                     .padding(.horizontal, 8)
             }
             .padding(.horizontal, 16)
@@ -100,6 +99,7 @@ struct StatsView: View {
     }
 
     private func weeklyMetrics(_ stats: WeeklyStudyStats) -> some View {
+        let unavailable = sessionStore.loadFailed
         let totalSeconds = stats.sessions.reduce(0) { $0 + $1.duration }
         let totalHours = totalSeconds / 3600
         let showsDays = totalHours >= 10_000
@@ -112,16 +112,16 @@ struct StatsView: View {
 
         return VStack(spacing: 16) {
             MetricRowLayout(weights: [0.29, 0, 0.42, 0, 0.29]) {
-                MetricView(value: sessionStore.loadFailed ? "—" : "\(stats.sessions.count)", label: "sessions")
+                MetricView(value: unavailable ? "—" : "\(stats.sessions.count)", label: "sessions")
                 metricSeparator
-                MetricView(value: sessionStore.loadFailed ? "—" : studyTime, label: studyTimeLabel)
+                MetricView(value: unavailable ? "—" : studyTime, label: studyTimeLabel)
                 metricSeparator
-                MetricView(value: sessionStore.loadFailed ? "—" : "\(stats.courses.count)", label: "subjects")
+                MetricView(value: unavailable ? "—" : "\(stats.courses.count)", label: "subjects")
             }
             MetricRowLayout(weights: [0.5, 0, 0.5]) {
                 MetricView(value: "\(collected)", label: "bowls collected")
                 metricSeparator
-                MetricView(value: sessionStore.loadFailed ? "—" : averageText, label: "session average", suffix: sessionStore.loadFailed ? "" : "m")
+                MetricView(value: unavailable ? "—" : averageText, label: "session average", suffix: unavailable ? "" : "m")
             }
         }
         .padding(.horizontal, 4)

@@ -216,7 +216,6 @@ struct TabBarView: View {
         }
 
         startTimerAfterSheetCloses = false
-        StudySessionStore.shared.clearDishPreview()
         withAnimation(.easeInOut(duration: 0.3)) {
             showStudyTimer = true
         }

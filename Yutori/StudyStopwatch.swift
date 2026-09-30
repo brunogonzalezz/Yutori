@@ -19,12 +19,6 @@ struct StudyStopwatch: Codable {
         runningSince = nil
     }
 
-    // Temporary session testing control; preserves running/paused state.
-    mutating func advanceForTesting(by seconds: TimeInterval) {
-        guard seconds.isFinite, seconds > 0 else { return }
-        accumulated += seconds
-    }
-
     func formattedElapsed(at date: Date) -> String {
         let seconds = Int(elapsed(at: date))
         return seconds >= 3600

@@ -513,31 +513,6 @@ struct SettingsView: View {
                     Text("This deletes all local sessions, courses, collected bowls, progress, profile and settings. You'll start from zero. This cannot be undone.")
                 }
 
-            ResetStudySessionsButton()
-                .background(cardColor, in: RoundedRectangle(cornerRadius: 22))
-                .padding(.top, 12)
-
-            StudyTestDateSettings()
-                .padding(16)
-                .background(cardColor, in: RoundedRectangle(cornerRadius: 22))
-                .padding(.top, 12)
-
-#if DEBUG
-            Button {
-                purchaseManager.setDebugPro(!purchaseManager.isPro)
-            } label: {
-                settingsRow(
-                    "Yutori Pro testing",
-                    icon: "hammer.fill",
-                    selection: purchaseManager.isPro ? "Premium" : "Free"
-                )
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .background(cardColor, in: RoundedRectangle(cornerRadius: 22))
-            .padding(.top, 12)
-#endif
-
             Text(AppLanguage.formatted(
                 "Version %@",
                 Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—"
@@ -726,22 +701,6 @@ struct SettingsAvatar: Shape {
 
 #Preview {
     SettingsView()
-}
-
-private struct StudyTestDateSettings: View {
-    @Bindable private var clock = StudyTestClock.shared
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Toggle("Test date (temporary)", isOn: $clock.enabled)
-            if clock.enabled {
-                DatePicker("App date", selection: $clock.selectedDay, displayedComponents: .date)
-                Text("Used for weekly stats and new sessions. The timer runs normally.")
-                    .font(.caption)
-                    .foregroundStyle(AppTheme.secondaryInk)
-            }
-        }
-    }
 }
 
 private struct LegalDocumentView: View {
@@ -1032,32 +991,6 @@ private struct DeletionCracks: Shape {
             path.addLine(to: CGPoint(x: rect.midX + 32, y: rect.maxY - 20))
         }
         return path
-    }
-}
-
-private struct ResetStudySessionsButton: View {
-    @State private var showConfirmation = false
-
-    var body: some View {
-        Button(role: .destructive) {
-            showConfirmation = true
-        } label: {
-            Label("Delete all study sessions", systemImage: "trash")
-                .font(.system(size: 18, design: .rounded))
-                .foregroundStyle(.red)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(16)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .alert("Delete all study sessions?", isPresented: $showConfirmation) {
-            Button("Delete all sessions", role: .destructive) {
-                StudySessionStore.shared.deleteAllSessions()
-            }
-            Button("Cancel", role: .cancel) { }
-        } message: {
-            Text("This cannot be undone. Bowl progress, collected bowls and unlock progress earned from these sessions will be removed. Your courses and profile will be kept.")
-        }
     }
 }
 

@@ -86,19 +86,6 @@ struct StudyTimerView: View {
                 .accessibilityLabel("Finish study session")
             }
 
-            HStack(spacing: 12) {
-                Text("Test").foregroundStyle(AppTheme.secondaryInk)
-                Button("+10 min") { activeSession.advanceForTesting(by: 600) }
-                Button("+25 min") { activeSession.advanceForTesting(by: 1500) }
-                Button("+1 h") { activeSession.advanceForTesting(by: 3600) }
-            }
-            .font(.caption.weight(.semibold))
-            .buttonStyle(.plain)
-            .foregroundStyle(AppTheme.ink)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
-            .background(AppTheme.surface, in: Capsule())
-
             Spacer(minLength: 24)
         }
         .padding(.horizontal, 40)

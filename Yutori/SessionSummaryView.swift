@@ -453,7 +453,7 @@ struct SessionSummaryView: View {
         do {
             let draft = StudySession(
                 id: savedSession?.id ?? sessionID, course: currentCourse, blockDescription: blockDescription,
-                duration: duration, endedAt: savedSession?.endedAt ?? StudyTestClock.shared.date(for: endedAt),
+                duration: duration, endedAt: savedSession?.endedAt ?? endedAt,
                 startingDishSeconds: savedSession == nil ? startingSeconds : savedSession?.startingDishSeconds,
                 bowlKind: savedSession == nil ? bowlKind : savedSession?.bowlKind,
                 pauseCount: savedSession == nil ? pauseCount : savedSession?.pauseCount,

@@ -281,21 +281,39 @@ struct PaywallView: View {
     private func loadPlans() async {
         isLoadingOfferings = true
         errorMessage = nil
-        do {
-            try await purchaseManager.loadOfferings()
-            if selectedPackage == nil {
-                if let monthlyPackage {
-                    selectedProductIdentifier = monthlyPackage.storeProduct.productIdentifier
-                } else if let yearlyPackage {
-                    selectedProductIdentifier = yearlyPackage.storeProduct.productIdentifier
+
+        let request = Task { @MainActor in
+            do {
+                try await purchaseManager.loadOfferings()
+                guard !Task.isCancelled else { return }
+                if selectedPackage == nil {
+                    if let monthlyPackage {
+                        selectedProductIdentifier = monthlyPackage.storeProduct.productIdentifier
+                    } else if let yearlyPackage {
+                        selectedProductIdentifier = yearlyPackage.storeProduct.productIdentifier
+                    }
                 }
+            } catch {
+                guard !Task.isCancelled else { return }
+                errorMessage = AppLanguage.selected == .spanish
+                    ? AppLanguage.localized("We couldn't load the plans. Please try again.")
+                    : error.localizedDescription
             }
-        } catch {
-            errorMessage = AppLanguage.selected == .spanish
-                ? AppLanguage.localized("We couldn't load the plans. Please try again.")
-                : error.localizedDescription
+            isLoadingOfferings = false
         }
-        isLoadingOfferings = false
+
+        do {
+            try await Task.sleep(for: .seconds(10))
+        } catch {
+            request.cancel()
+            return
+        }
+
+        if isLoadingOfferings {
+            request.cancel()
+            isLoadingOfferings = false
+            errorMessage = "The plans are taking too long to load. Please try again."
+        }
     }
 
     private func buySelectedPlan() {

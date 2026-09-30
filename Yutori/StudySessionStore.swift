@@ -1,20 +1,6 @@
 import Foundation
 import Observation
 
-@Observable
-final class StudyTestClock {
-    static let shared = StudyTestClock()
-    var enabled = false
-    var selectedDay = Date.now
-
-    func date(for realDate: Date, now: Date = .now, calendar: Calendar = .autoupdatingCurrent) -> Date {
-        guard enabled else { return realDate }
-        let offset = calendar.dateComponents([.day], from: calendar.startOfDay(for: now),
-                                             to: calendar.startOfDay(for: selectedDay)).day ?? 0
-        return calendar.date(byAdding: .day, value: offset, to: realDate) ?? realDate
-    }
-}
-
 struct DishProgress {
     static let secondsPerLevel: TimeInterval = 3600
     static let maximumLevel = 5
@@ -154,8 +140,6 @@ final class StudySessionStore {
     private let key = "studySessions.v1"
     private let dishBaselineKey = "dishProgress.existingSessionIDs.v1"
     private var existingDishSessionIDs: Set<UUID> = []
-    // Temporary visual testing override; never written to saved study data.
-    private var previewDishOffset: TimeInterval = 0
     private struct Collection: Codable {
         var bowls: [CollectedBowl] = []
         var usedSeconds: TimeInterval = 0
@@ -241,7 +225,6 @@ final class StudySessionStore {
         if let restoredKind {
             updated.activeKind = restoredKind
             updated.needsSelection = false
-            previewDishOffset = 0
         }
 
         updated.usedSeconds = min(updated.usedSeconds, earned)
@@ -257,7 +240,6 @@ final class StudySessionStore {
         return hasActiveBowl && activeBowlKind == kind ? earnedDishProgress.level : 0
     }
 
-    func clearDishPreview() { previewDishOffset = 0 }
     var hasActiveBowl: Bool {
         !(collection.needsSelection ?? !collection.bowls.isEmpty)
     }
@@ -275,7 +257,6 @@ final class StudySessionStore {
         guard let data = try? JSONEncoder().encode(updated) else { return false }
         defaults.set(data, forKey: collectionKey)
         collection = updated
-        previewDishOffset = 0
         return true
     }
 
@@ -288,7 +269,6 @@ final class StudySessionStore {
         guard let data = try? JSONEncoder().encode(updated) else { return }
         defaults.set(data, forKey: collectionKey)
         collection = updated
-        previewDishOffset = 0
     }
 
     @discardableResult
@@ -299,7 +279,7 @@ final class StudySessionStore {
         var updated = collection
         updated.bowls.append(
             CollectedBowl(
-                collectedAt: StudyTestClock.shared.date(for: .now),
+                collectedAt: .now,
                 kind: .teriyaki,
                 sourceSessionIDs: [],
                 usedSecondsBeforeCollection: updated.usedSeconds,
@@ -312,7 +292,6 @@ final class StudySessionStore {
         guard let data = try? JSONEncoder().encode(updated) else { return false }
         defaults.set(data, forKey: collectionKey)
         collection = updated
-        previewDishOffset = 0
         return true
     }
     private var availableDishSeconds: TimeInterval {
@@ -326,7 +305,7 @@ final class StudySessionStore {
     func collectBowl() -> Bool {
         guard canCollectBowl else { return false }
         var updated = collection
-        let collectedAt = StudyTestClock.shared.date(for: .now)
+        let collectedAt = Date.now
         let previousCollectionDate = updated.bowls.first?.collectedAt
         let sourceSessionIDs = sessions.filter { session in
             let isAfterPreviousCollection = previousCollectionDate.map { session.endedAt > $0 } ?? true
@@ -350,7 +329,6 @@ final class StudySessionStore {
         guard let data = try? JSONEncoder().encode(updated) else { return false }
         defaults.set(data, forKey: collectionKey)
         collection = updated
-        previewDishOffset = 0
         return true
     }
 
@@ -359,17 +337,7 @@ final class StudySessionStore {
     }
 
     var dishProgress: DishProgress {
-        DishProgress(totalSeconds: availableDishSeconds + previewDishOffset)
-    }
-
-    func advanceDishPreview() {
-        stepDishPreview(by: 1)
-    }
-
-    func stepDishPreview(by step: Int) {
-        let count = DishProgress.maximumLevel + 1
-        let nextLevel = ((dishProgress.level + step) % count + count) % count
-        previewDishOffset = Double(nextLevel) * DishProgress.secondsPerLevel - availableDishSeconds
+        DishProgress(totalSeconds: availableDishSeconds)
     }
 
     init(defaults: UserDefaults = .standard) {
@@ -449,17 +417,6 @@ final class StudySessionStore {
         reconcileCollectionWithEarnedTime(deleting: id)
     }
 
-    func deleteAllSessions() {
-        previewDishOffset = 0
-        defaults.removeObject(forKey: key)
-        defaults.set([String](), forKey: dishBaselineKey)
-        existingDishSessionIDs = []
-        sessions = []
-        updateBowlUnlocks()
-        reconcileCollectionWithEarnedTime()
-        loadFailed = false
-    }
-
     func resetAllData() {
         bowlUnlockSeconds = 0
         unlockedBowlCount = BowlCatalog.initialUnlockedCount
@@ -477,7 +434,6 @@ final class StudySessionStore {
         }
         sessions = []
         existingDishSessionIDs = []
-        previewDishOffset = 0
         loadFailed = false
         collectionLoadFailed = false
     }

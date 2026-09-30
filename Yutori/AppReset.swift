@@ -16,8 +16,6 @@ final class AppReset {
         }
         CourseStore.shared.resetAllData()
         StudySessionStore.shared.resetAllData()
-        StudyTestClock.shared.enabled = false
-        StudyTestClock.shared.selectedDay = .now
         // Recreate navigation and all temporary view state at Home.
         revision = UUID()
     }

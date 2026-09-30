@@ -83,28 +83,6 @@ struct HomeView: View {
                     .opacity(hideDishForEvolution || isCollecting ? 0 : 1)
                     .frame(maxWidth: .infinity)
                     .padding(.bottom, dishProgress.level == 5 ? -6 : 0)
-                    .overlay(alignment: .bottomTrailing) {
-                        HStack(spacing: 0) {
-                            Button {
-                                sessionStore.stepDishPreview(by: -1)
-                            } label: {
-                                Image(systemName: "chevron.left")
-                                    .frame(width: 36, height: 44)
-                            }
-                            .accessibilityLabel("Preview previous dish level")
-                            Button {
-                                sessionStore.stepDishPreview(by: 1)
-                            } label: {
-                                Image(systemName: "chevron.right")
-                                    .frame(width: 36, height: 44)
-                            }
-                            .accessibilityLabel("Preview next dish level")
-                        }
-                        .font(.system(size: 12, weight: .semibold, design: .rounded))
-                        .foregroundStyle(AppTheme.secondaryInk)
-                        .buttonStyle(.plain)
-                        .padding(.trailing, 8)
-                    }
 
                 // The badge extends below the track; tuck the left-aligned caption
                 // into that reserved space without moving the track or badge.
